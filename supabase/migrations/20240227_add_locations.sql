@@ -18,6 +18,47 @@ ADD COLUMN address VARCHAR;
 CREATE INDEX locations_parent_id_idx ON locations(parent_id);
 CREATE INDEX listings_location_id_idx ON listings(location_id);
 
+-- Enable RLS for locations table
+ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
+
+-- Allow public read access to locations
+CREATE POLICY "Locations are viewable by everyone"
+ON locations FOR SELECT
+TO public
+USING (true);
+
+-- Drop old listings policies
+DROP POLICY IF EXISTS "Authenticated users can create listings" ON listings;
+DROP POLICY IF EXISTS "Listings are viewable by everyone" ON listings;
+DROP POLICY IF EXISTS "Users can update own listings" ON listings;
+DROP POLICY IF EXISTS "Users can delete own listings" ON listings;
+
+-- Create updated listings policies
+CREATE POLICY "Authenticated users can create listings"
+ON listings FOR INSERT
+TO authenticated
+WITH CHECK (
+  auth.uid() = seller_id AND
+  location_id IS NOT NULL AND
+  address IS NOT NULL
+);
+
+CREATE POLICY "Listings are viewable by everyone"
+ON listings FOR SELECT
+TO public
+USING (true);
+
+CREATE POLICY "Users can update own listings"
+ON listings FOR UPDATE
+TO authenticated
+USING (auth.uid() = seller_id)
+WITH CHECK (auth.uid() = seller_id);
+
+CREATE POLICY "Users can delete own listings"
+ON listings FOR DELETE
+TO authenticated
+USING (auth.uid() = seller_id);
+
 -- Sample data for Cameroon locations
 INSERT INTO locations (name, slug, type) VALUES
 -- Towns

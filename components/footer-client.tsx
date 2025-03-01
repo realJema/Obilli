@@ -32,30 +32,30 @@ export function FooterClient({ categories }: FooterClientProps) {
                   {category.name}
                 </Link>
               </h3>
-              {category.subgroups.map((subgroup) => (
-                <div key={subgroup.id} className="space-y-2">
-                  <h4 className="text-sm font-medium">
+              <ul className="space-y-2">
+                {category.subgroups.map((subgroup) => (
+                  <li key={subgroup.id}>
                     <Link
                       href={`/filter?category=${category.slug}&subgroup=${subgroup.slug}`}
-                      className="hover:text-primary"
+                      className="text-sm text-muted-foreground hover:text-primary"
                     >
                       {subgroup.name}
                     </Link>
-                  </h4>
-                  <ul className="space-y-1">
-                    {subgroup.subcategories.map((subcategory) => (
-                      <li key={subcategory.id}>
-                        <Link
-                          href={`/filter?category=${category.slug}&subgroup=${subgroup.slug}&subcategory=${subcategory.slug}`}
-                          className="text-sm text-muted-foreground hover:text-primary hover:underline"
-                        >
-                          {subcategory.name}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+                    <ul className="mt-1 ml-4 space-y-1">
+                      {subgroup.subcategories.map((subcategory) => (
+                        <li key={subcategory.id}>
+                          <Link
+                            href={`/filter?category=${category.slug}&subgroup=${subgroup.slug}&subcategory=${subcategory.slug}`}
+                            className="text-sm text-muted-foreground hover:text-primary"
+                          >
+                            {subcategory.name}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
             </div>
           ))}
         </div>

@@ -1,19 +1,21 @@
 "use client"
 
-import type React from "react"
-
-import { useRef, useState, useEffect, useCallback } from "react"
-import Image from "next/image"
+import { useRef, useState } from "react"
 import Link from "next/link"
-import { ChevronLeft, ChevronRight, Star, MapPin } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { ListingCard } from "@/components/listing-card"
 
 interface Seller {
-  username: string | null
-  full_name: string | null
+  username: string
+  full_name: string
   avatar_url: string | null
+}
+
+interface Category {
+  name: string
+  slug: string
 }
 
 interface Listing {
@@ -26,6 +28,7 @@ interface Listing {
   rating: number
   total_reviews: number
   images: string[] | null
+  category: Category
 }
 
 interface CategorySectionProps {
@@ -36,46 +39,19 @@ interface CategorySectionProps {
 
 export function CategorySection({ title, subtitle, listings }: CategorySectionProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const [canScrollLeft, setCanScrollLeft] = useState(false)
-  const [canScrollRight, setCanScrollRight] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [startX, setStartX] = useState(0)
   const [scrollLeft, setScrollLeft] = useState(0)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(true)
 
-  // Check scroll buttons visibility
-  const checkScrollButtons = useCallback(() => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current
-      setCanScrollLeft(scrollLeft > 0)
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth)
-    }
-  }, [])
-
-  useEffect(() => {
-    checkScrollButtons()
-    window.addEventListener("resize", checkScrollButtons)
-    return () => window.removeEventListener("resize", checkScrollButtons)
-  }, [checkScrollButtons])
-
-  // Smooth scroll functions
-  const scroll = (direction: "left" | "right") => {
-    if (scrollContainerRef.current) {
-      const scrollAmount = scrollContainerRef.current.clientWidth * 0.8
-      scrollContainerRef.current.scrollBy({
-        left: direction === "left" ? -scrollAmount : scrollAmount,
-        behavior: "smooth",
-      })
-    }
-  }
-
-  // Mouse drag scrolling
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true)
     setStartX(e.pageX - scrollContainerRef.current!.offsetLeft)
     setScrollLeft(scrollContainerRef.current!.scrollLeft)
   }
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return
     e.preventDefault()
     const x = e.pageX - scrollContainerRef.current!.offsetLeft
@@ -88,28 +64,26 @@ export function CategorySection({ title, subtitle, listings }: CategorySectionPr
   }
 
   const handleScroll = () => {
-    checkScrollButtons()
+    if (!scrollContainerRef.current) return
+
+    const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current
+    setCanScrollLeft(scrollLeft > 0)
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth)
   }
 
-  // Helper functions
-  const getListingImage = (listing: Listing) => {
-    if (!listing.images || !Array.isArray(listing.images) || listing.images.length === 0) {
-      return "/placeholder.svg"
-    }
-    return listing.images[0]
-  }
+  const scroll = (direction: "left" | "right") => {
+    if (!scrollContainerRef.current) return
 
-  const getSellerInitials = (seller: Seller | null) => {
-    if (!seller?.full_name) return "U"
-    return seller.full_name.charAt(0).toUpperCase()
-  }
+    const scrollAmount = 600
+    const newScrollLeft =
+      direction === "left"
+        ? scrollContainerRef.current.scrollLeft - scrollAmount
+        : scrollContainerRef.current.scrollLeft + scrollAmount
 
-  const getSellerDisplayName = (seller: Seller | null) => {
-    return seller?.full_name || "Anonymous User"
-  }
-
-  const getSellerUsername = (seller: Seller | null) => {
-    return seller?.username || "anonymous"
+    scrollContainerRef.current.scrollTo({
+      left: newScrollLeft,
+      behavior: "smooth",
+    })
   }
 
   return (
@@ -142,9 +116,8 @@ export function CategorySection({ title, subtitle, listings }: CategorySectionPr
             }}
           >
             {listings.map((listing) => (
-              <Link
+              <div
                 key={listing.id}
-                href={`/listings/${listing.id}`}
                 className="min-w-[280px] max-w-[280px] flex-shrink-0 scroll-snap-align-start"
                 onClick={(e) => {
                   if (isDragging) {
@@ -152,51 +125,8 @@ export function CategorySection({ title, subtitle, listings }: CategorySectionPr
                   }
                 }}
               >
-                <div className="border rounded-lg overflow-hidden transition-colors hover:border-green-600 h-full flex flex-col">
-                  <div className="aspect-video relative">
-                    <Image
-                      src={getListingImage(listing) || "/placeholder.svg"}
-                      alt={listing.title}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="p-4 flex flex-col flex-grow">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center">
-                        <Avatar className="h-6 w-6 mr-2">
-                          <AvatarImage
-                            src={listing.seller?.avatar_url || undefined}
-                            alt={getSellerDisplayName(listing.seller)}
-                          />
-                          <AvatarFallback>{getSellerInitials(listing.seller)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="text-sm font-medium">{getSellerDisplayName(listing.seller)}</p>
-                          <p className="text-xs text-muted-foreground">@{getSellerUsername(listing.seller)}</p>
-                        </div>
-                      </div>
-                    </div>
-                    <h3 className="font-semibold mb-2 line-clamp-2 group-hover:text-green-600">{listing.title}</h3>
-                    <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{listing.description}</p>
-                    <div className="flex items-center mb-2">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-1" />
-                      <span className="text-sm font-semibold">
-                        {typeof listing.rating === "number" ? listing.rating.toFixed(1) : "0.0"}
-                      </span>
-                      <span className="text-sm text-muted-foreground ml-1">({listing.total_reviews || 0})</span>
-                    </div>
-                    <div className="flex items-center text-sm text-muted-foreground mb-2">
-                      <MapPin className="h-4 w-4 mr-1" />
-                      {listing.location || "Location not specified"}
-                    </div>
-                    <div className="mt-auto">
-                      <p className="text-sm text-muted-foreground">From</p>
-                      <p className="font-semibold">${listing.price.toFixed(2)}</p>
-                    </div>
-                  </div>
-                </div>
-              </Link>
+                <ListingCard listing={listing} />
+              </div>
             ))}
           </div>
           {canScrollLeft && (

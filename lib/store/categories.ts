@@ -33,19 +33,12 @@ export const getCategories = cache(async (): Promise<Category[]> => {
     }
 
     if (!allCategories || !Array.isArray(allCategories)) {
-      console.error("Invalid categories data received:", allCategories)
       return []
     }
-
-    // Log the raw categories data for debugging
-    console.log("Raw categories data:", allCategories)
 
     // Process categories into hierarchy
     const mainCategories = allCategories.filter((cat) => !cat.parent_id)
     
-    // Log main categories for debugging
-    console.log("Main categories:", mainCategories)
-
     const processedCategories = mainCategories.map((mainCat) => {
       const subgroups = allCategories
         .filter((cat) => cat.parent_id === mainCat.id)
@@ -70,16 +63,9 @@ export const getCategories = cache(async (): Promise<Category[]> => {
       }
     })
 
-    // Log processed categories for debugging
-    console.log("Processed categories:", processedCategories)
-
     return processedCategories
   } catch (error) {
     console.error("Error in getCategories:", error)
-    // Log the full error stack for debugging
-    if (error instanceof Error) {
-      console.error("Error stack:", error.stack)
-    }
     return []
   }
 })

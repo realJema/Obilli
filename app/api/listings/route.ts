@@ -27,6 +27,13 @@ export async function GET(request: Request) {
         category:categories!category_id(
           name,
           slug
+        ),
+        location:locations!location_id(
+          id,
+          name,
+          slug,
+          parent_id,
+          type
         )
       `)
       .gte("price", minPrice)
@@ -42,7 +49,7 @@ export async function GET(request: Request) {
     }
 
     if (location) {
-      query = query.ilike("location", `%${location}%`)
+      query = query.ilike("address", `%${location}%`)
     }
 
     // Add pagination
@@ -97,9 +104,12 @@ export async function POST(request: Request) {
 
     const data = await request.json()
 
+    // Create listing with the current user as seller
     const { error } = await supabase.from("listings").insert({
       ...data,
       seller_id: session.user.id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     })
 
     if (error) throw error

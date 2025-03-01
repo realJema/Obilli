@@ -27,6 +27,19 @@ export async function GET(request: Request, { params }: { params: { id: string }
               slug
             )
           )
+        ),
+        location:locations!location_id(
+          id,
+          name,
+          slug,
+          parent_id,
+          type,
+          parent:locations!parent_id(
+            id,
+            name,
+            slug,
+            type
+          )
         )
       `)
       .eq("id", params.id)
@@ -60,6 +73,13 @@ export async function GET(request: Request, { params }: { params: { id: string }
           username,
           full_name,
           avatar_url
+        ),
+        location:locations!location_id(
+          id,
+          name,
+          slug,
+          parent_id,
+          type
         )
       `)
       .eq("category_id", listing.category_id)

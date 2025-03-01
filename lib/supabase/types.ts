@@ -44,7 +44,8 @@ export interface Database {
           category_id: string
           seller_id: string
           condition: string
-          location: string
+          location_id: string
+          address: string
           images: string[]
           created_at: string
           updated_at: string
@@ -57,7 +58,8 @@ export interface Database {
           category_id: string
           seller_id: string
           condition: string
-          location: string
+          location_id: string
+          address: string
           images: string[]
           created_at?: string
           updated_at?: string
@@ -70,7 +72,8 @@ export interface Database {
           category_id?: string
           seller_id?: string
           condition?: string
-          location?: string
+          location_id?: string
+          address?: string
           images?: string[]
           created_at?: string
           updated_at?: string
@@ -125,6 +128,32 @@ export interface Database {
           name?: string
           slug?: string
           parent_id?: string | null
+          created_at?: string
+        }
+      }
+      locations: {
+        Row: {
+          id: string
+          name: string
+          slug: string
+          parent_id: string | null
+          type: 'town' | 'quarter'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          slug: string
+          parent_id?: string | null
+          type: 'town' | 'quarter'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          slug?: string
+          parent_id?: string | null
+          type?: 'town' | 'quarter'
           created_at?: string
         }
       }

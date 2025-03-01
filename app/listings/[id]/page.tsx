@@ -1,138 +1,270 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft, Star, ThumbsUp, ChevronLeft, ChevronRight, Flag, MessageCircle } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Progress } from "@/components/ui/progress"
-import { Textarea } from "@/components/ui/textarea"
+import { ArrowLeft, Star } from "lucide-react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { Breadcrumbs } from "@/components/breadcrumbs"
+import { Button } from "@/components/ui/button"
+import { formatDistanceToNow } from "date-fns"
+import type { Database } from "@/lib/supabase/types"
+import { cn } from "@/lib/utils"
+import { ReviewsSection } from "@/app/components/reviews"
 
-// Sample images data
-const listingImages = [
-  "/placeholder.svg?height=600&width=800&text=Main+Image",
-  "/placeholder.svg?height=600&width=800&text=Image+2",
-  "/placeholder.svg?height=600&width=800&text=Image+3",
-  "/placeholder.svg?height=600&width=800&text=Image+4",
-  "/placeholder.svg?height=600&width=800&text=Image+5",
-]
+type Review = Database["public"]["Tables"]["reviews"]["Row"] & {
+  reviewer: {
+    username: string
+    full_name: string
+    avatar_url: string | null
+  }
+}
 
-// Sample reviews data
-const reviews = [
-  {
-    id: 1,
-    user: {
-      name: "Sarah Johnson",
-      image: "/placeholder.svg?height=50&width=50&text=SJ",
-      country: "United States",
-    },
-    rating: 5,
-    date: "2 weeks ago",
-    comment:
-      "Exceptional work! The delivery was quick and the quality exceeded my expectations. Would definitely recommend!",
-    helpful: 12,
-  },
-  {
-    id: 2,
-    user: {
-      name: "Michael Chen",
-      image: "/placeholder.svg?height=50&width=50&text=MC",
-      country: "Singapore",
-    },
-    rating: 4,
-    date: "1 month ago",
-    comment: "Great communication and good quality work. Would use this listing again.",
-    helpful: 8,
-  },
-  {
-    id: 3,
-    user: {
-      name: "Emma Wilson",
-      image: "/placeholder.svg?height=50&width=50&text=EW",
-      country: "United Kingdom",
-    },
-    rating: 5,
-    date: "2 months ago",
-    comment: "Absolutely brilliant! The quality was impressive.",
-    helpful: 15,
-  },
-]
-
-// Sample similar listings data
-const similarListings = Array.from({ length: 10 }, (_, i) => ({
-  id: i + 1,
-  title: `Similar listing ${i + 1}`,
-  description: "High-quality item in great condition.",
+type Listing = Database["public"]["Tables"]["listings"]["Row"] & {
   seller: {
-    name: `User${i + 1}`,
-    title: "Verified Seller",
-    image: `/placeholder.svg?height=50&width=50&text=U${i + 1}`,
-  },
-  price: 29 + i * 10,
-  rating: 4.5 + Math.random() * 0.5,
-  reviews: 50 + i * 10,
-  image: `/placeholder.svg?height=200&width=300&text=Listing+${i + 1}`,
-}))
+    username: string
+    full_name: string
+    avatar_url: string | null
+    phone_number: string | null
+    email: string | null
+  }
+  category: {
+    name: string
+    slug: string
+    parent: {
+      name: string
+      slug: string
+      parent: {
+        name: string
+        slug: string
+      } | null
+    } | null
+  }
+  location: {
+    name: string
+    type: string
+    parent: {
+      name: string
+      type: string
+    } | null
+  }
+}
 
 export default function ListingDetailsPage({ params }: { params: { id: string } }) {
-  const [selectedImage, setSelectedImage] = useState(listingImages[0])
-  const [startIndex, setStartIndex] = useState(0)
-  const [reviewText, setReviewText] = useState("")
-  const [rating, setRating] = useState(0)
-  const [hoverRating, setHoverRating] = useState(0)
-  const visibleCount = 5
+  const [listing, setListing] = useState<Listing | null>(null)
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [similarListings, setSimilarListings] = useState<Listing[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
-  const nextSlide = () => {
-    setStartIndex((prevIndex) => (prevIndex + visibleCount >= similarListings.length ? 0 : prevIndex + 1))
+  useEffect(() => {
+    async function fetchListingData() {
+      try {
+        setLoading(true)
+        const supabase = createClientComponentClient<Database>()
+
+        // Fetch listing details with related data
+        const { data: listingData, error: listingError } = await supabase
+          .from("listings")
+          .select(`
+            *,
+            seller:profiles(
+              username,
+              full_name,
+              avatar_url
+            ),
+            location:locations!listings_location_id_fkey(
+              name,
+              type,
+              parent:locations(
+                name,
+                type
+              )
+            )
+          `)
+          .eq("id", params.id)
+          .single()
+
+        if (listingError) throw listingError
+
+        // Get category data
+        const { data: categoryData } = await supabase
+          .from("categories")
+          .select("*")
+          .eq("id", listingData.category_id)
+          .single()
+
+        if (categoryData) {
+          const parentCategory = categoryData.parent_id ? 
+            (await supabase
+              .from("categories")
+              .select("*")
+              .eq("id", categoryData.parent_id)
+              .single()).data : null
+
+          // Fetch main category (parent of parent)
+          const mainCategory = parentCategory?.parent_id ?
+            (await supabase
+              .from("categories")
+              .select("*")
+              .eq("id", parentCategory.parent_id)
+              .single()).data : null
+
+          listingData.category = {
+            name: categoryData.name,
+            slug: categoryData.slug,
+            parent: parentCategory ? {
+              name: parentCategory.name,
+              slug: parentCategory.slug,
+              parent: mainCategory ? {
+                name: mainCategory.name,
+                slug: mainCategory.slug
+              } : null
+            } : null
+          }
+        }
+
+        setListing(listingData as Listing)
+
+        // Fetch reviews
+        const { data: reviewsData } = await supabase
+          .from("reviews")
+          .select(`
+            *,
+            reviewer:profiles(
+              username,
+              full_name,
+              avatar_url
+            )
+          `)
+          .eq("listing_id", params.id)
+          .order("created_at", { ascending: false })
+
+        setReviews(reviewsData as Review[] || [])
+
+        // Fetch similar listings
+        if (listingData) {
+          const { data: similarData } = await supabase
+            .from("listings")
+            .select(`
+              *,
+              seller:profiles(
+                username,
+                full_name,
+                avatar_url
+              ),
+              location:locations!listings_location_id_fkey(
+                name,
+                type,
+                parent:locations(
+                  name,
+                  type
+                )
+              )
+            `)
+            .eq("category_id", listingData.category_id)
+            .neq("id", listingData.id)
+            .limit(5)
+
+          if (similarData) {
+            // Add category data to similar listings
+            const similarWithCategories = await Promise.all(similarData.map(async (similar) => {
+              const { data: similarCategory } = await supabase
+                .from("categories")
+                .select("*")
+                .eq("id", similar.category_id)
+                .single()
+
+              if (similarCategory) {
+                const parentCategory = similarCategory.parent_id ?
+                  (await supabase
+                    .from("categories")
+                    .select("*")
+                    .eq("id", similarCategory.parent_id)
+                    .single()).data : null
+
+                return {
+                  ...similar,
+                  category: {
+                    name: similarCategory.name,
+                    slug: similarCategory.slug,
+                    parent: parentCategory ? {
+                      name: parentCategory.name,
+                      slug: parentCategory.slug
+                    } : null
+                  }
+                }
+              }
+              return similar
+            }))
+
+            setSimilarListings(similarWithCategories as Listing[])
+          }
+        }
+      } catch (err) {
+        console.error("Error in fetchListingData:", err)
+        setError(err instanceof Error ? err.message : "Failed to load listing")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchListingData()
+  }, [params.id])
+
+  // Update selected image when listing changes
+  useEffect(() => {
+    if (listing && Array.isArray(listing.images) && listing.images.length > 0) {
+      setSelectedImage(listing.images[0])
+    }
+  }, [listing])
+
+  if (loading) {
+    return (
+      <div className="container py-16 text-center">
+        <div className="h-8 w-8 rounded-full border-2 border-t-transparent border-primary animate-spin mx-auto mb-4" />
+        <p className="text-muted-foreground">Loading listing details...</p>
+      </div>
+    )
   }
 
-  const prevSlide = () => {
-    setStartIndex((prevIndex) => (prevIndex === 0 ? similarListings.length - visibleCount : prevIndex - 1))
+  if (error || !listing) {
+    return (
+      <div className="container py-16 text-center">
+        <h1 className="text-2xl font-bold mb-4">Listing Not Found</h1>
+        <p className="text-muted-foreground mb-8">The listing you're looking for doesn't exist or has been removed.</p>
+        <Button asChild>
+          <Link href="/">Go Home</Link>
+        </Button>
+      </div>
+    )
   }
 
-  const handleSubmitReview = (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log({ rating, reviewText })
-    setReviewText("")
-    setRating(0)
-  }
+  // Calculate average rating
+  const rating = reviews.length 
+    ? reviews.reduce((acc: number, rev: Review) => acc + rev.rating, 0) / reviews.length 
+    : 0
 
-  const listing = {
-    id: params.id,
-    title: "Professional Camera with Multiple Lenses",
-    description:
-      "Selling my professional camera kit in excellent condition. Perfect for photography enthusiasts or professionals.\n\nWhat's included:\n\n• Professional DSLR Camera Body\n• 24-70mm Standard Zoom Lens\n• 70-200mm Telephoto Lens\n• 50mm Prime Lens\n• Camera Bag\n• Extra Battery and Charger\n\nAll items are well maintained and come from a smoke-free home. The camera has approximately 5,000 shutter actuations and has always been stored properly.",
-    price: 1299,
-    condition: "Like New",
-    location: "New York, NY",
-    posted: "2 days ago",
-    rating: 4.9,
-    reviews: 152,
-    seller: {
-      name: "PhotoPro",
-      image: "/placeholder.svg?height=80&width=80",
-      title: "Verified Seller",
-    },
-  }
-
-  // Calculate rating distribution
-  const ratingDistribution = {
-    5: 70,
-    4: 20,
-    3: 7,
-    2: 2,
-    1: 1,
+  const getLocationString = (location: Listing["location"] | null) => {
+    if (!location) return "Location not specified"
+    return location.parent 
+      ? `${location.parent.name}, ${location.name}`
+      : location.name
   }
 
   const breadcrumbItems = [
     {
-      label: "Listings",
-      href: "/filter",
+      label: listing.category.parent?.parent?.name || "Categories",
+      href: `/filter?category=${listing.category.parent?.parent?.slug || ""}`,
+    },
+    {
+      label: listing.category.parent?.name || "All Categories",
+      href: `/filter?category=${listing.category.parent?.slug || ""}`,
+    },
+    {
+      label: listing.category.name,
+      href: `/filter?category=${listing.category.slug}`,
     },
     {
       label: listing.title,
@@ -143,55 +275,68 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
   return (
     <>
       <div className="container py-8">
-        <Link href="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6">
+        <button 
+          onClick={() => window.history.back()} 
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6"
+        >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to listings
-        </Link>
+          Back
+        </button>
         <Breadcrumbs items={breadcrumbItems} />
-        <div className="grid gap-8 md:grid-cols-2">
+        <div className="grid gap-8 md:grid-cols-[2fr_1fr]">
           <div>
             <h1 className="text-3xl font-bold mb-4">{listing.title}</h1>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
                 <Image
-                  src={listing.seller.image || "/placeholder.svg"}
-                  alt={listing.seller.name}
+                  src={listing.seller.avatar_url || "/placeholder.svg"}
+                  alt={listing.seller.full_name}
                   width={40}
                   height={40}
                   className="rounded-full mr-3"
                 />
                 <div>
-                  <p className="font-semibold">{listing.seller.name}</p>
-                  <p className="text-sm text-muted-foreground">{listing.seller.title}</p>
+                  <p className="font-semibold">{listing.seller.full_name}</p>
+                  <p className="text-sm text-muted-foreground">@{listing.seller.username}</p>
                 </div>
               </div>
-              <div className="text-sm text-muted-foreground">Posted {listing.posted}</div>
+              <div className="text-sm text-muted-foreground">
+                Posted {formatDistanceToNow(new Date(listing.created_at), { addSuffix: true })}
+              </div>
             </div>
 
             {/* Main Image */}
             <div className="aspect-video relative mb-4">
               <Image
-                src={selectedImage || "/placeholder.svg"}
-                alt="Listing preview"
+                src={selectedImage || listing.images?.[0] || "/placeholder.svg"}
+                alt={listing.title}
                 fill
                 className="object-cover rounded-lg"
               />
             </div>
 
             {/* Thumbnail Gallery */}
+            {listing.images && listing.images.length > 0 && (
             <div className="grid grid-cols-5 gap-4 mb-6">
-              {listingImages.map((image, index) => (
+                {listing.images.map((image: string, index: number) => (
                 <button
                   key={index}
+                    className={cn(
+                      "aspect-square relative rounded-lg overflow-hidden cursor-pointer transition-opacity",
+                      selectedImage === image ? "ring-2 ring-primary" : "hover:opacity-80"
+                    )}
                   onClick={() => setSelectedImage(image)}
-                  className={`aspect-square relative rounded-lg overflow-hidden border-2 transition-colors ${
-                    selectedImage === image ? "border-green-600" : "border-transparent hover:border-green-600/50"
-                  }`}
-                >
-                  <Image src={image || "/placeholder.svg"} alt={`Preview ${index + 1}`} fill className="object-cover" />
+                  >
+                    <Image 
+                      src={image} 
+                      alt={`${listing.title} - Image ${index + 1}`} 
+                      fill 
+                      className="object-cover" 
+                    />
                 </button>
               ))}
             </div>
+            )}
 
             {/* Description Section */}
             <div className="mb-12">
@@ -200,214 +345,173 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
             </div>
 
             {/* Reviews Section */}
-            <div>
-              <h2 className="text-xl font-semibold mb-6">Reviews</h2>
-
-              {/* Add Review Form */}
-              <form onSubmit={handleSubmitReview} className="mb-8 space-y-4">
-                <div className="flex items-center gap-1 mb-2">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setRating(i + 1)}
-                      onMouseEnter={() => setHoverRating(i + 1)}
-                      onMouseLeave={() => setHoverRating(0)}
-                      className="p-1"
-                    >
-                      <Star
-                        className={`h-6 w-6 ${
-                          i < (hoverRating || rating)
-                            ? "fill-yellow-400 text-yellow-400"
-                            : "fill-gray-200 text-gray-200"
-                        }`}
-                      />
-                    </button>
-                  ))}
+            <ReviewsSection 
+              listingId={listing.id} 
+              onReviewSubmitted={(newReview) => {
+                setReviews(prev => [newReview, ...prev])
+                const newRating = (rating * reviews.length + newReview.rating) / (reviews.length + 1)
+                const ratingElement = document.querySelector('.rating-value')
+                if (ratingElement) {
+                  ratingElement.textContent = newRating.toFixed(1)
+                }
+              }}
+            />
                 </div>
-                <Textarea
-                  placeholder="Write your review..."
-                  value={reviewText}
-                  onChange={(e) => setReviewText(e.target.value)}
-                  className="min-h-[100px]"
-                />
-                <Button type="submit" disabled={!rating || !reviewText.trim()}>
-                  Submit Review
-                </Button>
-              </form>
 
-              {/* Reviews Stats and List */}
-              <div className="space-y-6">
-                <div className="flex items-start gap-8 p-4 bg-muted/50 rounded-lg">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold mb-1">{listing.rating}</div>
-                    <div className="flex items-center justify-center mb-1">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`h-4 w-4 ${
-                            i < Math.floor(listing.rating)
-                              ? "fill-yellow-400 text-yellow-400"
-                              : "fill-gray-200 text-gray-200"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <div className="text-sm text-muted-foreground">{listing.reviews} reviews</div>
+          {/* Right Column - Fixed Position */}
+          <div className="md:sticky md:top-8 h-fit">
+            <div className="border rounded-lg p-6 space-y-6">
+              <div>
+                <p className="text-3xl font-bold mb-4">
+                  {new Intl.NumberFormat('fr-FR', { 
+                    style: 'currency', 
+                    currency: 'XAF',
+                    maximumFractionDigits: 0,
+                    minimumFractionDigits: 0
+                  }).format(listing.price)}
+                </p>
+                {rating > 0 && (
+                  <div className="flex items-center mb-4">
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-1" />
+                    <span className="font-semibold">{rating.toFixed(1)}</span>
+                    <span className="text-muted-foreground ml-1">({reviews.length} reviews)</span>
                   </div>
-                  <div className="flex-1">
-                    {Object.entries(ratingDistribution)
-                      .reverse()
-                      .map(([rating, percentage]) => (
-                        <div key={rating} className="flex items-center gap-2 mb-2">
-                          <div className="text-sm w-8">{rating} stars</div>
-                          <Progress value={percentage} className="h-2" />
-                          <div className="text-sm text-muted-foreground w-12">{percentage}%</div>
-                        </div>
-                      ))}
+                )}
+
+                {/* Details Section */}
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Category</p>
+                    <p className="font-medium">
+                      {listing.category.parent ? `${listing.category.parent.name} › ` : ''}
+                      {listing.category.name}
+                    </p>
                   </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Condition</p>
+                    <p className="font-medium">{listing.condition}</p>
                 </div>
-                <div className="space-y-6">
-                  {reviews.map((review) => (
-                    <div key={review.id} className="border-b pb-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center">
-                          <Avatar className="h-10 w-10 mr-3">
-                            <AvatarImage src={review.user.image} alt={review.user.name} />
-                            <AvatarFallback>{review.user.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
                           <div>
-                            <p className="font-semibold">{review.user.name}</p>
-                            <p className="text-sm text-muted-foreground">{review.user.country}</p>
-                          </div>
-                        </div>
-                        <div className="text-sm text-muted-foreground">{review.date}</div>
-                      </div>
-                      <div className="flex items-center mb-3">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-4 w-4 ${
-                              i < review.rating ? "fill-yellow-400 text-yellow-400" : "fill-gray-200 text-gray-200"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <p className="text-sm mb-3">{review.comment}</p>
-                      <Button variant="ghost" size="sm" className="text-muted-foreground">
-                        <ThumbsUp className="h-4 w-4 mr-2" />
-                        Helpful ({review.helpful})
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+                    <p className="text-sm text-muted-foreground">Location</p>
+                    <p className="font-medium">{getLocationString(listing.location)}</p>
           </div>
-
           <div>
-            <div className="border rounded-lg p-6 sticky top-6">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-2xl font-bold">${listing.price}</span>
-                <div className="flex items-center">
-                  <Star className="h-5 w-5 fill-yellow-400 text-yellow-400 mr-1" />
-                  <span className="font-semibold">{listing.rating}</span>
-                  <span className="text-muted-foreground ml-1">({listing.reviews})</span>
+                    <p className="text-sm text-muted-foreground">Address</p>
+                    <p className="font-medium">{listing.address}</p>
+                </div>
                 </div>
               </div>
-              <div className="space-y-4 mb-6">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Condition</span>
-                  <span className="font-medium">{listing.condition}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Location</span>
-                  <span className="font-medium">{listing.location}</span>
-                </div>
-              </div>
-              <Button className="w-full mb-6">Contact Seller</Button>
 
-              {/* Contact and Report Buttons */}
-              <div className="space-y-3">
-                <Button variant="outline" className="w-full">
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Start Chat
+              <div className="flex flex-col gap-3">
+                <Button 
+                  className="w-full" 
+                  size="lg"
+                  asChild
+                >
+                  <Link 
+                    href={listing.seller.phone_number 
+                      ? `https://wa.me/${listing.seller.phone_number}?text=Hi, I'm interested in your listing: ${listing.title}`
+                      : "#"}
+                    target="_blank"
+                    onClick={(e) => {
+                      if (!listing.seller.phone_number) {
+                        e.preventDefault()
+                        alert("Seller's phone number is not available")
+                      }
+                    }}
+                  >
+                    Contact on WhatsApp
+                  </Link>
                 </Button>
-                <Button variant="ghost" className="w-full text-muted-foreground">
-                  <Flag className="h-4 w-4 mr-2" />
-                  Report Listing
+                <Button 
+                  className="w-full" 
+                  size="lg" 
+                  variant="outline"
+                  asChild
+                >
+                  <Link 
+                    href={listing.seller.email
+                      ? `mailto:${listing.seller.email}?subject=Regarding your listing: ${listing.title}`
+                      : "#"}
+                    onClick={(e) => {
+                      if (!listing.seller.email) {
+                        e.preventDefault()
+                        alert("Seller's email is not available")
+                      }
+                    }}
+                  >
+                    Send Email
+                  </Link>
                 </Button>
+              </div>
+
+              <div className="text-sm text-muted-foreground">
+                <p>• Secure payments through our platform</p>
+                <p>• 24/7 customer support</p>
+                <p>• Money-back guarantee</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Similar Listings Section */}
-      <div className="border-t">
+      {/* Similar Listings - Full Width Section */}
+      {similarListings.length > 0 && (
+        <div className="border-t mt-16">
         <div className="container py-12">
-          <h2 className="text-2xl font-bold mb-6">Similar Listings</h2>
-          <div className="relative">
-            <div className="flex gap-6">
-              {similarListings.slice(startIndex, startIndex + visibleCount).map((listing) => (
-                <Link key={listing.id} href={`/listings/${listing.id}`} className="w-1/5 group">
-                  <div className="border rounded-lg overflow-hidden transition-colors hover:border-green-600 h-full flex flex-col">
-                    <div className="aspect-video relative">
+            <h3 className="text-xl font-semibold mb-6">Similar Listings</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {similarListings.map((similar: Listing) => (
+                <Link
+                  key={similar.id}
+                  href={`/listings/${similar.id}`}
+                  className="block group"
+                >
+                  <div className="h-[280px] flex flex-col bg-white rounded-lg overflow-hidden border">
+                    <div className="h-[160px] relative">
                       <Image
-                        src={listing.image || "/placeholder.svg"}
-                        alt={listing.title}
+                        src={similar.images?.[0] || "/placeholder.svg"}
+                        alt={similar.title}
                         fill
-                        className="object-cover"
+                        className="object-cover transition-transform group-hover:scale-105"
                       />
                     </div>
-                    <div className="p-4 flex flex-col flex-grow">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center">
-                          <Avatar className="h-6 w-6 mr-2">
-                            <AvatarImage src={listing.seller.image} alt={listing.seller.name} />
-                            <AvatarFallback>{listing.seller.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="text-sm font-medium">{listing.seller.name}</p>
-                            <p className="text-xs text-muted-foreground">{listing.seller.title}</p>
-                          </div>
-                        </div>
+                    <div className="h-[120px] p-3 flex flex-col justify-between">
+                      <div>
+                        <h4 className="font-medium group-hover:text-primary truncate">
+                          {similar.title}
+                        </h4>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {getLocationString(similar.location)}
+                        </p>
                       </div>
-                      <h3 className="font-semibold mb-2 group-hover:text-green-600 line-clamp-2">{listing.title}</h3>
-                      <div className="flex items-center mb-2">
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-1" />
-                        <span className="text-sm font-semibold">{listing.rating.toFixed(1)}</span>
-                        <span className="text-sm text-muted-foreground ml-1">({listing.reviews})</span>
-                      </div>
-                      <div className="mt-auto">
-                        <p className="text-sm text-muted-foreground">Price</p>
-                        <p className="font-semibold">${listing.price}</p>
-                      </div>
+                      <p className="text-sm font-semibold">
+                        {new Intl.NumberFormat('fr-FR', { 
+                          style: 'currency', 
+                          currency: 'XAF',
+                          maximumFractionDigits: 0,
+                          minimumFractionDigits: 0
+                        }).format(similar.price)}
+                      </p>
                     </div>
                   </div>
                 </Link>
               ))}
             </div>
-            <Button
-              variant="outline"
-              size="icon"
-              className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/2"
-              onClick={prevSlide}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/2"
-              onClick={nextSlide}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
           </div>
         </div>
-      </div>
+      )}
     </>
   )
 }
+
+
+
+
+
+
+
+
+
+
 

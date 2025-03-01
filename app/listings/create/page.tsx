@@ -161,12 +161,13 @@ export default function CreateListingPage() {
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
+    const totalFiles = selectedFiles.length + files.length
 
-    // Validate file count
-    if (files.length > 5) {
+    // Validate total file count
+    if (totalFiles > 5) {
       toast({
         title: "Too many files",
-        description: "You can only upload up to 5 images",
+        description: "You can only upload up to 5 images in total",
         variant: "destructive",
       })
       return
@@ -196,7 +197,11 @@ export default function CreateListingPage() {
       return isValidType && isValidSize
     })
 
-    setSelectedFiles(validFiles)
+    // Append new files to existing ones
+    setSelectedFiles((prev) => [...prev, ...validFiles])
+    
+    // Reset the input value to allow selecting the same file again
+    event.target.value = ""
   }
 
   const removeFile = (index: number) => {
@@ -277,16 +282,17 @@ export default function CreateListingPage() {
       }
 
       // Upload images
-      const imageUrls = []
+      const imageUrls: string[] = []
       const totalFiles = selectedFiles.length
       let uploadedFiles = 0
 
-      for (const file of selectedFiles) {
+      // Upload all images in parallel for better performance
+      const uploadPromises = selectedFiles.map(async (file, index) => {
         const fileExt = file.name.split(".").pop()
         const fileName = `${Math.random()}.${fileExt}`
         const filePath = `${session.user.id}/${fileName}`
 
-        const { error: uploadError, data: uploadData } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from("listing_images")
           .upload(filePath, file, {
             upsert: true,
@@ -298,15 +304,18 @@ export default function CreateListingPage() {
           data: { publicUrl },
         } = supabase.storage.from("listing_images").getPublicUrl(filePath)
 
-        imageUrls.push(publicUrl)
+        imageUrls[index] = publicUrl
         uploadedFiles++
         setUploadProgress((uploadedFiles / totalFiles) * 100)
-      }
+      })
+
+      // Wait for all uploads to complete
+      await Promise.all(uploadPromises)
 
       // Reset progress
       setUploadProgress(0)
 
-      // Create listing
+      // Create listing with all image URLs
       const { error: insertError, data: insertedListing } = await supabase
         .from("listings")
         .insert({
@@ -318,7 +327,7 @@ export default function CreateListingPage() {
           address: formData.address,
           seller_id: session.user.id,
           condition: formData.condition,
-          images: imageUrls,
+          images: imageUrls, // This is now guaranteed to contain all image URLs in the correct order
         })
         .select()
         .single()
@@ -330,7 +339,8 @@ export default function CreateListingPage() {
         description: "Your listing has been created successfully",
       })
 
-      router.push(`/listings/${insertedListing.id}`)
+      // Redirect to success page with listing ID
+      router.push(`/listings/success?id=${insertedListing.id}`)
       router.refresh()
     } catch (error) {
       console.error("Error creating listing:", error)
@@ -607,42 +617,66 @@ export default function CreateListingPage() {
                 <p className="text-muted-foreground mt-1 text-base">Upload high-quality images of your item</p>
               </div>
 
-              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8">
-                <Input
-                  id="images"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
-                <Label htmlFor="images" className="flex flex-col items-center cursor-pointer">
-                  <Upload className="h-12 w-12 mb-4 text-muted-foreground" />
-                  <span className="text-lg font-medium mb-1">Click to upload images</span>
-                  <span className="text-muted-foreground">or drag and drop</span>
-                </Label>
-              </div>
-
               {previewUrls.length > 0 && (
-                <div className="grid grid-cols-2 gap-6 mt-6 sm:grid-cols-3">
+                <div className="grid grid-cols-2 gap-6">
                   {previewUrls.map((url, index) => (
-                    <div key={index} className="relative aspect-square">
+                    <div key={index} className="relative aspect-square group">
                       <Image
                         src={url || "/placeholder.svg"}
                         alt={`Preview ${index + 1}`}
                         fill
                         className="object-cover rounded-lg"
                       />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg" />
                       <Button
                         variant="destructive"
                         size="icon"
-                        className="absolute -top-2 -right-2 h-8 w-8"
+                        className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={() => removeFile(index)}
                       >
                         <X className="h-4 w-4" />
                       </Button>
+                      <div className="absolute bottom-2 left-2 text-white text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                        Image {index + 1} of {previewUrls.length}
+                      </div>
                     </div>
                   ))}
+                  {previewUrls.length < 5 && (
+                    <div className="relative aspect-square border-2 border-dashed border-muted-foreground/25 rounded-lg flex items-center justify-center">
+                      <Label htmlFor="images" className="flex flex-col items-center cursor-pointer p-4">
+                        <Upload className="h-8 w-8 mb-2 text-muted-foreground" />
+                        <span className="text-sm font-medium text-center">
+                          Add {5 - selectedFiles.length} more {5 - selectedFiles.length === 1 ? 'image' : 'images'}
+                        </span>
+                      </Label>
+                      <Input
+                        id="images"
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={handleFileSelect}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {previewUrls.length === 0 && (
+                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8">
+                  <Input
+                    id="images"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                  <Label htmlFor="images" className="flex flex-col items-center cursor-pointer">
+                    <Upload className="h-12 w-12 mb-4 text-muted-foreground" />
+                    <span className="text-lg font-medium mb-1">Click to upload images</span>
+                    <span className="text-muted-foreground">or drag and drop</span>
+                  </Label>
                 </div>
               )}
 
