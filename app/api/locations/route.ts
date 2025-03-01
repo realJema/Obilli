@@ -5,32 +5,42 @@ export async function GET() {
   try {
     const supabase = createServerSupabaseClient()
 
-    // Fetch all locations in a single query
-    const { data: allLocations, error: fetchError } = await supabase.from("locations").select("*").order("name")
+    // Fetch only town locations
+    const { data: locations, error } = await supabase
+      .from("locations")
+      .select("id, name, slug")
+      .eq("type", "town")
+      .order("name", { ascending: true })
 
-    if (fetchError) {
-      console.error("Database error:", fetchError)
-      return NextResponse.json({ error: "Failed to fetch locations" }, { status: 500 })
+    if (error) {
+      console.error("Error fetching locations from database:", error)
+      throw error
     }
 
-    if (!allLocations) {
-      return NextResponse.json({ error: "No locations found" }, { status: 404 })
+    if (!locations || locations.length === 0) {
+      return NextResponse.json({
+        locations: []
+      })
     }
 
-    // Process locations into hierarchy
-    const towns = allLocations.filter((loc) => loc.type === "town")
-    const processedLocations = towns.map((town) => {
-      const quarters = allLocations.filter((loc) => loc.parent_id === town.id)
-      return {
-        ...town,
-        quarters,
-      }
+    // Format locations
+    const formattedLocations = locations.map(town => ({
+      ...town,
+      display_name: town.name
+    }))
+
+    return NextResponse.json({
+      locations: formattedLocations
     })
-
-    return NextResponse.json(processedLocations)
   } catch (error) {
     console.error("Error in locations API:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      { 
+        error: error instanceof Error ? error.message : "Error fetching locations",
+        details: error instanceof Error ? error.stack : undefined
+      },
+      { status: 500 }
+    )
   }
 }
 

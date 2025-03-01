@@ -2,248 +2,288 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Camera } from "lucide-react"
-import { useAuth } from "@/contexts/auth-context"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { toast } from "sonner"
-
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { toast } from "sonner"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Loader2 } from "lucide-react"
+
+interface Profile {
+  id: string
+  username: string
+  full_name: string
+  bio: string | null
+  avatar_url: string | null
+  location: string | null
+}
 
 export default function SettingsPage() {
   const router = useRouter()
-  const { user, profile, updateProfile } = useAuth()
-  const [isLoading, setIsLoading] = useState(false)
-  const [locations, setLocations] = useState<{ id: string; name: string; type: string }[]>([])
   const supabase = createClientComponentClient()
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
 
-  // Fetch locations
   useEffect(() => {
-    async function fetchLocations() {
-      const { data } = await supabase
-        .from("locations")
-        .select("id, name, type")
-        .order("name")
-      
-      if (data) {
-        setLocations(data)
+    async function getProfile() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          router.push('/login')
+          return
+        }
+
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+
+        if (error) throw error
+        setProfile(profile)
+      } catch (error) {
+        console.error('Error loading profile:', error)
+        toast.error('Failed to load profile')
+      } finally {
+        setLoading(false)
       }
     }
 
-    fetchLocations()
-  }, [supabase])
+    getProfile()
+  }, [supabase, router])
 
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!user && !isLoading) {
-      router.push("/auth/sign-in")
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image size should be less than 2MB')
+      return
     }
-  }, [user, router, isLoading])
 
-  if (!user || !profile) {
-    return null
+    setAvatarFile(file)
+    setAvatarPreview(URL.createObjectURL(file))
   }
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setIsLoading(true)
+    if (!profile) return
 
     try {
-    const formData = new FormData(event.currentTarget)
-      const updates = {
-        full_name: formData.get("full_name") as string,
-        username: formData.get("username") as string,
-        bio: formData.get("bio") as string,
-        location: formData.get("location") as string,
+      setSaving(true)
+      const formData = new FormData(event.currentTarget)
+      const updates: {
+        username: string;
+        full_name: string;
+        bio: string;
+        location: string;
+        updated_at: string;
+        avatar_url?: string;
+      } = {
+        username: formData.get('username') as string,
+        full_name: formData.get('full_name') as string,
+        bio: formData.get('bio') as string,
+        location: formData.get('location') as string,
+        updated_at: new Date().toISOString(),
       }
 
-      await updateProfile(updates)
-      toast.success("Profile updated successfully")
+      // Upload avatar if changed
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split('.').pop()
+        const filePath = `${profile.id}/${Date.now()}.${fileExt}`
+
+        console.log('Uploading new avatar:', filePath)
+
+        // Delete old avatar if exists
+        if (profile.avatar_url) {
+          try {
+            const oldPath = new URL(profile.avatar_url).pathname.split('/').pop()
+            if (oldPath) {
+              console.log('Deleting old avatar:', oldPath)
+              await supabase.storage
+                .from('profile_images')
+                .remove([`${profile.id}/${oldPath}`])
+            }
+          } catch (error) {
+            console.error('Error deleting old avatar:', error)
+          }
+        }
+
+        // Upload new avatar
+        const { error: uploadError, data: uploadData } = await supabase.storage
+          .from('profile_images')
+          .upload(filePath, avatarFile)
+
+        if (uploadError) {
+          console.error('Error uploading avatar:', uploadError)
+          throw uploadError
+        }
+
+        console.log('Upload successful:', uploadData)
+
+        // Get public URL using Supabase method
+        const { data: urlData } = supabase.storage
+          .from('profile_images')
+          .getPublicUrl(filePath)
+
+        updates.avatar_url = urlData.publicUrl
+        console.log('New avatar URL:', updates.avatar_url)
+      }
+
+      console.log('Updating profile with:', updates)
+
+      // First update the profile
+      const { data: updateData, error: updateError } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', profile.id)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Error updating profile:', updateError)
+        throw updateError
+      }
+
+      console.log('Profile update response:', updateData)
+
+      // Double check the update worked
+      const { data: checkProfile, error: checkError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', profile.id)
+        .single()
+
+      if (checkError) {
+        console.error('Error checking profile update:', checkError)
+        throw checkError
+      }
+
+      console.log('Final profile check:', checkProfile)
+
+      // Update local state with the verified profile data
+      setProfile(checkProfile)
+      if (avatarFile) {
+        setAvatarFile(null)
+        setAvatarPreview(null)
+      }
+
+      toast.success('Profile updated successfully')
+      router.refresh()
     } catch (error) {
-      toast.error("Error updating profile")
-      console.error(error)
+      console.error('Error updating profile:', error)
+      toast.error('Failed to update profile')
     } finally {
-      setIsLoading(false)
+      setSaving(false)
     }
   }
 
-  async function onAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
-    try {
-      const file = event.target.files?.[0]
-      if (!file) return
+  if (loading) {
+    return (
+      <div className="container max-w-2xl py-8">
+        <div className="flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </div>
+    )
+  }
 
-      const fileExt = file.name.split(".").pop()
-      const filePath = `${user.id}/${Math.random()}.${fileExt}`
-
-      // Upload the file to Supabase storage
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, file)
-
-      if (uploadError) throw uploadError
-
-      // Get the public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(filePath)
-
-      // Update the profile with the new avatar URL
-      await updateProfile({ avatar_url: publicUrl })
-      toast.success("Avatar updated successfully")
-    } catch (error) {
-      toast.error("Error updating avatar")
-      console.error(error)
-    }
+  if (!profile) {
+    return (
+      <div className="container max-w-2xl py-8">
+        <div className="text-center">
+          <p className="text-muted-foreground">Profile not found</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="container py-8">
-      <div className="mx-auto max-w-2xl">
-        <h1 className="text-3xl font-bold mb-8">Settings</h1>
-
-        <Tabs defaultValue="profile">
-          <TabsList className="mb-8">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="account">Account</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="profile">
-            <form onSubmit={onSubmit} className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <div className="h-24 w-24 overflow-hidden rounded-full border-2 border-muted bg-muted">
-                      {profile.avatar_url && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={profile.avatar_url}
-                          alt={profile.full_name}
-                          className="h-full w-full object-cover"
-                        />
-                      )}
-                    </div>
-                    <label htmlFor="avatar" className="absolute -right-2 -bottom-2">
-                      <input
-                        type="file"
-                        id="avatar"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={onAvatarChange}
-                      />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                        className="h-8 w-8 rounded-full"
-                    >
-                      <Camera className="h-4 w-4" />
-                      <span className="sr-only">Upload avatar</span>
-                    </Button>
-                    </label>
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-medium">Profile Picture</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Upload a new profile picture
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="username">Username</Label>
-                  <Input
-                    id="username"
-                    name="username"
-                    defaultValue={profile.username}
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="full_name">Full Name</Label>
-                  <Input
-                    id="full_name"
-                    name="full_name"
-                    defaultValue={profile.full_name}
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    name="bio"
-                    defaultValue={profile.bio || ""}
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Select name="location" defaultValue={profile.location || ""}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a location" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {locations
-                        .filter(loc => loc.type === "town")
-                        .map(location => (
-                          <SelectItem key={location.id} value={location.name}>
-                            {location.name}
-                          </SelectItem>
-                        ))
-                      }
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Saving..." : "Save Changes"}
-              </Button>
-            </form>
-          </TabsContent>
-
-          <TabsContent value="account">
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-lg font-medium">Email Address</h2>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {user.email}
-                </p>
-                <Button variant="outline">Change Email</Button>
-              </div>
-
-              <div className="border-t pt-4">
-                <h2 className="text-lg font-medium mb-4">Password</h2>
-                <Button variant="outline">Change Password</Button>
-              </div>
-
-              <div className="border-t pt-4">
-                <h2 className="text-lg font-medium text-destructive mb-4">
-                  Delete Account
-                </h2>
-                <Button variant="destructive">Delete Account</Button>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="notifications">
-            <div className="text-sm text-muted-foreground">
-              Notification settings coming soon...
-            </div>
-          </TabsContent>
-        </Tabs>
+    <div className="container max-w-2xl py-8">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold">Settings</h1>
+        <p className="text-muted-foreground">
+          Manage your profile settings
+        </p>
       </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Avatar */}
+        <div className="space-y-2">
+          <Label>Profile Picture</Label>
+          <div className="flex items-center gap-4">
+            <Avatar className="h-20 w-20">
+              <AvatarImage
+                src={avatarPreview || profile.avatar_url || undefined}
+                alt={profile.full_name}
+              />
+              <AvatarFallback>
+                {profile.full_name.split(' ').map(n => n[0]).join('')}
+              </AvatarFallback>
+            </Avatar>
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarChange}
+              className="max-w-[400px]"
+            />
+          </div>
+        </div>
+
+        {/* Username */}
+        <div className="space-y-2">
+          <Label htmlFor="username">Username</Label>
+          <Input
+            id="username"
+            name="username"
+            defaultValue={profile.username}
+            required
+          />
+        </div>
+
+        {/* Full Name */}
+        <div className="space-y-2">
+          <Label htmlFor="full_name">Full Name</Label>
+          <Input
+            id="full_name"
+            name="full_name"
+            defaultValue={profile.full_name}
+            required
+          />
+        </div>
+
+        {/* Bio */}
+        <div className="space-y-2">
+          <Label htmlFor="bio">Bio</Label>
+          <Textarea
+            id="bio"
+            name="bio"
+            defaultValue={profile.bio || ''}
+            rows={4}
+          />
+        </div>
+
+        {/* Location */}
+        <div className="space-y-2">
+          <Label htmlFor="location">Location</Label>
+          <Input
+            id="location"
+            name="location"
+            defaultValue={profile.location || ''}
+          />
+        </div>
+
+        {/* Submit Button */}
+        <Button type="submit" disabled={saving}>
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Save Changes
+        </Button>
+      </form>
     </div>
   )
 }

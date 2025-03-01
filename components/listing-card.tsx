@@ -4,6 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Star, MapPin } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { formatDistanceToNow } from "date-fns"
 
 interface Seller {
   username: string
@@ -37,6 +38,7 @@ interface Listing {
   total_reviews: number
   images: string[] | null
   category: Category
+  created_at: string
 }
 
 interface ListingCardProps {
@@ -77,8 +79,8 @@ export function ListingCard({ listing }: ListingCardProps) {
       href={`/listings/${listing.id}`}
       className="block group"
     >
-      <div className="border rounded-lg overflow-hidden transition-colors hover:border-green-600 h-[300px] flex flex-col">
-        <div className="h-[160px] relative">
+      <div className="border rounded-lg overflow-hidden transition-colors hover:border-green-600 h-[420px] flex flex-col">
+        <div className="h-[180px] relative">
           <Image
             src={getListingImage()}
             alt={listing.title}
@@ -86,7 +88,7 @@ export function ListingCard({ listing }: ListingCardProps) {
             className="object-cover"
           />
         </div>
-        <div className="h-[140px] p-4 flex flex-col">
+        <div className="h-[240px] p-4 flex flex-col">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center flex-1 min-w-0">
               <Avatar className="h-6 w-6 mr-2 flex-shrink-0">
@@ -96,14 +98,30 @@ export function ListingCard({ listing }: ListingCardProps) {
                 />
                 <AvatarFallback>{getSellerInitials()}</AvatarFallback>
               </Avatar>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium truncate">{getSellerDisplayName()}</p>
                 <p className="text-xs text-muted-foreground truncate">@{getSellerUsername()}</p>
               </div>
+              <div className="text-[12px] text-muted-foreground ml-2 whitespace-nowrap">
+                {formatDistanceToNow(new Date(listing.created_at), { addSuffix: true })
+                  .replace('about ', '')
+                  .replace('less than a minute ago', 'just now')
+                  .replace(' minutes ago', 'm')
+                  .replace(' minute ago', 'm')
+                  .replace(' hours ago', 'h')
+                  .replace(' hour ago', 'h')
+                  .replace(' days ago', 'd')
+                  .replace(' day ago', 'd')
+                  .replace(' months ago', 'mo')
+                  .replace(' month ago', 'mo')
+                  .replace(' years ago', 'y')
+                  .replace(' year ago', 'y')}
+              </div>
             </div>
           </div>
-          <h3 className="font-semibold truncate group-hover:text-green-600">{listing.title}</h3>
-          <div className="flex items-center text-sm text-muted-foreground truncate mt-2">
+          <h3 className="text-base font-semibold mb-2 truncate group-hover:text-green-600">{listing.title}</h3>
+          <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{listing.description}</p>
+          <div className="flex items-center text-sm text-muted-foreground truncate mb-2">
             <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
             {getLocationDisplay()}
           </div>
