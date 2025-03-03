@@ -12,6 +12,8 @@ export async function GET(request: Request) {
     const location = searchParams.get("location")
     const fromDate = searchParams.get("fromDate")
     const toDate = searchParams.get("toDate")
+    const minRating = searchParams.get("minRating")
+    const sort = searchParams.get("sort") || "newest"
 
     const supabase = createServerSupabaseClient()
 
@@ -48,14 +50,41 @@ export async function GET(request: Request) {
       `, { count: 'exact' })
       .gte("price", minPrice)
       .lte("price", maxPrice)
-      .order("created_at", { ascending: false })
+
+    // Get parent locations in a separate query
+    const getParentLocation = async (parentId: string) => {
+      const { data } = await supabase
+        .from('locations')
+        .select('id, name, slug, type')
+        .eq('id', parentId)
+        .single()
+      return data
+    }
+
+    // Apply sorting
+    if (sort === "newest") {
+      query = query.order("created_at", { ascending: false })
+    } else if (sort === "oldest") {
+      query = query.order("created_at", { ascending: true })
+    } else if (sort === "price-low") {
+      query = query.order("price", { ascending: true })
+    } else if (sort === "price-high") {
+      query = query.order("price", { ascending: false })
+    } else {
+      // Default to newest
+      query = query.order("created_at", { ascending: false })
+    }
 
     // Add date range filter if provided
     if (fromDate) {
       query = query.gte("created_at", fromDate)
     }
     if (toDate) {
-      query = query.lte("created_at", toDate)
+      // Add one day to include the entire day
+      const toDateObj = new Date(toDate)
+      toDateObj.setDate(toDateObj.getDate() + 1)
+      const nextDay = toDateObj.toISOString().split('T')[0]
+      query = query.lt("created_at", nextDay)
     }
 
     if (category) {
@@ -85,7 +114,7 @@ export async function GET(request: Request) {
           } else if (allCategories && allCategories.length > 0) {
             // Helper function to get all child category IDs recursively
             function getAllChildCategories(parentId: string): string[] {
-              const children = allCategories.filter((cat) => cat.parent_id === parentId)
+              const children = allCategories!.filter((cat) => cat.parent_id === parentId)
               const childIds = children.map((child) => child.id)
               const grandChildIds = children.flatMap((child) => getAllChildCategories(child.id))
               return [...childIds, ...grandChildIds]
@@ -107,8 +136,59 @@ export async function GET(request: Request) {
     }
 
     if (location) {
-      const locationIds = location.split(',')
-      query = query.in("location_id", locationIds)
+      try {
+        const locationIds = location.split(',')
+        
+        // Get all selected locations with their details
+        const { data: selectedLocations, error: locationsError } = await supabase
+          .from('locations')
+          .select('id, type, parent_id')
+          .in('id', locationIds)
+
+        if (locationsError) {
+          console.error("Error fetching selected locations:", locationsError)
+          throw locationsError
+        }
+
+        if (selectedLocations && selectedLocations.length > 0) {
+          // Get all locations to find quarters for towns
+          const { data: allLocations, error: allLocationsError } = await supabase
+            .from('locations')
+            .select('id, parent_id, type')
+
+          if (allLocationsError) {
+            console.error("Error fetching all locations:", allLocationsError)
+            // Fallback to just the selected locations
+            query = query.in("location_id", locationIds)
+          } else {
+            // Helper function to get all quarter IDs for a town
+            function getQuarterIds(townId: string): string[] {
+              return allLocations
+                ?.filter(loc => loc.parent_id === townId && loc.type === 'quarter')
+                .map(loc => loc.id) || []
+            }
+
+            // Build final location IDs array including quarters for towns
+            const finalLocationIds = selectedLocations.flatMap(loc => {
+              if (loc.type === 'town') {
+                // If it's a town, include the town ID and all its quarters
+                return [loc.id, ...getQuarterIds(loc.id)]
+              }
+              // If it's a quarter, just include the quarter ID
+              return [loc.id]
+            })
+
+            query = query.in("location_id", finalLocationIds)
+          }
+        } else {
+          // Fallback to original behavior if no locations found
+          query = query.in("location_id", locationIds)
+        }
+      } catch (err) {
+        console.error("Error in location filtering:", err)
+        // If there's an error with location filtering, continue with original behavior
+        query = query.in("location_id", location.split(','))
+      }
     }
 
     // Add pagination
@@ -131,9 +211,26 @@ export async function GET(request: Request) {
       })
     }
 
+    // Get parent locations for each listing
+    const listingsWithParentLocations = await Promise.all(
+      listings.map(async (listing) => {
+        if (listing.location?.parent_id) {
+          const parentLocation = await getParentLocation(listing.location.parent_id)
+          return {
+            ...listing,
+            location: {
+              ...listing.location,
+              parent: parentLocation
+            }
+          }
+        }
+        return listing
+      })
+    )
+
     // Get reviews for each listing
     const listingsWithReviews = await Promise.all(
-      listings.map(async (listing) => {
+      listingsWithParentLocations.map(async (listing) => {
         try {
           const { data: reviews } = await supabase
             .from("reviews")
@@ -160,8 +257,20 @@ export async function GET(request: Request) {
       }),
     )
 
+    // Filter by minimum rating if specified
+    let filteredListings = listingsWithReviews
+    if (minRating && minRating !== 'all') {
+      const minRatingValue = parseFloat(minRating)
+      filteredListings = listingsWithReviews.filter(listing => listing.rating >= minRatingValue)
+    }
+
+    // If sorting by rating, sort the filtered listings
+    if (sort === "rating") {
+      filteredListings.sort((a, b) => b.rating - a.rating)
+    }
+
     return NextResponse.json({
-      listings: listingsWithReviews,
+      listings: filteredListings,
       total: count,
       page,
       totalPages: Math.ceil((count || 0) / limit),

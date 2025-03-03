@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import Link from "next/link"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -18,17 +18,28 @@ interface Category {
   slug: string
 }
 
+interface Location {
+  id: string
+  name: string
+  slug: string
+  parent_id: string | null
+  type: 'town' | 'quarter'
+}
+
 interface Listing {
   id: string
   title: string
   description: string
   seller: Seller | null
-  location: string
+  location_id: string
+  address: string
+  location?: Location
   price: number
   rating: number
   total_reviews: number
   images: string[] | null
   category: Category
+  created_at: string
 }
 
 interface CategorySectionProps {
@@ -44,6 +55,12 @@ export function CategorySection({ title, subtitle, listings }: CategorySectionPr
   const [scrollLeft, setScrollLeft] = useState(0)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
+  const [touchStartX, setTouchStartX] = useState(0)
+
+  // Initialize scroll buttons on mount and when listings change
+  useEffect(() => {
+    handleScroll()
+  }, [listings])
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true)
@@ -63,12 +80,25 @@ export function CategorySection({ title, subtitle, listings }: CategorySectionPr
     setIsDragging(false)
   }
 
+  // Touch event handlers for mobile swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX)
+    setScrollLeft(scrollContainerRef.current!.scrollLeft)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!scrollContainerRef.current) return
+    const touchCurrentX = e.touches[0].clientX
+    const diff = touchStartX - touchCurrentX
+    scrollContainerRef.current.scrollLeft = scrollLeft + diff
+  }
+
   const handleScroll = () => {
     if (!scrollContainerRef.current) return
 
     const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current
     setCanScrollLeft(scrollLeft > 0)
-    setCanScrollRight(scrollLeft < scrollWidth - clientWidth)
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 5)
   }
 
   const scroll = (direction: "left" | "right") => {
@@ -102,13 +132,16 @@ export function CategorySection({ title, subtitle, listings }: CategorySectionPr
           <div
             ref={scrollContainerRef}
             className={cn(
-              "flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth -mx-4 px-4",
+              "flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth -mx-4 px-4 pb-8",
               isDragging ? "cursor-grabbing" : "cursor-grab",
             )}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleMouseUp}
             onScroll={handleScroll}
             style={{
               scrollSnapType: "x mandatory",
@@ -133,7 +166,7 @@ export function CategorySection({ title, subtitle, listings }: CategorySectionPr
             <Button
               variant="outline"
               size="icon"
-              className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/2 z-10"
+              className="absolute top-1/2 left-4 -translate-y-1/2 z-10 rounded-full shadow-md hover:shadow-lg bg-background/80 backdrop-blur-sm"
               onClick={() => scroll("left")}
             >
               <ChevronLeft className="h-4 w-4" />
@@ -143,7 +176,7 @@ export function CategorySection({ title, subtitle, listings }: CategorySectionPr
             <Button
               variant="outline"
               size="icon"
-              className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/2 z-10"
+              className="absolute top-1/2 right-4 -translate-y-1/2 z-10 rounded-full shadow-md hover:shadow-lg bg-background/80 backdrop-blur-sm"
               onClick={() => scroll("right")}
             >
               <ChevronRight className="h-4 w-4" />

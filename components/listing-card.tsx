@@ -23,6 +23,12 @@ interface Location {
   slug: string
   parent_id: string | null
   type: 'town' | 'quarter'
+  parent?: {
+    id: string
+    name: string
+    slug: string
+    type: 'town'
+  }
 }
 
 interface Listing {
@@ -68,10 +74,15 @@ export function ListingCard({ listing }: ListingCardProps) {
   }
 
   const getLocationDisplay = () => {
-    if (listing.location) {
-      return listing.location.name
+    if (!listing.location) return "Location not specified"
+    
+    // If location has a parent (quarter in a town), show both
+    if (listing.location.type === 'quarter' && listing.location.parent) {
+      return `${listing.location.name}, ${listing.location.parent.name}`
     }
-    return listing.address || "Location not specified"
+    
+    // Otherwise just show the location name
+    return listing.location.name
   }
 
   return (

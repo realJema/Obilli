@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import type { User } from "@supabase/supabase-js"
-import { UserIcon, Settings, PlusCircle, Heart, LogOut, MessageSquare } from "lucide-react"
+import { UserIcon, Settings, PlusCircle, Heart, LogOut, MessageSquare, Package } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import type { Database } from "@/lib/supabase/types"
 
@@ -73,27 +73,15 @@ export function UserMenu({ user, profile }: UserMenuProps) {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/listings/create">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Create Listing
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/messages">
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Messages
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/favorites">
-              <Heart className="mr-2 h-4 w-4" />
-              Favorites
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
             <Link href="/settings">
               <Settings className="mr-2 h-4 w-4" />
               Settings
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/listings">
+              <Package className="mr-2 h-4 w-4" />
+              My Listings
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>

@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useEffect, useState, useCallback, useMemo } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { Star, MapPin } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,12 +10,13 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { DatePickerWithRange } from "@/components/date-range-picker"
-import { addDays, subDays, subWeeks, subMonths } from "date-fns"
+import { addDays, subDays, subWeeks, subMonths, format } from "date-fns"
 import { ListingCard } from "@/components/listing-card"
 import { DateRange } from "react-day-picker"
 import { Breadcrumbs } from "@/components/breadcrumbs"
 
-const ITEMS_PER_PAGE = 12
+// Reduce items per page to 5 rows (assuming 4 items per row on desktop)
+const ITEMS_PER_PAGE = 20
 
 interface Listing {
   id: string
@@ -94,6 +95,7 @@ const DATE_RANGES = {
 
 export default function FilterPage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
   const [minPrice, setMinPrice] = useState("0")
   const [maxPrice, setMaxPrice] = useState("500000")
@@ -110,6 +112,36 @@ export default function FilterPage() {
   const [error, setError] = useState<string | null>(null)
   const [categoryInfo, setCategoryInfo] = useState<CategoryInfo | null>(null)
 
+  // Clear all filters
+  const clearFilters = useCallback(() => {
+    // Reset all filter states to default values
+    setMinPrice("0")
+    setMaxPrice("500000")
+    setDateRange("all")
+    setSelectedLocations([])
+    setRatingFilter("all")
+    setSortBy("newest")
+    
+    // Create a new URLSearchParams with only the category parameters
+    const params = new URLSearchParams()
+    const category = searchParams.get('category')
+    const subgroup = searchParams.get('subgroup')
+    const subcategory = searchParams.get('subcategory')
+    
+    if (category) params.set('category', category)
+    if (subgroup) params.set('subgroup', subgroup)
+    if (subcategory) params.set('subcategory', subcategory)
+    
+    // Reset to page 1
+    params.set('page', '1')
+    setCurrentPage(1)
+    
+    // Update the URL with only category parameters
+    const newUrl = `${window.location.pathname}?${params.toString()}`
+    router.push(newUrl)
+  }, [searchParams, router])
+
+  // Handle price change
   const handlePriceChange = (value: string, type: 'min' | 'max') => {
     const numValue = value === '' ? (type === 'min' ? '0' : '500000') : value
     if (type === 'min') {
@@ -119,14 +151,12 @@ export default function FilterPage() {
     }
   }
 
+  // Fetch locations only once on initial load
   useEffect(() => {
-    // Fetch locations for the filter
     async function fetchInitialData() {
       try {
         setIsInitialLoading(true)
-        const [locationsResponse] = await Promise.all([
-          fetch('/api/locations')
-        ])
+        const locationsResponse = await fetch('/api/locations')
         
         const locationsData = await locationsResponse.json()
         if (locationsResponse.ok) {
@@ -141,6 +171,7 @@ export default function FilterPage() {
     fetchInitialData()
   }, [])
 
+  // Fetch category info only when category params change
   useEffect(() => {
     async function fetchCategoryInfo() {
       const categorySlug = searchParams.get('category')
@@ -172,51 +203,7 @@ export default function FilterPage() {
     fetchCategoryInfo()
   }, [searchParams])
 
-  useEffect(() => {
-    async function fetchListings() {
-      try {
-        setIsListingsLoading(true)
-        const category = searchParams.get('category')
-        
-        const queryParams = new URLSearchParams({
-          page: currentPage.toString(),
-          limit: ITEMS_PER_PAGE.toString(),
-          minPrice: minPrice,
-          maxPrice: maxPrice,
-        })
-
-        if (category) {
-          queryParams.set('category', category)
-        }
-
-        if (selectedLocations.length > 0) {
-          queryParams.set('location', selectedLocations.join(','))
-        }
-
-        if (ratingFilter !== 'all') {
-          queryParams.set('minRating', ratingFilter)
-        }
-
-        const response = await fetch(`/api/listings?${queryParams.toString()}`)
-        const data = await response.json()
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch listings')
-        }
-
-        setListings(data.listings)
-        setTotalListings(data.total)
-        setTotalPages(data.totalPages)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred')
-      } finally {
-        setIsListingsLoading(false)
-      }
-    }
-
-    fetchListings()
-  }, [searchParams, currentPage, minPrice, maxPrice, selectedLocations, ratingFilter, sortBy])
-
+  // Breadcrumb and category path functions
   const getBreadcrumbItems = () => {
     if (!categoryInfo) return []
 
@@ -268,6 +255,176 @@ export default function FilterPage() {
     return `${categoryInfo.parent.name} {'>'} ${categoryInfo.name}`
   }
 
+  // Apply filters function
+  const applyFilters = useCallback(() => {
+    // Create a new URLSearchParams object
+    const params = new URLSearchParams(searchParams.toString())
+    
+    // Update price parameters
+    params.set('minPrice', minPrice)
+    params.set('maxPrice', maxPrice)
+    
+    // Update date range parameters
+    if (dateRange !== 'all') {
+      const dateRangeObj = DATE_RANGES[dateRange]
+      const fromDate = dateRangeObj.from()
+      const toDate = dateRangeObj.to()
+      
+      if (fromDate) {
+        params.set('fromDate', format(fromDate, 'yyyy-MM-dd'))
+      } else {
+        params.delete('fromDate')
+      }
+      
+      if (toDate) {
+        params.set('toDate', format(toDate, 'yyyy-MM-dd'))
+      } else {
+        params.delete('toDate')
+      }
+    } else {
+      params.delete('fromDate')
+      params.delete('toDate')
+    }
+    
+    // Update location parameters
+    if (selectedLocations.length > 0) {
+      params.set('location', selectedLocations.join(','))
+    } else {
+      params.delete('location')
+    }
+    
+    // Update rating parameters
+    if (ratingFilter !== 'all') {
+      params.set('minRating', ratingFilter)
+    } else {
+      params.delete('minRating')
+    }
+    
+    // Update sort parameters
+    params.set('sort', sortBy)
+    
+    // Reset to page 1 when filters change
+    params.set('page', '1')
+    setCurrentPage(1)
+    
+    // Update the URL with the new parameters
+    const newUrl = `${window.location.pathname}?${params.toString()}`
+    router.push(newUrl)
+  }, [minPrice, maxPrice, dateRange, selectedLocations, ratingFilter, sortBy, searchParams, router])
+
+  // Handle page change
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('page', page.toString())
+    const newUrl = `${window.location.pathname}?${params.toString()}`
+    router.push(newUrl)
+  }, [searchParams, router])
+
+  // Fetch listings when relevant parameters change
+  useEffect(() => {
+    async function fetchListings() {
+      try {
+        setIsListingsLoading(true)
+        const category = searchParams.get('category')
+        const page = searchParams.get('page') || '1'
+        const minPriceParam = searchParams.get('minPrice') || minPrice
+        const maxPriceParam = searchParams.get('maxPrice') || maxPrice
+        const fromDate = searchParams.get('fromDate')
+        const toDate = searchParams.get('toDate')
+        const locationParam = searchParams.get('location')
+        const minRatingParam = searchParams.get('minRating')
+        const sortParam = searchParams.get('sort') || sortBy
+        
+        const queryParams = new URLSearchParams({
+          page: page,
+          limit: ITEMS_PER_PAGE.toString(),
+          minPrice: minPriceParam,
+          maxPrice: maxPriceParam,
+        })
+
+        if (category) {
+          queryParams.set('category', category)
+        }
+
+        if (fromDate) {
+          queryParams.set('fromDate', fromDate)
+        }
+
+        if (toDate) {
+          queryParams.set('toDate', toDate)
+        }
+
+        if (locationParam) {
+          queryParams.set('location', locationParam)
+          // Update the selected locations state to match URL
+          setSelectedLocations(locationParam.split(','))
+        }
+
+        if (minRatingParam) {
+          queryParams.set('minRating', minRatingParam)
+          // Update the rating filter state to match URL
+          setRatingFilter(minRatingParam)
+        }
+
+        if (sortParam) {
+          queryParams.set('sort', sortParam)
+          // Update the sort state to match URL
+          setSortBy(sortParam)
+        }
+
+        const response = await fetch(`/api/listings?${queryParams.toString()}`)
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to fetch listings')
+        }
+
+        setListings(data.listings)
+        setTotalListings(data.total)
+        setTotalPages(data.totalPages)
+        setCurrentPage(parseInt(page))
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setIsListingsLoading(false)
+      }
+    }
+
+    fetchListings()
+  }, [searchParams])
+
+  // Generate pagination items with a maximum of 5 visible page numbers
+  const paginationItems = useMemo(() => {
+    const items = []
+    
+    if (totalPages <= 5) {
+      // If 5 or fewer pages, show all
+      for (let i = 1; i <= totalPages; i++) {
+        items.push(i)
+      }
+    } else {
+      // Always show first page
+      items.push(1)
+      
+      if (currentPage <= 3) {
+        // Near the start
+        items.push(2, 3, 4, '...')
+      } else if (currentPage >= totalPages - 2) {
+        // Near the end
+        items.push('...', totalPages - 3, totalPages - 2, totalPages - 1)
+      } else {
+        // In the middle
+        items.push('...', currentPage - 1, currentPage, currentPage + 1, '...')
+      }
+      
+      // Always show last page
+      items.push(totalPages)
+    }
+    
+    return items
+  }, [currentPage, totalPages])
+
   if (error) {
     return (
       <div className="container py-8">
@@ -302,7 +459,7 @@ export default function FilterPage() {
       )}
       <div className="flex flex-col md:flex-row gap-8">
         {/* Sidebar */}
-        <aside className="w-full md:w-64 space-y-6">
+        <aside className="w-full md:w-64 space-y-6 md:sticky md:top-24 md:h-[calc(100vh-6rem)]">
           {isInitialLoading ? (
             <>
               {/* Price Range Skeleton */}
@@ -391,7 +548,7 @@ export default function FilterPage() {
 
               <div>
                 <h2 className="font-semibold mb-2">Location</h2>
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
                   {locations.map((location) => (
                     <div key={location.id} className="flex items-center space-x-2">
                       <Checkbox
@@ -405,7 +562,7 @@ export default function FilterPage() {
                           )
                         }}
                       />
-                      <Label htmlFor={location.id}>{location.display_name}</Label>
+                      <Label htmlFor={location.id} className="text-sm">{location.display_name}</Label>
                     </div>
                   ))}
                 </div>
@@ -419,12 +576,31 @@ export default function FilterPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Any rating</SelectItem>
+                    <SelectItem value="5">5 Stars</SelectItem>
                     <SelectItem value="4.5">4.5+ Stars</SelectItem>
                     <SelectItem value="4">4+ Stars</SelectItem>
+                    <SelectItem value="3.5">3.5+ Stars</SelectItem>
                     <SelectItem value="3">3+ Stars</SelectItem>
+                    <SelectItem value="2">2+ Stars</SelectItem>
+                    <SelectItem value="1">1+ Star</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
+              <Button 
+                className="w-full" 
+                onClick={applyFilters}
+              >
+                Apply Filters
+              </Button>
+
+              <Button 
+                variant="outline"
+                className="w-full mt-2" 
+                onClick={clearFilters}
+              >
+                Clear Filters
+              </Button>
             </>
           )}
         </aside>
@@ -495,24 +671,37 @@ export default function FilterPage() {
             <div className="mt-8 flex justify-center gap-2">
               <Button
                 variant="outline"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1 || isListingsLoading}
               >
                 Previous
               </Button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <Button
-                  key={page}
-                  variant={currentPage === page ? "default" : "outline"}
-                  onClick={() => setCurrentPage(page)}
-                  disabled={isListingsLoading}
-                >
-                  {page}
-                </Button>
+              
+              {paginationItems.map((item, index) => (
+                typeof item === 'number' ? (
+                  <Button
+                    key={index}
+                    variant={currentPage === item ? "default" : "outline"}
+                    onClick={() => handlePageChange(item)}
+                    disabled={isListingsLoading}
+                  >
+                    {item}
+                  </Button>
+                ) : (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    disabled
+                    className="cursor-default"
+                  >
+                    {item}
+                  </Button>
+                )
               ))}
+              
               <Button
                 variant="outline"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages || isListingsLoading}
               >
                 Next

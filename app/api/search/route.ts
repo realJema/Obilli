@@ -1,36 +1,44 @@
-import { promises as fs } from "fs"
-import path from "path"
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
+import { NextResponse } from "next/server"
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const query = searchParams.get("q")?.toLowerCase()
-  const category = searchParams.get("category")
-
-  if (!query) {
-    return new Response(JSON.stringify({ results: [] }))
-  }
-
   try {
-    // In a real app, you would search your database
-    // This is a simple file-based implementation
-    const listingsPath = path.join(process.cwd(), "_db", "listings.json")
-    const data = await fs.readFile(listingsPath, "utf-8")
-    const listings = JSON.parse(data)
+    const { searchParams } = new URL(request.url)
+    const q = searchParams.get("q")
+    const category = searchParams.get("category")
 
-    const results = listings.filter((listing: any) => {
-      const matchesQuery =
-        listing.title.toLowerCase().includes(query) || listing.description.toLowerCase().includes(query)
+    if (!q) {
+      return NextResponse.json({ results: [] })
+    }
 
-      if (category) {
-        return matchesQuery && listing.category === category
-      }
+    const supabase = createRouteHandlerClient({ cookies })
 
-      return matchesQuery
-    })
+    let query = supabase
+      .from("listings")
+      .select("id, title, description, price")
+      .textSearch("title", q, {
+        type: "websearch",
+        config: "english"
+      })
+      .order("created_at", { ascending: false })
+      .limit(10)
 
-    return new Response(JSON.stringify({ results }))
+    if (category) {
+      query = query.eq("category", category)
+    }
+
+    const { data: results, error } = await query
+
+    if (error) {
+      console.error("Search error:", error)
+      return NextResponse.json({ error: "Search failed" }, { status: 500 })
+    }
+
+    return NextResponse.json({ results })
   } catch (error) {
-    return new Response(JSON.stringify({ results: [] }))
+    console.error("Search error:", error)
+    return NextResponse.json({ error: "Search failed" }, { status: 500 })
   }
 }
 

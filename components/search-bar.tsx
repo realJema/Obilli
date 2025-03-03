@@ -13,12 +13,19 @@ import {
   CommandList,
 } from "@/components/ui/command"
 
+interface SearchResult {
+  id: string
+  title: string
+  description: string
+  price: number
+}
+
 export function SearchBar() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
-  const [results, setResults] = useState<any[]>([])
+  const [results, setResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
 
   // Debounced search function
@@ -37,7 +44,14 @@ export function SearchBar() {
 
         const response = await fetch(`/api/search?${params}`)
         const data = await response.json()
-        setResults(data.results)
+        
+        if (data.error) {
+          console.error("Search error:", data.error)
+          setResults([])
+          return
+        }
+
+        setResults(data.results || [])
       } catch (error) {
         console.error("Search error:", error)
         setResults([])
@@ -90,17 +104,30 @@ export function SearchBar() {
         </kbd>
       </Button>
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder="Search listings..." value={query} onValueChange={setQuery} />
+        <CommandInput 
+          placeholder="Search listings..." 
+          value={query} 
+          onValueChange={setQuery}
+        />
         <CommandList>
           {isSearching ? (
             <CommandEmpty>Searching...</CommandEmpty>
-          ) : results.length === 0 ? (
-            <CommandEmpty>No results found.</CommandEmpty>
+          ) : !results || results.length === 0 ? (
+            <CommandEmpty>
+              {query.trim() ? "No results found." : "Start typing to search..."}
+            </CommandEmpty>
           ) : (
             <CommandGroup heading="Listings">
               {results.map((result) => (
-                <CommandItem key={result.id} onSelect={() => handleSelect(result.id)}>
-                  {result.title}
+                <CommandItem 
+                  key={result.id} 
+                  onSelect={() => handleSelect(result.id)}
+                  className="flex items-center justify-between"
+                >
+                  <span>{result.title}</span>
+                  <span className="text-sm text-muted-foreground">
+                    ${result.price}
+                  </span>
                 </CommandItem>
               ))}
             </CommandGroup>
