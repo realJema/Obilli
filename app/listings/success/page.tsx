@@ -1,11 +1,12 @@
 "use client"
 
+import { Suspense } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-export default function ListingSuccessPage() {
+function ListingSuccessContent() {
   const searchParams = useSearchParams()
   const listingId = searchParams.get("id")
 
@@ -40,5 +41,19 @@ export default function ListingSuccessPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ListingSuccessPage() {
+  return (
+    <Suspense 
+      fallback={
+        <div className="container flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        </div>
+      }
+    >
+      <ListingSuccessContent />
+    </Suspense>
   )
 } 

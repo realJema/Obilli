@@ -3,7 +3,7 @@
 import type React from "react"
 import type { Database } from "@/lib/supabase/types"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useRouter } from "next/navigation" // Using Next.js App Router
 import Image from "next/image"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
@@ -47,8 +47,8 @@ const STEPS = [
   { id: 5, name: "Review" },
 ]
 
-export default function CreateListingPage() {
-  const { user, loading } = useAuth()
+function CreateListingContent() {
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
   const supabase = createClientComponentClient<Database>()
@@ -74,30 +74,12 @@ export default function CreateListingPage() {
     category_parent: "",
   })
 
-  // Check session on mount
+  // Redirect if not authenticated
   useEffect(() => {
-    async function checkSession() {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        if (error) throw error
-        if (!session) {
-          router.push('/auth/sign-in?redirect=/listings/create')
-        }
-      } catch (error) {
-        console.error('Session check error:', error)
-        toast({
-          title: "Error",
-          description: "Failed to verify your session. Please try signing in again.",
-          variant: "destructive",
-        })
-        router.push('/auth/sign-in?redirect=/listings/create')
-      }
+    if (!isLoading && !user) {
+      router.push("/auth/sign-in?redirectTo=/listings/create")
     }
-
-    if (!loading && !user) {
-      checkSession()
-    }
-  }, [user, loading, router, supabase.auth, toast])
+  }, [user, isLoading, router])
 
   // Fetch categories and locations on mount
   useEffect(() => {
@@ -147,10 +129,10 @@ export default function CreateListingPage() {
       }
     }
 
-    if (!loading) {
+    if (!isLoading) {
       fetchData()
     }
-  }, [supabase, toast, router, loading])
+  }, [supabase, toast, router, isLoading])
 
   // Generate preview URLs for selected images
   useEffect(() => {
@@ -355,7 +337,7 @@ export default function CreateListingPage() {
   }
 
   // Early return if loading
-  if (loading || fetchingData) {
+  if (isLoading || fetchingData) {
     return (
       <div className="container py-8">
         <div className="max-w-2xl mx-auto text-center">
@@ -789,6 +771,22 @@ export default function CreateListingPage() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+export default function CreateListingPage() {
+  return (
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900/50">
+      <Suspense 
+        fallback={
+          <div className="container flex items-center justify-center min-h-[400px]">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          </div>
+        }
+      >
+        <CreateListingContent />
+      </Suspense>
     </div>
   )
 }

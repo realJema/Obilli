@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useRouter } from "next/navigation"
 
 interface Category {
   id: string
@@ -39,7 +40,7 @@ interface Listing {
   total_reviews: number
 }
 
-export default function TestPage() {
+function TestPageContent() {
   const [categories, setCategories] = useState<Category[]>([])
   const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(true)
@@ -201,6 +202,20 @@ export default function TestPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function TestPage() {
+  return (
+    <Suspense 
+      fallback={
+        <div className="container flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        </div>
+      }
+    >
+      <TestPageContent />
+    </Suspense>
   )
 }
 

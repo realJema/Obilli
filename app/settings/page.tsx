@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { Button } from "@/components/ui/button"
@@ -20,7 +20,7 @@ interface Profile {
   location: string | null
 }
 
-export default function SettingsPage() {
+function SettingsContent() {
   const router = useRouter()
   const supabase = createClientComponentClient()
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -285,6 +285,20 @@ export default function SettingsPage() {
         </Button>
       </form>
     </div>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense 
+      fallback={
+        <div className="container flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        </div>
+      }
+    >
+      <SettingsContent />
+    </Suspense>
   )
 }
 

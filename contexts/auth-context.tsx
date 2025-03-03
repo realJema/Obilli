@@ -77,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         avatar_url: null,
         bio: null,
         location: null,
+        phone_number: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
@@ -124,18 +125,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signUp(email: string, password: string, userData: Omit<Profile, "id" | "created_at" | "updated_at">) {
+    // Sign up the user
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: userData.full_name,
+          phone_number: userData.phone_number,
         },
       },
     })
 
     if (error) throw error
     if (!data.user) throw new Error("No user returned from sign up")
+
+    // Sign in the user automatically
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (signInError) throw signInError
+
+    // Wait a moment for the session to be established
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    // Create the profile
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .insert([
+        {
+          id: data.user.id,
+          ...userData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ])
+
+    if (profileError) {
+      console.error("Error creating profile:", profileError)
+      // Don't throw the error as the user is already created and signed in
+      // The profile will be created automatically when they first access it
+    }
   }
 
   async function signOut() {

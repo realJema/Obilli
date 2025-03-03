@@ -11,6 +11,7 @@ export interface Database {
           avatar_url: string | null
           bio: string | null
           location: string | null
+          phone_number: string | null
           created_at: string
           updated_at: string
         }
@@ -21,6 +22,7 @@ export interface Database {
           avatar_url?: string | null
           bio?: string | null
           location?: string | null
+          phone_number?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -31,6 +33,7 @@ export interface Database {
           avatar_url?: string | null
           bio?: string | null
           location?: string | null
+          phone_number?: string | null
           created_at?: string
           updated_at?: string
         }

@@ -49,7 +49,15 @@ export function Header() {
           <div className="flex items-center gap-4">
             <ThemeToggle />
             {user ? (
-              <UserMenu user={user} profile={profile} />
+              <>
+                <Link href="/listings/create" passHref>
+                  <Button className="gap-2 bg-green-600 hover:bg-green-700 text-white">
+                    <PlusCircle className="h-4 w-4" />
+                    Create Listing
+                  </Button>
+                </Link>
+                <UserMenu user={user} profile={profile} />
+              </>
             ) : (
               <>
                 <Link href="/auth/sign-in" passHref>

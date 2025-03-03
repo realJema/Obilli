@@ -11,12 +11,27 @@ import { formatDistanceToNow } from "date-fns"
 import type { Database } from "@/lib/supabase/types"
 import { cn } from "@/lib/utils"
 import { ReviewsSection } from "@/app/components/reviews"
+import { ListingCard } from "@/components/listing-card"
 
 type Review = Database["public"]["Tables"]["reviews"]["Row"] & {
   reviewer: {
     username: string
     full_name: string
     avatar_url: string | null
+  }
+}
+
+type Location = {
+  id: string
+  name: string
+  slug: string
+  parent_id: string | null
+  type: "town"
+  parent?: {
+    id: string
+    name: string
+    slug: string
+    type: "town"
   }
 }
 
@@ -40,14 +55,9 @@ type Listing = Database["public"]["Tables"]["listings"]["Row"] & {
       } | null
     } | null
   }
-  location: {
-    name: string
-    type: string
-    parent: {
-      name: string
-      type: string
-    } | null
-  }
+  location: Location
+  rating: number
+  total_reviews: number
 }
 
 export default function ListingDetailsPage({ params }: { params: { id: string } }) {
@@ -75,18 +85,30 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
               avatar_url
             ),
             location:locations!listings_location_id_fkey(
+              id,
               name,
-              type,
-              parent:locations(
-                name,
-                type
-              )
+              slug,
+              parent_id,
+              type
             )
           `)
           .eq("id", params.id)
           .single()
 
         if (listingError) throw listingError
+
+        // Get parent location if exists
+        if (listingData.location?.parent_id) {
+          const { data: parentLocation } = await supabase
+            .from('locations')
+            .select('id, name, slug, type')
+            .eq('id', listingData.location.parent_id)
+            .single()
+
+          if (parentLocation) {
+            listingData.location.parent = parentLocation
+          }
+        }
 
         // Get category data
         const { data: categoryData } = await supabase
@@ -155,12 +177,11 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
                 avatar_url
               ),
               location:locations!listings_location_id_fkey(
+                id,
                 name,
-                type,
-                parent:locations(
-                  name,
-                  type
-                )
+                slug,
+                parent_id,
+                type
               )
             `)
             .eq("category_id", listingData.category_id)
@@ -168,8 +189,49 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
             .limit(5)
 
           if (similarData) {
+            // Add parent locations to similar listings
+            const similarWithLocations = await Promise.all(similarData.map(async (similar) => {
+              if (similar.location?.parent_id) {
+                const { data: parentLocation } = await supabase
+                  .from('locations')
+                  .select('id, name, slug')
+                  .eq('id', similar.location.parent_id)
+                  .single()
+
+                if (parentLocation) {
+                  similar.location.parent = {
+                    ...parentLocation,
+                    type: "town"
+                  }
+                }
+              }
+
+              // Ensure location type is "town"
+              similar.location = {
+                ...similar.location,
+                type: "town"
+              }
+
+              // Get reviews data for the listing
+              const { data: reviewsData, count: reviewsCount } = await supabase
+                .from("reviews")
+                .select("rating", { count: 'exact' })
+                .eq("listing_id", similar.id)
+
+              // Calculate average rating
+              const avgRating = reviewsData?.length 
+                ? reviewsData.reduce((acc, rev) => acc + rev.rating, 0) / reviewsData.length 
+                : 0
+
+              return {
+                ...similar,
+                rating: avgRating,
+                total_reviews: reviewsCount || 0
+              }
+            }))
+
             // Add category data to similar listings
-            const similarWithCategories = await Promise.all(similarData.map(async (similar) => {
+            const similarWithCategories = await Promise.all(similarWithLocations.map(async (similar) => {
               const { data: similarCategory } = await supabase
                 .from("categories")
                 .select("*")
@@ -248,9 +310,10 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
 
   const getLocationString = (location: Listing["location"] | null) => {
     if (!location) return "Location not specified"
-    return location.parent 
-      ? `${location.parent.name}, ${location.name}`
-      : location.name
+    if (location.parent) {
+      return `${location.parent.name}, ${location.name}`
+    }
+    return location.name
   }
 
   const breadcrumbItems = [
@@ -458,44 +521,15 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
       {/* Similar Listings - Full Width Section */}
       {similarListings.length > 0 && (
         <div className="border-t mt-16">
-        <div className="container py-12">
+          <div className="container py-12">
             <h3 className="text-xl font-semibold mb-6">Similar Listings</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-              {similarListings.map((similar: Listing) => (
-                <Link
+              {similarListings.map((similar) => (
+                <ListingCard 
                   key={similar.id}
-                  href={`/listings/${similar.id}`}
-                  className="block group"
-                >
-                  <div className="h-[280px] flex flex-col bg-white rounded-lg overflow-hidden border">
-                    <div className="h-[160px] relative">
-                      <Image
-                        src={similar.images?.[0] || "/placeholder.svg"}
-                        alt={similar.title}
-                        fill
-                        className="object-cover transition-transform group-hover:scale-105"
-                      />
-                    </div>
-                    <div className="h-[120px] p-3 flex flex-col justify-between">
-                      <div>
-                        <h4 className="font-medium group-hover:text-primary truncate">
-                          {similar.title}
-                        </h4>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {getLocationString(similar.location)}
-                        </p>
-                      </div>
-                      <p className="text-sm font-semibold">
-                        {new Intl.NumberFormat('fr-FR', { 
-                          style: 'currency', 
-                          currency: 'XAF',
-                          maximumFractionDigits: 0,
-                          minimumFractionDigits: 0
-                        }).format(similar.price)}
-                      </p>
-                    </div>
-                  </div>
-                </Link>
+                  listing={similar}
+                  variant="compact"
+                />
               ))}
             </div>
           </div>

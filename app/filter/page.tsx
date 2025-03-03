@@ -1,5 +1,6 @@
 "use client"
 
+import { Suspense } from "react"
 import { useEffect, useState, useCallback, useMemo } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Star, MapPin } from "lucide-react"
@@ -93,7 +94,7 @@ const DATE_RANGES = {
   }
 }
 
-export default function FilterPage() {
+function FilterPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
@@ -713,4 +714,23 @@ export default function FilterPage() {
     </div>
   )
 }
+
+export default function FilterPage() {
+  return (
+    <Suspense 
+      fallback={
+        <div className="container py-8">
+          <div className="flex justify-center items-center min-h-[200px]">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          </div>
+        </div>
+      }
+    >
+      <FilterPageContent />
+    </Suspense>
+  )
+}
+
+// Add dynamic configuration
+export const dynamic = 'force-dynamic'
 

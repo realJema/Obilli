@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { SearchIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -20,7 +20,7 @@ interface SearchResult {
   price: number
 }
 
-export function SearchBar() {
+function SearchBarContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [open, setOpen] = useState(false)
@@ -135,6 +135,14 @@ export function SearchBar() {
         </CommandList>
       </CommandDialog>
     </>
+  )
+}
+
+export function SearchBar() {
+  return (
+    <Suspense fallback={null}>
+      <SearchBarContent />
+    </Suspense>
   )
 }
 
