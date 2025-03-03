@@ -459,7 +459,7 @@ export default function FilterPage() {
       )}
       <div className="flex flex-col md:flex-row gap-8">
         {/* Sidebar */}
-        <aside className="w-full md:w-64 space-y-6 md:sticky md:top-24 md:h-[calc(100vh-6rem)]">
+        <aside className="w-full md:w-64 space-y-6">
           {isInitialLoading ? (
             <>
               {/* Price Range Skeleton */}
@@ -661,7 +661,7 @@ export default function FilterPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {listings.map((listing) => (
-                <ListingCard key={listing.id} listing={listing} />
+                <ListingCard key={listing.id} listing={listing} variant="compact" />
               ))}
             </div>
           )}

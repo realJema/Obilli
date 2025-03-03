@@ -2,6 +2,7 @@ import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { notFound } from "next/navigation"
 import Image from "next/image"
+import Link from "next/link"
 import { Star, MapPin, Calendar } from "lucide-react"
 import { format } from "date-fns"
 
@@ -9,12 +10,36 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ListingCard } from "@/components/listing-card"
 
+const ITEMS_PER_PAGE = 9
+
+// Loading skeleton for listings
+function ListingsSkeleton() {
+  return (
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => (
+        <div key={i} className="space-y-3 rounded-lg border p-4">
+          <div className="aspect-[4/3] w-full bg-muted animate-pulse rounded-lg" />
+          <div className="space-y-2">
+            <div className="h-4 w-2/3 bg-muted animate-pulse rounded" />
+            <div className="h-4 w-1/2 bg-muted animate-pulse rounded" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default async function ProfilePage({
   params,
+  searchParams,
 }: {
   params: { username: string }
+  searchParams: { page?: string }
 }) {
   const supabase = createServerComponentClient({ cookies })
+  const currentPage = Number(searchParams.page) || 1
+  const from = (currentPage - 1) * ITEMS_PER_PAGE
+  const to = from + ITEMS_PER_PAGE - 1
 
   // Fetch user profile
   const { data: profile } = await supabase
@@ -27,16 +52,17 @@ export default async function ProfilePage({
     notFound()
   }
 
-  // Fetch user's listings
-  const { data: listings } = await supabase
+  // Fetch user's listings with pagination
+  const { data: listings, count: totalListings } = await supabase
     .from("listings")
     .select(`
       *,
       category:categories(name, slug),
       seller:profiles!seller_id(username, full_name, avatar_url)
-    `)
+    `, { count: 'exact' })
     .eq("seller_id", profile.id)
     .order("created_at", { ascending: false })
+    .range(from, to)
 
   // Fetch user's reviews (as a seller)
   const { data: reviews, count: reviewCount } = await supabase
@@ -53,6 +79,8 @@ export default async function ProfilePage({
   const averageRating = reviews?.length
     ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length
     : 0
+
+  const totalPages = totalListings ? Math.ceil(totalListings / ITEMS_PER_PAGE) : 1
 
   return (
     <div className="container py-8">
@@ -82,7 +110,7 @@ export default async function ProfilePage({
           </div>
           <div className="flex items-center space-x-4">
             <div>
-              <div className="text-2xl font-bold">{listings?.length || 0}</div>
+              <div className="text-2xl font-bold">{totalListings || 0}</div>
               <div className="text-sm text-muted-foreground">Listings</div>
             </div>
             <div>
@@ -105,11 +133,67 @@ export default async function ProfilePage({
             </TabsList>
             <TabsContent value="listings" className="mt-6">
               {listings?.length ? (
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  {listings.map((listing) => (
-                    <ListingCard key={listing.id} listing={listing} />
-                  ))}
-                </div>
+                <>
+                  <div key={currentPage} className="animate-fadeIn">
+                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                      {listings.map((listing) => (
+                        <ListingCard key={listing.id} listing={listing} />
+                      ))}
+                    </div>
+                    
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="mt-8 flex justify-center gap-2">
+                        {currentPage > 1 && (
+                          <Button
+                            variant="outline"
+                            asChild
+                          >
+                            <Link 
+                              href={`/profile/${params.username}?page=${currentPage - 1}`}
+                              scroll={false}
+                            >
+                              Previous
+                            </Link>
+                          </Button>
+                        )}
+                        
+                        <div className="flex items-center gap-2">
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                            <Button
+                              key={page}
+                              variant={currentPage === page ? "default" : "outline"}
+                              size="icon"
+                              asChild
+                            >
+                              <Link 
+                                href={`/profile/${params.username}?page=${page}`}
+                                scroll={false}
+                                className="w-8 h-8 flex items-center justify-center"
+                              >
+                                {page}
+                              </Link>
+                            </Button>
+                          ))}
+                        </div>
+
+                        {currentPage < totalPages && (
+                          <Button
+                            variant="outline"
+                            asChild
+                          >
+                            <Link 
+                              href={`/profile/${params.username}?page=${currentPage + 1}`}
+                              scroll={false}
+                            >
+                              Next
+                            </Link>
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </>
               ) : (
                 <div className="text-center text-muted-foreground">
                   No listings yet

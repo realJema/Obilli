@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Props {
   items: React.ReactNode[];
-  title: string;
+  title?: string;
 }
 
 const HorizontalMenu = ({ items, title }: Props) => {
@@ -18,7 +18,7 @@ const HorizontalMenu = ({ items, title }: Props) => {
     if (containerRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = containerRef.current;
       setShowLeftButton(scrollLeft > 0);
-      setShowRightButton(scrollLeft < scrollWidth - clientWidth - 10);
+      setShowRightButton(scrollLeft < scrollWidth - clientWidth - 1);
     }
   };
 
@@ -33,7 +33,7 @@ const HorizontalMenu = ({ items, title }: Props) => {
 
   const scroll = (direction: 'left' | 'right') => {
     if (containerRef.current) {
-      const scrollAmount = 300;
+      const scrollAmount = 200;
       const container = containerRef.current;
       const newScrollLeft = direction === 'left' 
         ? container.scrollLeft - scrollAmount 
@@ -83,23 +83,19 @@ const HorizontalMenu = ({ items, title }: Props) => {
 
   return (
     <div className="relative w-full">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">{title}</h2>
-      </div>
-      
       <div className="relative group">
         {showLeftButton && (
           <button
             onClick={() => scroll('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white rounded-full p-2 shadow-md hover:shadow-lg transition-all duration-200 -translate-x-1/2"
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-background/80 backdrop-blur-sm rounded-full p-1.5 shadow-md hover:shadow-lg transition-all duration-200 -translate-x-1/2 border"
           >
-            <ChevronLeft className="h-6 w-6" />
+            <ChevronLeft className="h-4 w-4" />
           </button>
         )}
         
         <div
           ref={containerRef}
-          className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide scroll-smooth"
+          className="flex overflow-x-auto gap-1 scrollbar-hide scroll-smooth"
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
@@ -114,9 +110,9 @@ const HorizontalMenu = ({ items, title }: Props) => {
         {showRightButton && (
           <button
             onClick={() => scroll('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white rounded-full p-2 shadow-md hover:shadow-lg transition-all duration-200 translate-x-1/2"
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-background/80 backdrop-blur-sm rounded-full p-1.5 shadow-md hover:shadow-lg transition-all duration-200 translate-x-1/2 border"
           >
-            <ChevronRight className="h-6 w-6" />
+            <ChevronRight className="h-4 w-4" />
           </button>
         )}
       </div>

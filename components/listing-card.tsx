@@ -49,9 +49,10 @@ interface Listing {
 
 interface ListingCardProps {
   listing: Listing
+  variant?: 'default' | 'compact'
 }
 
-export function ListingCard({ listing }: ListingCardProps) {
+export function ListingCard({ listing, variant = 'default' }: ListingCardProps) {
   // Helper functions
   const getListingImage = () => {
     if (!listing.images || !Array.isArray(listing.images) || listing.images.length === 0) {
@@ -85,13 +86,16 @@ export function ListingCard({ listing }: ListingCardProps) {
     return listing.location.name
   }
 
+  const imageHeight = variant === 'compact' ? 'h-[140px]' : 'h-[180px]'
+  const cardHeight = variant === 'compact' ? 'h-[380px]' : 'h-[420px]'
+
   return (
     <Link
       href={`/listings/${listing.id}`}
       className="block group"
     >
-      <div className="border rounded-lg overflow-hidden transition-colors hover:border-green-600 h-[420px] flex flex-col">
-        <div className="h-[180px] relative">
+      <div className={`border rounded-lg overflow-hidden transition-colors hover:border-green-600 ${cardHeight} flex flex-col`}>
+        <div className={`${imageHeight} relative`}>
           <Image
             src={getListingImage()}
             alt={listing.title}
@@ -99,7 +103,7 @@ export function ListingCard({ listing }: ListingCardProps) {
             className="object-cover"
           />
         </div>
-        <div className="h-[240px] p-4 flex flex-col">
+        <div className="flex-1 p-4 flex flex-col">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center flex-1 min-w-0">
               <Avatar className="h-6 w-6 mr-2 flex-shrink-0">
