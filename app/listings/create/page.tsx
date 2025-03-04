@@ -18,6 +18,8 @@ import { Progress } from "@/components/ui/progress"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
+import CreateListingLoading from "./loading"
 
 // Types from your Supabase database
 type Category = Database["public"]["Tables"]["categories"]["Row"]
@@ -88,34 +90,46 @@ function CreateListingContent() {
         setFetchingData(true)
 
         // Check session first
-        const { data: { session } } = await supabase.auth.getSession()
+        const sessionPromise = supabase.auth.getSession()
+        const categoriesPromise = supabase.from("categories").select("*").order("name")
+        const locationsPromise = supabase.from("locations").select("*").order("name")
+
+        // Fetch all data in parallel
+        const [
+          { data: { session }, error: sessionError },
+          { data: categoriesData, error: categoriesError },
+          { data: locationsData, error: locationsError }
+        ] = await Promise.all([
+          sessionPromise,
+          categoriesPromise,
+          locationsPromise
+        ])
+
+        if (sessionError) {
+          throw new Error(`Session error: ${sessionError.message}`)
+        }
+
         if (!session) {
           router.push('/auth/sign-in?redirect=/listings/create')
           return
         }
 
-        // Fetch categories and locations in parallel
-        const [categoriesResponse, locationsResponse] = await Promise.all([
-          supabase.from("categories").select("*").order("name"),
-          supabase.from("locations").select("*").order("name"),
-        ])
-
-        if (categoriesResponse.error) {
-          throw new Error(`Error fetching categories: ${categoriesResponse.error.message}`)
+        if (categoriesError) {
+          throw new Error(`Error fetching categories: ${categoriesError.message}`)
         }
 
-        if (locationsResponse.error) {
-          throw new Error(`Error fetching locations: ${locationsResponse.error.message}`)
+        if (locationsError) {
+          throw new Error(`Error fetching locations: ${locationsError.message}`)
         }
 
         // Process locations into hierarchy
-        const towns = locationsResponse.data.filter((loc) => loc.type === "town")
+        const towns = locationsData.filter((loc) => loc.type === "town")
         const processedLocations = towns.map((town) => ({
           ...town,
-          quarters: locationsResponse.data.filter((loc) => loc.parent_id === town.id),
+          quarters: locationsData.filter((loc) => loc.parent_id === town.id),
         }))
 
-        setCategories(categoriesResponse.data)
+        setCategories(categoriesData)
         setLocations(processedLocations)
       } catch (error) {
         console.error("Error fetching data:", error)
@@ -340,9 +354,15 @@ function CreateListingContent() {
   if (isLoading || fetchingData) {
     return (
       <div className="container py-8">
-        <div className="max-w-2xl mx-auto text-center">
-          <div className="h-8 w-8 rounded-full border-2 border-t-transparent border-green-600 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading...</p>
+        <div className="max-w-2xl mx-auto">
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-96" />
+            <div className="grid grid-cols-2 gap-4">
+              <Skeleton className="h-32" />
+              <Skeleton className="h-32" />
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -355,7 +375,12 @@ function CreateListingContent() {
         <div className="max-w-2xl mx-auto text-center">
           <h1 className="text-2xl font-bold mb-4">Please Sign In</h1>
           <p className="text-muted-foreground mb-4">You need to be signed in to create a listing.</p>
-          <Button onClick={() => router.push("/auth/sign-in?redirect=/listings/create")}>Sign In</Button>
+          <Button 
+            className="bg-green-600 hover:bg-green-700 text-white"
+            onClick={() => router.push("/auth/sign-in?redirect=/listings/create")}
+          >
+            Sign In
+          </Button>
         </div>
       </div>
     )
@@ -368,7 +393,12 @@ function CreateListingContent() {
         <div className="max-w-2xl mx-auto text-center">
           <h1 className="text-2xl font-bold mb-4">Unable to Load Form</h1>
           <p className="text-muted-foreground mb-4">We couldn't load the necessary data. Please try again later.</p>
-          <Button onClick={() => router.refresh()}>Try Again</Button>
+          <Button 
+            className="bg-green-600 hover:bg-green-700 text-white"
+            onClick={() => router.refresh()}
+          >
+            Try Again
+          </Button>
         </div>
       </div>
     )
@@ -778,13 +808,7 @@ function CreateListingContent() {
 export default function CreateListingPage() {
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900/50">
-      <Suspense 
-        fallback={
-          <div className="container flex items-center justify-center min-h-[400px]">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-          </div>
-        }
-      >
+      <Suspense fallback={<CreateListingLoading />}>
         <CreateListingContent />
       </Suspense>
     </div>

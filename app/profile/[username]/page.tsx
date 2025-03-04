@@ -9,6 +9,7 @@ import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ListingCard } from "@/components/listing-card"
+import { ProfileListingCard } from "@/components/profile-listing-card"
 
 const ITEMS_PER_PAGE = 9
 
@@ -41,6 +42,9 @@ export default async function ProfilePage({
   const from = (currentPage - 1) * ITEMS_PER_PAGE
   const to = from + ITEMS_PER_PAGE - 1
 
+  // Get current user session
+  const { data: { session } } = await supabase.auth.getSession()
+
   // Fetch user profile
   const { data: profile } = await supabase
     .from("profiles")
@@ -58,11 +62,45 @@ export default async function ProfilePage({
     .select(`
       *,
       category:categories(name, slug),
-      seller:profiles!seller_id(username, full_name, avatar_url)
+      seller:profiles!seller_id(username, full_name, avatar_url),
+      location:locations!listings_location_id_fkey(
+        id,
+        name,
+        slug,
+        parent_id,
+        type
+      )
     `, { count: 'exact' })
     .eq("seller_id", profile.id)
     .order("created_at", { ascending: false })
     .range(from, to)
+
+  // Helper function to get parent location
+  const getParentLocation = async (parentId: string) => {
+    const { data } = await supabase
+      .from('locations')
+      .select('id, name, slug, type')
+      .eq('id', parentId)
+      .single()
+    return data
+  }
+
+  // Get parent locations for each listing
+  const listingsWithParentLocations = listings ? await Promise.all(
+    listings.map(async (listing) => {
+      if (listing.location?.parent_id) {
+        const parentLocation = await getParentLocation(listing.location.parent_id)
+        return {
+          ...listing,
+          location: {
+            ...listing.location,
+            parent: parentLocation
+          }
+        }
+      }
+      return listing
+    })
+  ) : []
 
   // Fetch user's reviews (as a seller)
   const { data: reviews, count: reviewCount } = await supabase
@@ -81,6 +119,9 @@ export default async function ProfilePage({
     : 0
 
   const totalPages = totalListings ? Math.ceil(totalListings / ITEMS_PER_PAGE) : 1
+
+  // Check if viewing own profile
+  const isOwnProfile = session?.user.id === profile.id
 
   return (
     <div className="container py-8">
@@ -136,8 +177,12 @@ export default async function ProfilePage({
                 <>
                   <div key={currentPage} className="animate-fadeIn">
                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                      {listings.map((listing) => (
-                        <ListingCard key={listing.id} listing={listing} />
+                      {listingsWithParentLocations.map((listing) => (
+                        isOwnProfile ? (
+                          <ProfileListingCard key={listing.id} listing={listing} variant="compact" />
+                        ) : (
+                          <ListingCard key={listing.id} listing={listing} variant="compact" />
+                        )
                       ))}
                     </div>
                     

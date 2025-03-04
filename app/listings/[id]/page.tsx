@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowLeft, Star } from "lucide-react"
@@ -12,6 +12,7 @@ import type { Database } from "@/lib/supabase/types"
 import { cn } from "@/lib/utils"
 import { ReviewsSection } from "@/app/components/reviews"
 import { ListingCard } from "@/components/listing-card"
+import ListingDetailsLoading from "./loading"
 
 type Review = Database["public"]["Tables"]["reviews"]["Row"] & {
   reviewer: {
@@ -69,12 +70,15 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
   useEffect(() => {
+    let mounted = true
+
     async function fetchListingData() {
       try {
         setLoading(true)
+        setError(null)
         const supabase = createClientComponentClient<Database>()
 
-        // Fetch listing details with related data
+        // First, check if the listing exists
         const { data: listingData, error: listingError } = await supabase
           .from("listings")
           .select(`
@@ -82,7 +86,8 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
             seller:profiles(
               username,
               full_name,
-              avatar_url
+              avatar_url,
+              phone_number
             ),
             location:locations!listings_location_id_fkey(
               id,
@@ -90,66 +95,27 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
               slug,
               parent_id,
               type
+            ),
+            category:categories!listings_category_id_fkey(
+              id,
+                name,
+              slug,
+              parent_id
             )
           `)
-          .eq("id", params.id)
+          .eq('id', params.id)
           .single()
 
-        if (listingError) throw listingError
-
-        // Get parent location if exists
-        if (listingData.location?.parent_id) {
-          const { data: parentLocation } = await supabase
-            .from('locations')
-            .select('id, name, slug, type')
-            .eq('id', listingData.location.parent_id)
-            .single()
-
-          if (parentLocation) {
-            listingData.location.parent = parentLocation
-          }
+        if (listingError) {
+          console.error("Error fetching listing:", listingError)
+          throw new Error(listingError.message)
         }
 
-        // Get category data
-        const { data: categoryData } = await supabase
-          .from("categories")
-          .select("*")
-          .eq("id", listingData.category_id)
-          .single()
-
-        if (categoryData) {
-          const parentCategory = categoryData.parent_id ? 
-            (await supabase
-              .from("categories")
-              .select("*")
-              .eq("id", categoryData.parent_id)
-              .single()).data : null
-
-          // Fetch main category (parent of parent)
-          const mainCategory = parentCategory?.parent_id ?
-            (await supabase
-              .from("categories")
-              .select("*")
-              .eq("id", parentCategory.parent_id)
-              .single()).data : null
-
-          listingData.category = {
-            name: categoryData.name,
-            slug: categoryData.slug,
-            parent: parentCategory ? {
-              name: parentCategory.name,
-              slug: parentCategory.slug,
-              parent: mainCategory ? {
-                name: mainCategory.name,
-                slug: mainCategory.slug
-              } : null
-            } : null
-          }
+        if (!listingData) {
+          throw new Error("Listing not found")
         }
 
-        setListing(listingData as Listing)
-
-        // Fetch reviews
+        // Fetch reviews in parallel
         const { data: reviewsData } = await supabase
           .from("reviews")
           .select(`
@@ -163,10 +129,78 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
           .eq("listing_id", params.id)
           .order("created_at", { ascending: false })
 
-        setReviews(reviewsData as Review[] || [])
+        // Process category hierarchy and parent location in parallel
+        const [parentLocation, categoryHierarchy] = await Promise.all([
+          // Get parent location if exists
+          listingData.location?.parent_id
+            ? supabase
+                .from('locations')
+                .select('id, name, slug, type')
+                .eq('id', listingData.location.parent_id)
+                .single()
+            : Promise.resolve({ data: null }),
+
+          // Get category hierarchy
+          (async () => {
+            const category = listingData.category
+            if (!category?.parent_id) return category
+
+            const parentCategory = await supabase
+              .from("categories")
+              .select("*")
+              .eq("id", category.parent_id)
+              .single()
+
+            if (!parentCategory.data?.parent_id) {
+              return {
+                name: category.name,
+                slug: category.slug,
+                parent: parentCategory.data ? {
+                  name: parentCategory.data.name,
+                  slug: parentCategory.data.slug,
+                  parent: null
+                } : null
+              }
+            }
+
+            const mainCategory = await supabase
+              .from("categories")
+              .select("*")
+              .eq("id", parentCategory.data.parent_id)
+              .single()
+
+            return {
+              name: category.name,
+              slug: category.slug,
+              parent: {
+                name: parentCategory.data.name,
+                slug: parentCategory.data.slug,
+                parent: mainCategory.data ? {
+                  name: mainCategory.data.name,
+                  slug: mainCategory.data.slug
+                } : null
+              }
+            }
+          })()
+        ])
+
+        // Update listing with parent location and category hierarchy
+        const processedListing = {
+          ...listingData,
+          location: {
+            ...listingData.location,
+            parent: parentLocation.data
+          },
+          category: categoryHierarchy,
+          rating: 0,
+          total_reviews: reviewsData?.length || 0
+        } as Listing
+
+        if (mounted) {
+          setListing(processedListing)
+          setReviews(reviewsData || [])
 
         // Fetch similar listings
-        if (listingData) {
           const { data: similarData } = await supabase
             .from("listings")
             .select(`
@@ -181,98 +215,43 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
                 name,
                 slug,
                 parent_id,
-                type
-              )
+                  type
+              ),
+              reviews:reviews(rating)
             `)
             .eq("category_id", listingData.category_id)
             .neq("id", listingData.id)
             .limit(5)
 
           if (similarData) {
-            // Add parent locations to similar listings
-            const similarWithLocations = await Promise.all(similarData.map(async (similar) => {
-              if (similar.location?.parent_id) {
-                const { data: parentLocation } = await supabase
-                  .from('locations')
-                  .select('id, name, slug')
-                  .eq('id', similar.location.parent_id)
-                  .single()
-
-                if (parentLocation) {
-                  similar.location.parent = {
-                    ...parentLocation,
-                    type: "town"
-                  }
-                }
-              }
-
-              // Ensure location type is "town"
-              similar.location = {
-                ...similar.location,
-                type: "town"
-              }
-
-              // Get reviews data for the listing
-              const { data: reviewsData, count: reviewsCount } = await supabase
-                .from("reviews")
-                .select("rating", { count: 'exact' })
-                .eq("listing_id", similar.id)
-
-              // Calculate average rating
-              const avgRating = reviewsData?.length 
-                ? reviewsData.reduce((acc, rev) => acc + rev.rating, 0) / reviewsData.length 
-                : 0
-
-              return {
-                ...similar,
-                rating: avgRating,
-                total_reviews: reviewsCount || 0
-              }
+            const processedSimilar = similarData.map(listing => ({
+              ...listing,
+              rating: listing.reviews?.length 
+                ? listing.reviews.reduce((acc: number, rev: any) => acc + rev.rating, 0) / listing.reviews.length 
+                : 0,
+              total_reviews: listing.reviews?.length || 0
             }))
-
-            // Add category data to similar listings
-            const similarWithCategories = await Promise.all(similarWithLocations.map(async (similar) => {
-              const { data: similarCategory } = await supabase
-                .from("categories")
-                .select("*")
-                .eq("id", similar.category_id)
-                .single()
-
-              if (similarCategory) {
-                const parentCategory = similarCategory.parent_id ?
-                  (await supabase
-                    .from("categories")
-                    .select("*")
-                    .eq("id", similarCategory.parent_id)
-                    .single()).data : null
-
-                return {
-                  ...similar,
-                  category: {
-                    name: similarCategory.name,
-                    slug: similarCategory.slug,
-                    parent: parentCategory ? {
-                      name: parentCategory.name,
-                      slug: parentCategory.slug
-                    } : null
-                  }
-                }
-              }
-              return similar
-            }))
-
-            setSimilarListings(similarWithCategories as Listing[])
+            setSimilarListings(processedSimilar as Listing[])
           }
         }
       } catch (err) {
         console.error("Error in fetchListingData:", err)
+        if (mounted) {
         setError(err instanceof Error ? err.message : "Failed to load listing")
+          setListing(null)
+        }
       } finally {
+        if (mounted) {
         setLoading(false)
+        }
       }
     }
 
     fetchListingData()
+
+    return () => {
+      mounted = false
+    }
   }, [params.id])
 
   // Update selected image when listing changes
@@ -283,19 +262,14 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
   }, [listing])
 
   if (loading) {
-    return (
-      <div className="container py-16 text-center">
-        <div className="h-8 w-8 rounded-full border-2 border-t-transparent border-primary animate-spin mx-auto mb-4" />
-        <p className="text-muted-foreground">Loading listing details...</p>
-      </div>
-    )
+    return <ListingDetailsLoading />
   }
 
   if (error || !listing) {
     return (
       <div className="container py-16 text-center">
         <h1 className="text-2xl font-bold mb-4">Listing Not Found</h1>
-        <p className="text-muted-foreground mb-8">The listing you're looking for doesn't exist or has been removed.</p>
+        <p className="text-muted-foreground mb-8">{error || "The listing you're looking for doesn't exist or has been removed."}</p>
         <Button asChild>
           <Link href="/">Go Home</Link>
         </Button>
@@ -490,21 +464,9 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
                   className="w-full" 
                   size="lg" 
                   variant="outline"
-                  asChild
+                  onClick={() => alert("Contact through WhatsApp")}
                 >
-                  <Link 
-                    href={listing.seller.email
-                      ? `mailto:${listing.seller.email}?subject=Regarding your listing: ${listing.title}`
-                      : "#"}
-                    onClick={(e) => {
-                      if (!listing.seller.email) {
-                        e.preventDefault()
-                        alert("Seller's email is not available")
-                      }
-                    }}
-                  >
-                    Send Email
-                  </Link>
+                  Contact Seller
                 </Button>
               </div>
 
@@ -521,7 +483,7 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
       {/* Similar Listings - Full Width Section */}
       {similarListings.length > 0 && (
         <div className="border-t mt-16">
-          <div className="container py-12">
+        <div className="container py-12">
             <h3 className="text-xl font-semibold mb-6">Similar Listings</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
               {similarListings.map((similar) => (

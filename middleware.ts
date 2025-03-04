@@ -17,7 +17,13 @@ export async function middleware(request: NextRequest) {
     const { data: { session } } = await supabase.auth.getSession()
 
     // Protected routes
-    const protectedPaths = ["/listings/create", "/settings"]
+    const protectedPaths = [
+      "/listings/create", 
+      "/settings",
+      "/profile/settings",
+      "/profile/edit",
+      "/profile"
+    ]
     const isProtectedPath = protectedPaths.some((path) => request.nextUrl.pathname.startsWith(path))
 
     // Auth routes
@@ -41,7 +47,7 @@ export async function middleware(request: NextRequest) {
   } catch (error) {
     console.error("Middleware error:", error)
     // On error, allow access to public routes but redirect to login for protected routes
-    const isProtectedPath = ["/listings/create", "/settings"].some((path) => 
+    const isProtectedPath = ["/listings/create", "/settings", "/profile"].some((path) => 
       request.nextUrl.pathname.startsWith(path)
     )
     
