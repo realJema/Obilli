@@ -1,14 +1,10 @@
-import type { Metadata } from "next"
 import "./globals.css"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Providers } from "./providers"
+import { constructMetadata } from "@/lib/metadata"
 
-export const metadata: Metadata = {
-  title: "Obilli - Buy and Sell Locally",
-  description: "Find great deals near you on Obilli, your local marketplace.",
-  generator: "v0.dev"
-}
+export const metadata = constructMetadata()
 
 export default function RootLayout({
   children,
