@@ -4,22 +4,31 @@ import { NextResponse } from "next/server"
 
 export const dynamic = 'force-dynamic'
 
+const ITEMS_PER_PAGE = 15 // 3 rows × 5 columns
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const query = searchParams.get("q")
-
-    console.log("Search query:", query)
+    const page = parseInt(searchParams.get("page") || "1")
+    const from = (page - 1) * ITEMS_PER_PAGE
+    const to = from + ITEMS_PER_PAGE - 1
 
     if (!query) {
-      return NextResponse.json({ results: [] })
+      return NextResponse.json({ results: [], total: 0 })
     }
 
     // Use RouteHandler client instead of ServerComponent client
     const supabase = createRouteHandlerClient({ cookies })
 
     try {
-      // Simple global search across all listings with related data
+      // Get total count for pagination
+      const { count: total } = await supabase
+        .from("listings")
+        .select("*", { count: "exact", head: true })
+        .ilike('title', `%${query}%`)
+
+      // Get paginated results with related data
       const { data: results, error } = await supabase
         .from("listings")
         .select(`
@@ -47,14 +56,9 @@ export async function GET(request: Request) {
         `)
         .ilike('title', `%${query}%`)
         .order("created_at", { ascending: false })
-        .limit(10)
+        .range(from, to)
 
-      console.log("Search results:", results)
-
-      if (error) {
-        console.error("Database error:", error)
-        throw error
-      }
+      if (error) throw error
 
       // Calculate rating and total_reviews from the reviews array
       const processedResults = results?.map(listing => {
@@ -74,10 +78,14 @@ export async function GET(request: Request) {
         }
       }) || []
 
-      return NextResponse.json({ results: processedResults })
+      return NextResponse.json({ 
+        results: processedResults,
+        total,
+        page,
+        totalPages: Math.ceil((total || 0) / ITEMS_PER_PAGE)
+      })
 
     } catch (dbError) {
-      console.error("Database operation failed:", dbError)
       return NextResponse.json(
         { error: "Database operation failed", details: dbError },
         { status: 500 }
@@ -85,7 +93,6 @@ export async function GET(request: Request) {
     }
 
   } catch (error) {
-    console.error("Request failed:", error)
     return NextResponse.json(
       { error: "Internal server error", details: error },
       { status: 500 }
