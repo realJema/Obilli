@@ -322,6 +322,16 @@ function FilterPageContent() {
     router.push(newUrl)
   }, [searchParams, router])
 
+  // Handle sort change
+  const handleSortChange = (value: string) => {
+    setSortBy(value);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('sort', value);
+    params.set('page', '1'); // Reset to first page when sorting changes
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    router.push(newUrl);
+  };
+
   // Fetch listings when relevant parameters change
   useEffect(() => {
     async function fetchListings() {
@@ -616,7 +626,7 @@ function FilterPageContent() {
                 `Showing ${(currentPage - 1) * ITEMS_PER_PAGE + 1}-${Math.min(currentPage * ITEMS_PER_PAGE, totalListings)} of ${totalListings} results`
               )}
             </p>
-            <Select value={sortBy} onValueChange={setSortBy}>
+            <Select value={sortBy} onValueChange={handleSortChange}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>

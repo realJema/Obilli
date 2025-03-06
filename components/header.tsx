@@ -40,7 +40,7 @@ export function Header() {
     <header>
       <div className="border-b">
         <div className="container flex h-16 items-center justify-between">
-          <Link href="/" className="text-2xl font-bold text-green-600">
+          <Link href="/" className="text-3xl font-bold text-green-600">
             Obilli
           </Link>
           <div className="hidden flex-1 items-center justify-center px-12 lg:flex">
@@ -51,7 +51,7 @@ export function Header() {
             {user ? (
               <>
                 <Link href="/listings/create" passHref>
-                  <Button className="gap-2 bg-green-600 hover:bg-green-700 text-white">
+                  <Button className="gap-2 bg-green-600 hover:bg-green-700 text-lg text-white">
                     <PlusCircle className="h-4 w-4" />
                     Create Listing
                   </Button>
@@ -61,10 +61,10 @@ export function Header() {
             ) : (
               <>
                 <Link href="/auth/sign-in" passHref>
-                  <Button variant="ghost">Sign In</Button>
+                  <Button variant="ghost" className="text-lg">Sign In</Button>
                 </Link>
                 <Link href="/auth/sign-up" passHref>
-                  <Button className="bg-green-600 hover:bg-green-700">Join</Button>
+                  <Button className="bg-green-600 hover:bg-green-700 text-lg">Join</Button>
                 </Link>
               </>
             )}

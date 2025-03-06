@@ -86,21 +86,24 @@ export function ListingCard({ listing, variant = 'default' }: ListingCardProps) 
     return listing.location.name
   }
 
-  const imageHeight = variant === 'compact' ? 'h-[140px]' : 'h-[180px]'
-  const cardHeight = variant === 'compact' ? 'h-[380px]' : 'h-[420px]'
+  const imageHeight = variant === 'compact' ? 'h-[180px]' : 'h-[200px]'
+  const cardHeight = variant === 'compact' ? 'h-[420px]' : 'h-[440px]'
 
   return (
     <Link
       href={`/listings/${listing.id}`}
-      className="block group"
+      className="block group h-full"
     >
-      <div className={`border rounded-lg overflow-hidden transition-colors hover:border-green-600 ${cardHeight} flex flex-col`}>
-        <div className={`${imageHeight} relative`}>
+      <div className="border rounded-lg overflow-hidden transition-colors hover:border-green-600 flex flex-col h-full">
+        <div className="aspect-[16/9] relative bg-muted w-full">
           <Image
             src={getListingImage()}
             alt={listing.title}
             fill
             className="object-cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            priority={false}
+            loading="lazy"
           />
         </div>
         <div className="flex-1 p-4 flex flex-col">
@@ -114,8 +117,8 @@ export function ListingCard({ listing, variant = 'default' }: ListingCardProps) 
                 <AvatarFallback>{getSellerInitials()}</AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate">{getSellerDisplayName()}</p>
-                <p className="text-xs text-muted-foreground truncate">@{getSellerUsername()}</p>
+                <p className="text-base font-medium truncate">{getSellerDisplayName()}</p>
+                <p className="text-sm text-muted-foreground truncate">@{getSellerUsername()}</p>
               </div>
               <div className="text-[12px] text-muted-foreground ml-2 whitespace-nowrap">
                 {formatDistanceToNow(new Date(listing.created_at), { addSuffix: true })
@@ -134,9 +137,9 @@ export function ListingCard({ listing, variant = 'default' }: ListingCardProps) 
               </div>
             </div>
           </div>
-          <h3 className="text-base font-semibold mb-2 truncate group-hover:text-green-600">{listing.title}</h3>
-          <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{listing.description}</p>
-          <div className="flex items-center text-sm text-muted-foreground truncate mb-2">
+          <h3 className="text-lg font-semibold mb-2 truncate group-hover:text-green-600">{listing.title}</h3>
+          <p className="text-base text-muted-foreground mb-2 line-clamp-2">{listing.description}</p>
+          <div className="flex items-center text-base text-muted-foreground truncate mb-2">
             <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
             {getLocationDisplay()}
           </div>
@@ -150,7 +153,7 @@ export function ListingCard({ listing, variant = 'default' }: ListingCardProps) 
             </div>
             <div className="text-right">
               <p className="text-xs text-muted-foreground">From</p>
-              <p className="font-semibold">
+              <p className="text-lg font-semibold">
                 {new Intl.NumberFormat('fr-FR', { 
                   style: 'currency', 
                   currency: 'XAF',

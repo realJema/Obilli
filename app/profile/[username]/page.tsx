@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ListingCard } from "@/components/listing-card"
 import { ProfileListingCard } from "@/components/profile-listing-card"
+import { ProfileReviews } from "@/components/profile-reviews"
 
 const ITEMS_PER_PAGE = 9
 
@@ -215,11 +216,12 @@ export default async function ProfilePage({
         </div>
 
         <div>
-          <Tabs defaultValue="listings">
+          <Tabs defaultValue="listings" className="mt-6">
             <TabsList>
               <TabsTrigger value="listings">Listings</TabsTrigger>
               <TabsTrigger value="reviews">Reviews</TabsTrigger>
             </TabsList>
+            
             <TabsContent value="listings" className="mt-6">
               {listings?.length ? (
                 <>
@@ -293,44 +295,9 @@ export default async function ProfilePage({
                 </div>
               )}
             </TabsContent>
+
             <TabsContent value="reviews" className="mt-6">
-              {reviews?.length ? (
-                <div className="space-y-6">
-                  {reviews.map((review) => (
-                    <div key={review.id} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <Image
-                            src={review.reviewer.avatar_url || `/placeholder.svg?text=${review.reviewer.full_name.charAt(0)}`}
-                            alt={review.reviewer.full_name}
-                            width={32}
-                            height={32}
-                            className="rounded-full"
-                          />
-                          <div>
-                            <div className="font-medium">{review.reviewer.full_name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {format(new Date(review.created_at), "PP")}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center">
-                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                          <span className="ml-1 font-medium">{review.rating}</span>
-                        </div>
-                      </div>
-                      <p className="text-sm">{review.comment}</p>
-                      <div className="text-sm text-muted-foreground">
-                        On listing: {review.listing.title}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center text-muted-foreground">
-                  No reviews yet
-                </div>
-              )}
+              <ProfileReviews userId={profile.id} />
             </TabsContent>
           </Tabs>
         </div>

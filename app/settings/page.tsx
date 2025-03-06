@@ -18,6 +18,7 @@ interface Profile {
   bio: string | null
   avatar_url: string | null
   location: string | null
+  phone_number: string | null
 }
 
 function SettingsContent() {
@@ -82,6 +83,7 @@ function SettingsContent() {
         full_name: string;
         bio: string;
         location: string;
+        phone_number: string;
         updated_at: string;
         avatar_url?: string;
       } = {
@@ -89,6 +91,7 @@ function SettingsContent() {
         full_name: formData.get('full_name') as string,
         bio: formData.get('bio') as string,
         location: formData.get('location') as string,
+        phone_number: formData.get('phone_number') as string,
         updated_at: new Date().toISOString(),
       }
 
@@ -173,11 +176,17 @@ function SettingsContent() {
         setAvatarPreview(null)
       }
 
-      toast.success('Profile updated successfully')
+      toast.success('Profile updated successfully', {
+        description: 'Your profile changes have been saved.',
+        duration: 3000,
+      })
       router.refresh()
     } catch (error) {
       console.error('Error updating profile:', error)
-      toast.error('Failed to update profile')
+      toast.error('Failed to update profile', {
+        description: 'There was a problem saving your changes. Please try again.',
+        duration: 4000,
+      })
     } finally {
       setSaving(false)
     }
@@ -235,54 +244,75 @@ function SettingsContent() {
           </div>
         </div>
 
-        {/* Username */}
-        <div className="space-y-2">
-          <Label htmlFor="username">Username</Label>
-          <Input
-            id="username"
-            name="username"
-            defaultValue={profile.username}
-            required
-          />
-        </div>
+        {/* Username, Full Name, Phone Number, Location, Bio */}
+        <div className="space-y-4">
+          <div className="grid gap-2">
+            <Label htmlFor="username">Username</Label>
+            <Input
+              id="username"
+              name="username"
+              placeholder="username"
+              defaultValue={profile?.username || ''}
+              required
+            />
+          </div>
 
-        {/* Full Name */}
-        <div className="space-y-2">
-          <Label htmlFor="full_name">Full Name</Label>
-          <Input
-            id="full_name"
-            name="full_name"
-            defaultValue={profile.full_name}
-            required
-          />
-        </div>
+          <div className="grid gap-2">
+            <Label htmlFor="full_name">Full Name</Label>
+            <Input
+              id="full_name"
+              name="full_name"
+              placeholder="Full name"
+              defaultValue={profile?.full_name || ''}
+              required
+            />
+          </div>
 
-        {/* Bio */}
-        <div className="space-y-2">
-          <Label htmlFor="bio">Bio</Label>
-          <Textarea
-            id="bio"
-            name="bio"
-            defaultValue={profile.bio || ''}
-            rows={4}
-          />
-        </div>
+          <div className="grid gap-2">
+            <Label htmlFor="phone_number">Phone Number</Label>
+            <Input
+              id="phone_number"
+              name="phone_number"
+              type="tel"
+              placeholder="+237..."
+              defaultValue={profile?.phone_number || ''}
+            />
+            <p className="text-sm text-muted-foreground">
+              This will be used for WhatsApp and direct calls
+            </p>
+          </div>
 
-        {/* Location */}
-        <div className="space-y-2">
-          <Label htmlFor="location">Location</Label>
-          <Input
-            id="location"
-            name="location"
-            defaultValue={profile.location || ''}
-          />
-        </div>
+          <div className="grid gap-2">
+            <Label htmlFor="location">Location</Label>
+            <Input
+              id="location"
+              name="location"
+              placeholder="Your location"
+              defaultValue={profile?.location || ''}
+            />
+          </div>
 
-        {/* Submit Button */}
-        <Button type="submit" disabled={saving}>
-          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Save Changes
-        </Button>
+          <div className="grid gap-2">
+            <Label htmlFor="bio">Bio</Label>
+            <Textarea
+              id="bio"
+              name="bio"
+              placeholder="Tell us about yourself"
+              defaultValue={profile?.bio || ''}
+            />
+          </div>
+
+          <Button type="submit" disabled={saving}>
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save Changes'
+            )}
+          </Button>
+        </div>
       </form>
     </div>
   )

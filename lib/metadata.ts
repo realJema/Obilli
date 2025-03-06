@@ -2,7 +2,7 @@ import { Metadata } from "next"
 
 export const siteConfig = {
   name: "Obilli",
-  description: "Find great deals near you on Obilli, your local marketplace.",
+  description: "Everything You Need, Right Here.",
   url: "https://obilli.com", // Replace with your actual domain
   ogImage: "https://obilli.com/og.jpg", // Replace with your actual OG image URL
   links: {

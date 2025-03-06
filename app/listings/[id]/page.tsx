@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils"
 import { ReviewsSection } from "@/app/components/reviews"
 import { ListingCard } from "@/components/listing-card"
 import ListingDetailsLoading from "./loading"
+import { ContactButtons } from "@/components/contact-buttons"
 
 type Review = Database["public"]["Tables"]["reviews"]["Row"] & {
   reviewer: {
@@ -427,53 +428,30 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
                   <div>
                     <p className="text-sm text-muted-foreground">Condition</p>
                     <p className="font-medium">{listing.condition}</p>
-                </div>
-                          <div>
+                  </div>
+                  <div>
                     <p className="text-sm text-muted-foreground">Location</p>
                     <p className="font-medium">{getLocationString(listing.location)}</p>
-          </div>
-          <div>
+                  </div>
+                  <div>
                     <p className="text-sm text-muted-foreground">Address</p>
                     <p className="font-medium">{listing.address}</p>
-                </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3">
-                <Button 
-                  className="w-full" 
-                  size="lg"
-                  asChild
-                >
-                  <Link 
-                    href={listing.seller.phone_number 
-                      ? `https://wa.me/${listing.seller.phone_number}?text=Hi, I'm interested in your listing: ${listing.title}`
-                      : "#"}
-                    target="_blank"
-                    onClick={(e) => {
-                      if (!listing.seller.phone_number) {
-                        e.preventDefault()
-                        alert("Seller's phone number is not available")
-                      }
-                    }}
-                  >
-                    Contact on WhatsApp
-                  </Link>
-                </Button>
-                <Button 
-                  className="w-full" 
-                  size="lg" 
-                  variant="outline"
-                  onClick={() => alert("Contact through WhatsApp")}
-                >
-                  Contact Seller
-                </Button>
-              </div>
+              <ContactButtons 
+                phoneNumber={listing.seller.phone_number}
+                email={listing.seller.email}
+                listingTitle={listing.title}
+              />
 
-              <div className="text-sm text-muted-foreground">
-                <p>• Secure payments through our platform</p>
-                <p>• 24/7 customer support</p>
-                <p>• Money-back guarantee</p>
+              <div className="border-t pt-6">
+                <ul className="space-y-2 text-sm">
+                  <li>• Secure payments through our platform</li>
+                  <li>• 24/7 customer support</li>
+                  <li>• Money-back guarantee</li>
+                </ul>
               </div>
             </div>
           </div>
