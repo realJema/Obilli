@@ -78,12 +78,6 @@ export function UserMenu({ user, profile }: UserMenuProps) {
               Settings
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/listings">
-              <Package className="mr-2 h-4 w-4" />
-              My Listings
-            </Link>
-          </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut}>

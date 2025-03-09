@@ -65,12 +65,24 @@
 
 @layer utilities {
   .scrollbar-hide {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: thin;     /* Firefox */
+    overflow-y: auto;          /* Enable vertical scrolling */
+    overflow-x: hidden;        /* Hide horizontal scrolling */
   }
 
   .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+    width: 8px;               /* Width of the vertical scrollbar */
+    height: 0;                /* Hide horizontal scrollbar */
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar-thumb {
+    background-color: rgba(155, 155, 155, 0.5);
+    border-radius: 4px;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar-track {
+    background: transparent;
   }
 
   .scroll-snap-align-start {
@@ -78,24 +90,48 @@
   }
 }
 
-/* Remove default scrollbar from the root element */
+/* Modify root element scrollbar */
 html {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;       /* Firefox */
+  -ms-overflow-style: none;    /* IE and Edge */
+  overflow-y: auto;            /* Enable vertical scrolling */
+  overflow-x: hidden;          /* Hide horizontal scrolling */
 }
 
 html::-webkit-scrollbar {
-  display: none;
+  width: 8px;                  /* Width of the vertical scrollbar */
+  height: 0;                   /* Hide horizontal scrollbar */
 }
 
-/* Ensure container doesn't show scrollbar */
+html::-webkit-scrollbar-thumb {
+  background-color: rgba(155, 155, 155, 0.5);
+  border-radius: 4px;
+}
+
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Ensure container has vertical scrollbar when needed */
 .container {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;       /* Firefox */
+  -ms-overflow-style: none;    /* IE and Edge */
+  overflow-y: auto;            /* Enable vertical scrolling */
+  overflow-x: hidden;          /* Hide horizontal scrolling */
 }
 
 .container::-webkit-scrollbar {
-  display: none;
+  width: 8px;                  /* Width of the vertical scrollbar */
+  height: 0;                   /* Hide horizontal scrollbar */
+}
+
+.container::-webkit-scrollbar-thumb {
+  background-color: rgba(155, 155, 155, 0.5);
+  border-radius: 4px;
+}
+
+.container::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 @keyframes fadeIn {
