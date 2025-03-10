@@ -11,6 +11,7 @@ async function getListingsForCategory(categoryId: string) {
 
   // Helper function to get all child category IDs recursively
   function getAllChildCategories(parentId: string): string[] {
+    if (!allCategories) return []
     const children = allCategories.filter((cat) => cat.parent_id === parentId)
     const childIds = children.map((child) => child.id)
     const grandChildIds = children.flatMap((child) => getAllChildCategories(child.id))
@@ -19,6 +20,16 @@ async function getListingsForCategory(categoryId: string) {
 
   // Get all category IDs including the main category and all its descendants
   const allCategoryIds = [categoryId, ...getAllChildCategories(categoryId)]
+
+  // Helper function to get parent location
+  const getParentLocation = async (parentId: string) => {
+    const { data } = await supabase
+      .from('locations')
+      .select('id, name, slug, type')
+      .eq('id', parentId)
+      .single()
+    return data
+  }
 
   // Fetch listings from all these categories
   const { data: listings } = await supabase
@@ -33,13 +44,39 @@ async function getListingsForCategory(categoryId: string) {
       category:categories!category_id(
         name,
         slug
+      ),
+      location:locations!listings_location_id_fkey(
+        id,
+        name,
+        slug,
+        parent_id,
+        type
       )
     `)
     .in("category_id", allCategoryIds)
     .order("created_at", { ascending: false })
     .limit(10)
 
-  return listings || []
+  if (!listings) return []
+
+  // Get parent locations for each listing
+  const listingsWithParentLocations = await Promise.all(
+    listings.map(async (listing) => {
+      if (listing.location?.parent_id) {
+        const parentLocation = await getParentLocation(listing.location.parent_id)
+        return {
+          ...listing,
+          location: {
+            ...listing.location,
+            parent: parentLocation
+          }
+        }
+      }
+      return listing
+    })
+  )
+
+  return listingsWithParentLocations
 }
 
 export default async function Home() {

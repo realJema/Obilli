@@ -14,6 +14,7 @@ import { ReviewsSection } from "@/app/components/reviews"
 import { ListingCard } from "@/components/listing-card"
 import ListingDetailsLoading from "./loading"
 import { ContactButtons } from "@/components/contact-buttons"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 type Review = Database["public"]["Tables"]["reviews"]["Row"] & {
   reviewer: {
@@ -326,13 +327,13 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
             <h1 className="text-3xl font-bold mb-4">{listing.title}</h1>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
-                <Image
-                  src={listing.seller.avatar_url || "/placeholder.svg"}
-                  alt={listing.seller.full_name}
-                  width={40}
-                  height={40}
-                  className="rounded-full mr-3"
-                />
+                <Avatar className="h-10 w-10 mr-3">
+                  <AvatarImage
+                    src={listing.seller.avatar_url || undefined}
+                    alt={listing.seller.full_name}
+                  />
+                  <AvatarFallback>{listing.seller.full_name.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
                 <div>
                   <p className="font-semibold">{listing.seller.full_name}</p>
                   <p className="text-sm text-muted-foreground">@{listing.seller.username}</p>
