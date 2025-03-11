@@ -292,7 +292,14 @@ export default function ServiceDetailsPage({ params }: { params: { id: string } 
           <div>
             <div className="border rounded-lg p-6 sticky top-6">
               <div className="flex justify-between items-center mb-4">
-                <span className="text-2xl font-bold">${service.price}</span>
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-2xl font-bold">{new Intl.NumberFormat('fr-FR', { 
+                    style: 'currency', 
+                    currency: 'XAF',
+                    maximumFractionDigits: 0,
+                    minimumFractionDigits: 0
+                  }).format(service.price)}</span>
+                </div>
                 <div className="flex items-center">
                   <Star className="h-5 w-5 fill-yellow-400 text-yellow-400 mr-1" />
                   <span className="font-semibold">{service.rating}</span>
@@ -303,7 +310,12 @@ export default function ServiceDetailsPage({ params }: { params: { id: string } 
                 Get your professional website design in just {service.deliveryTime} days with {service.revisions}{" "}
                 revisions.
               </p>
-              <Button className="w-full mb-4">Continue (${service.price})</Button>
+              <Button className="w-full mb-4">Continue ({new Intl.NumberFormat('fr-FR', { 
+                style: 'currency', 
+                currency: 'XAF',
+                maximumFractionDigits: 0,
+                minimumFractionDigits: 0
+              }).format(service.price)})</Button>
               <div className="text-sm text-muted-foreground mb-6">
                 <p className="mb-2">This order includes:</p>
                 <ul className="list-disc list-inside space-y-1">
@@ -368,7 +380,12 @@ export default function ServiceDetailsPage({ params }: { params: { id: string } 
                       </div>
                       <div className="mt-auto">
                         <p className="text-sm text-muted-foreground">From</p>
-                        <p className="font-semibold">${listing.price}</p>
+                        <p className="font-semibold">{new Intl.NumberFormat('fr-FR', { 
+                          style: 'currency', 
+                          currency: 'XAF',
+                          maximumFractionDigits: 0,
+                          minimumFractionDigits: 0
+                        }).format(listing.price)}</p>
                       </div>
                     </div>
                   </div>

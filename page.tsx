@@ -69,7 +69,14 @@ export default function Home() {
                 </h3>
                 <div className="flex items-center gap-1 text-muted-foreground">
                   <span className="text-sm">Starting at</span>
-                  <span className="text-base font-semibold text-foreground">$29</span>
+                  <span className="text-base font-semibold text-foreground">
+                    {new Intl.NumberFormat('fr-FR', {
+                      style: 'currency',
+                      currency: 'XAF',
+                      maximumFractionDigits: 0,
+                      minimumFractionDigits: 0
+                    }).format(29)}
+                  </span>
                 </div>
               </div>
             </Link>

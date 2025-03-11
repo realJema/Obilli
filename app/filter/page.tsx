@@ -41,6 +41,7 @@ interface Listing {
   rating: number
   total_reviews: number
   images: string[] | null
+  condition: string
   category: {
     name: string
     slug: string
@@ -517,27 +518,27 @@ function FilterPageContent() {
             <>
               <div>
                 <h2 className="font-semibold mb-2">Price Range (FCFA)</h2>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="minPrice">Min</Label>
+                    <Label htmlFor="minPrice">Min (FCFA)</Label>
                     <Input
-                      id="minPrice"
                       type="number"
-                      min="0"
+                      id="minPrice"
+                      className="mt-1"
                       value={minPrice}
                       onChange={(e) => handlePriceChange(e.target.value, 'min')}
-                      className="w-full"
+                      placeholder="0"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="maxPrice">Max</Label>
+                    <Label htmlFor="maxPrice">Max (FCFA)</Label>
                     <Input
-                      id="maxPrice"
                       type="number"
-                      min="0"
+                      id="maxPrice"
+                      className="mt-1"
                       value={maxPrice}
                       onChange={(e) => handlePriceChange(e.target.value, 'max')}
-                      className="w-full"
+                      placeholder="500000"
                     />
                   </div>
                 </div>

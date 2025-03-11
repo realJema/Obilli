@@ -122,7 +122,12 @@ function TestPageContent() {
                       By {listing.seller.full_name} (@{listing.seller.username})
                     </p>
                     <p className="text-sm">Category: {listing.category.name}</p>
-                    <p className="text-sm">Price: ${listing.price}</p>
+                    <p className="text-sm">Price: {new Intl.NumberFormat('fr-FR', { 
+                      style: 'currency', 
+                      currency: 'XAF',
+                      maximumFractionDigits: 0,
+                      minimumFractionDigits: 0
+                    }).format(listing.price)}</p>
                     <p className="text-sm">
                       Rating: {listing.rating} ({listing.total_reviews} reviews)
                     </p>
@@ -161,7 +166,17 @@ function TestPageContent() {
                   setListings(data.listings)
                 }}
               >
-                Price $200-$500
+                Price {new Intl.NumberFormat('fr-FR', {
+                  style: 'currency',
+                  currency: 'XAF',
+                  maximumFractionDigits: 0,
+                  minimumFractionDigits: 0
+                }).format(200)} - {new Intl.NumberFormat('fr-FR', {
+                  style: 'currency',
+                  currency: 'XAF',
+                  maximumFractionDigits: 0,
+                  minimumFractionDigits: 0
+                }).format(500)}
               </Button>
               <Button
                 onClick={async () => {

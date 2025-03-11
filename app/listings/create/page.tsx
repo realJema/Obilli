@@ -75,6 +75,7 @@ function CreateListingContent() {
     images: [],
     category_parent: "",
   })
+  const [isDragging, setIsDragging] = useState(false)
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -218,7 +219,7 @@ function CreateListingContent() {
       case 1:
         return !!(formData.title && formData.description)
       case 2:
-        return !!(formData.category_id && formData.location_id && formData.address)
+        return !!(formData.category_id && formData.location_id)
       case 3:
         return !!(formData.price > 0 && formData.condition)
       case 4:
@@ -269,7 +270,6 @@ function CreateListingContent() {
         !formData.description ||
         !formData.category_id ||
         !formData.location_id ||
-        !formData.address ||
         !formData.price ||
         !formData.condition ||
         !selectedFiles.length
@@ -347,6 +347,98 @@ function CreateListingContent() {
       })
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+
+    const files = Array.from(e.dataTransfer.files)
+    const totalFiles = selectedFiles.length + files.length
+
+    // Validate total file count
+    if (totalFiles > 5) {
+      toast({
+        title: "Too many files",
+        description: "You can only upload up to 5 images in total",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate file sizes and types
+    const validFiles = files.filter((file) => {
+      const isValidType = file.type.startsWith("image/")
+      const isValidSize = file.size <= 5 * 1024 * 1024 // 5MB limit
+
+      if (!isValidType) {
+        toast({
+          title: "Invalid file type",
+          description: `${file.name} is not an image file`,
+          variant: "destructive",
+        })
+      }
+
+      if (!isValidSize) {
+        toast({
+          title: "File too large",
+          description: `${file.name} exceeds 5MB limit`,
+          variant: "destructive",
+        })
+      }
+
+      return isValidType && isValidSize
+    })
+
+    setSelectedFiles((prev) => [...prev, ...validFiles])
+  }
+
+  const handleReorder = (dragIndex: number, dropIndex: number) => {
+    const draggedFile = selectedFiles[dragIndex]
+    const newFiles = [...selectedFiles]
+    newFiles.splice(dragIndex, 1)
+    newFiles.splice(dropIndex, 0, draggedFile)
+    setSelectedFiles(newFiles)
+  }
+
+  const handleImageDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    e.dataTransfer.setData('text/plain', index.toString())
+    e.currentTarget.classList.add('opacity-50')
+  }
+
+  const handleImageDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
+    e.currentTarget.classList.remove('opacity-50')
+  }
+
+  const handleImageDragOver = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    e.preventDefault()
+    e.currentTarget.classList.add('border-primary')
+  }
+
+  const handleImageDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.currentTarget.classList.remove('border-primary')
+  }
+
+  const handleImageDrop = (e: React.DragEvent<HTMLDivElement>, dropIndex: number) => {
+    e.preventDefault()
+    e.currentTarget.classList.remove('border-primary')
+    const dragIndex = parseInt(e.dataTransfer.getData('text/plain'))
+    if (dragIndex !== dropIndex) {
+      handleReorder(dragIndex, dropIndex)
     }
   }
 
@@ -565,11 +657,11 @@ function CreateListingContent() {
 
                 <div className="space-y-2">
                   <Label htmlFor="address" className="text-lg">
-                    Specific Address
+                    Specific Address (Optional)
                   </Label>
                   <Input
                     id="address"
-                    placeholder="Enter specific address"
+                    placeholder="Enter specific address (optional)"
                     value={formData.address}
                     onChange={(e) => updateFormData("address", e.target.value)}
                     className="text-lg"
@@ -584,7 +676,7 @@ function CreateListingContent() {
             <div className="space-y-8">
               <div className="space-y-4">
                 <Label htmlFor="price" className="text-lg">
-                  Price ($)
+                  Price (FCFA)
                 </Label>
                 <Input
                   id="price"
@@ -632,29 +724,47 @@ function CreateListingContent() {
               {previewUrls.length > 0 && (
                 <div className="grid grid-cols-2 gap-6">
                   {previewUrls.map((url, index) => (
-                    <div key={index} className="relative aspect-square group">
+                    <div 
+                      key={index} 
+                      className="relative aspect-square group border-2 border-transparent hover:border-muted-foreground/25 rounded-lg cursor-grab active:cursor-grabbing"
+                      draggable
+                      onDragStart={(e) => handleImageDragStart(e, index)}
+                      onDragEnd={handleImageDragEnd}
+                      onDragOver={(e) => handleImageDragOver(e, index)}
+                      onDragLeave={handleImageDragLeave}
+                      onDrop={(e) => handleImageDrop(e, index)}
+                    >
                       <Image
                         src={url || "/placeholder.svg"}
                         alt={`Preview ${index + 1}`}
                         fill
-                        className="object-cover rounded-lg"
+                        className="object-cover rounded-lg pointer-events-none"
                       />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg pointer-events-none" />
                       <Button
                         variant="destructive"
                         size="icon"
-                        className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10"
                         onClick={() => removeFile(index)}
                       >
                         <X className="h-4 w-4" />
                       </Button>
-                      <div className="absolute bottom-2 left-2 text-white text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                        Image {index + 1} of {previewUrls.length}
+                      <div className="absolute bottom-2 left-2 text-white text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        Image {index + 1} of {previewUrls.length} (Drag to reorder)
                       </div>
                     </div>
                   ))}
                   {previewUrls.length < 5 && (
-                    <div className="relative aspect-square border-2 border-dashed border-muted-foreground/25 rounded-lg flex items-center justify-center">
+                    <div 
+                      className={cn(
+                        "relative aspect-square border-2 border-dashed rounded-lg flex items-center justify-center",
+                        isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25",
+                        "transition-colors duration-200"
+                      )}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                    >
                       <Label htmlFor="images" className="flex flex-col items-center cursor-pointer p-4">
                         <Upload className="h-8 w-8 mb-2 text-muted-foreground" />
                         <span className="text-sm font-medium text-center">
@@ -675,7 +785,16 @@ function CreateListingContent() {
               )}
 
               {previewUrls.length === 0 && (
-                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8">
+                <div 
+                  className={cn(
+                    "aspect-square border-2 border-dashed rounded-lg p-8 flex items-center justify-center",
+                    isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25",
+                    "transition-colors duration-200"
+                  )}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
                   <Input
                     id="images"
                     type="file"
@@ -711,60 +830,101 @@ function CreateListingContent() {
                 <p className="text-muted-foreground text-lg">Please review your listing details before submitting.</p>
               </div>
 
-              <div className="space-y-6">
-                <div>
-                  <Label className="text-lg">Title</Label>
-                  <p className="mt-2 text-lg">{formData.title}</p>
-                </div>
-
-                <div>
-                  <Label className="text-lg">Description</Label>
-                  <p className="mt-2 text-lg whitespace-pre-line">{formData.description}</p>
-                </div>
-
-                <div>
-                  <Label className="text-lg">Category</Label>
-                  <p className="mt-2 text-lg">
-                    {categories.find((cat) => cat.id === formData.category_id)?.name || "Not selected"}
-                  </p>
-                </div>
-
-                <div>
-                  <Label className="text-lg">Location</Label>
-                  <p className="mt-2 text-lg">
-                    {locations.find((town) => town.id === selectedTown)?.name},{" "}
-                    {
-                      locations
-                        .find((town) => town.id === selectedTown)
-                        ?.quarters?.find((quarter) => quarter.id === formData.location_id)?.name
-                    }
-                  </p>
-                  <p className="mt-1 text-muted-foreground text-lg">{formData.address}</p>
-                </div>
-
-                <div>
-                  <Label className="text-lg">Price</Label>
-                  <p className="mt-2 text-lg">${formData.price.toFixed(2)}</p>
-                </div>
-
-                <div>
-                  <Label className="text-lg">Condition</Label>
-                  <p className="mt-2 text-lg">{formData.condition}</p>
-                </div>
-
-                <div>
-                  <Label className="text-lg">Images</Label>
-                  <div className="grid grid-cols-2 gap-6 mt-4 sm:grid-cols-3">
-                    {previewUrls.map((url, index) => (
-                      <div key={index} className="relative aspect-square">
-                        <Image
-                          src={url || "/placeholder.svg"}
-                          alt={`Preview ${index + 1}`}
-                          fill
-                          className="object-cover rounded-lg"
-                        />
+              {/* Images Section */}
+              <div className="space-y-4">
+                <Label className="text-lg">Images</Label>
+                <div className="space-y-4">
+                  {/* Main/Cover Image */}
+                  {previewUrls.length > 0 && (
+                    <div className="relative aspect-video w-full">
+                      <Image
+                        src={previewUrls[0] || "/placeholder.svg"}
+                        alt="Cover Image"
+                        fill
+                        className="object-cover rounded-lg"
+                      />
+                      <div className="absolute bottom-2 left-2 text-white text-sm font-medium bg-black/60 px-2 py-1 rounded">
+                        Cover Image
                       </div>
-                    ))}
+                    </div>
+                  )}
+
+                  {/* Additional Images */}
+                  {previewUrls.length > 1 && (
+                    <div className="grid grid-cols-4 gap-4">
+                      {previewUrls.slice(1).map((url, index) => (
+                        <div key={index} className="relative aspect-square">
+                          <Image
+                            src={url || "/placeholder.svg"}
+                            alt={`Preview ${index + 2}`}
+                            fill
+                            className="object-cover rounded-lg"
+                          />
+                          <div className="absolute bottom-2 left-2 text-white text-sm font-medium bg-black/60 px-2 py-1 rounded">
+                            Image {index + 2}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Full Width Title */}
+              <div>
+                <Label className="text-lg">Title</Label>
+                <p className="mt-2 text-lg font-medium">{formData.title}</p>
+              </div>
+
+              {/* Full Width Description */}
+              <div>
+                <Label className="text-lg">Description</Label>
+                <div className="mt-2 text-lg whitespace-pre-line bg-muted/50 rounded-lg p-4">
+                  {formData.description}
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-8">
+                {/* Left Column */}
+                <div className="space-y-6">
+                  <div>
+                    <Label className="text-lg">Price</Label>
+                    <p className="mt-2 text-lg font-medium">
+                      {new Intl.NumberFormat('fr-FR', { 
+                        style: 'currency', 
+                        currency: 'XAF',
+                        maximumFractionDigits: 0,
+                        minimumFractionDigits: 0
+                      }).format(formData.price)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label className="text-lg">Condition</Label>
+                    <p className="mt-2 text-lg font-medium">{formData.condition}</p>
+                  </div>
+
+                  <div>
+                    <Label className="text-lg">Category</Label>
+                    <p className="mt-2 text-lg font-medium">
+                      {categories.find((cat) => cat.id === formData.category_id)?.name || "Not selected"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right Column */}
+                <div className="space-y-6">
+                  <div>
+                    <Label className="text-lg">Location</Label>
+                    <p className="mt-2 text-lg font-medium">
+                      {locations.find((town) => town.id === selectedTown)?.name},{" "}
+                      {locations
+                        .find((town) => town.id === selectedTown)
+                        ?.quarters?.find((quarter) => quarter.id === formData.location_id)?.name}
+                    </p>
+                    {formData.address && (
+                      <p className="mt-1 text-muted-foreground">{formData.address}</p>
+                    )}
                   </div>
                 </div>
               </div>
