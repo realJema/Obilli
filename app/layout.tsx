@@ -4,6 +4,7 @@ import { Footer } from "@/components/footer"
 import { Providers } from "./providers"
 import { constructMetadata } from "@/lib/metadata"
 import { GoogleTagManager } from "@/components/google-tag-manager"
+import { Analytics } from "@vercel/analytics/react"
 
 export const metadata = constructMetadata()
 
@@ -25,6 +26,7 @@ export default function RootLayout({
             <Footer />
           </div>
         </Providers>
+        <Analytics />
       </body>
     </html>
   )
