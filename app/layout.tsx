@@ -3,6 +3,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Providers } from "./providers"
 import { constructMetadata } from "@/lib/metadata"
+import { GoogleTagManager } from "@/components/google-tag-manager"
 
 export const metadata = constructMetadata()
 
@@ -14,6 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans">
+        <GoogleTagManager />
         <Providers>
           <div className="flex min-h-screen flex-col">
             <Header />

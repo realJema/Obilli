@@ -1,9 +1,11 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { MetadataRoute } from "next"
+import { headers } from "next/headers"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // Use the actual domain instead of localhost
+  // Always use the production URL for sitemap
   const baseUrl = "https://obilli.com"
+
   const supabase = createServerSupabaseClient()
 
   // Get all listings - limit to a reasonable number of recent listings
