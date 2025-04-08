@@ -75,6 +75,23 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [displayedImage, setDisplayedImage] = useState<string | null>(null)
 
+  // Add retry logic helper
+  const retryWithBackoff = async (fn: () => Promise<any>, maxRetries = 3) => {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await fn()
+      } catch (error: any) {
+        if (error?.status === 429) { // Rate limit error
+          const delay = Math.min(1000 * Math.pow(2, i), 10000) // Exponential backoff: 1s, 2s, 4s, up to 10s
+          await new Promise(resolve => setTimeout(resolve, delay))
+          continue
+        }
+        throw error
+      }
+    }
+    throw new Error('Max retries reached')
+  }
+
   useEffect(() => {
     let mounted = true
 
@@ -85,38 +102,40 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
         const supabase = createClientComponentClient<Database>()
 
         // Fetch the listing with all its relations
-        const { data: listingData, error: listingError } = await supabase
-          .from("listings")
-          .select(`
-            *,
-            seller:profiles!listings_seller_id_fkey(
-              username,
-              full_name,
-              avatar_url,
-              phone_number
-            ),
-            category:categories!listings_category_id_fkey(
-              name,
-              slug,
-              parent:categories!parent_id(
+        const { data: listingData, error: listingError } = await retryWithBackoff(async () => 
+          await supabase
+            .from("listings")
+            .select(`
+              *,
+              seller:profiles!listings_seller_id_fkey(
+                username,
+                full_name,
+                avatar_url,
+                phone_number
+              ),
+              category:categories!listings_category_id_fkey(
                 name,
                 slug,
                 parent:categories!parent_id(
                   name,
-                  slug
+                  slug,
+                  parent:categories!parent_id(
+                    name,
+                    slug
+                  )
                 )
+              ),
+              location:locations2!listings_location_id_fkey(
+                id,
+                name,
+                slug,
+                parent_id,
+                type
               )
-            ),
-            location:locations2!listings_location_id_fkey(
-              id,
-              name,
-              slug,
-              parent_id,
-              type
-            )
-          `)
-          .eq("id", params.id)
-          .single()
+            `)
+            .eq("id", params.id)
+            .single()
+        )
 
         if (listingError) {
           console.error("Error fetching listing:", listingError)
@@ -127,80 +146,86 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
           throw new Error("Listing not found")
         }
 
-        // Fetch reviews in parallel
-        const { data: reviewsData } = await supabase
-          .from("reviews")
-          .select(`
-            *,
-            reviewer:profiles(
-              username,
-              full_name,
-              avatar_url
-            )
-          `)
-          .eq("listing_id", params.id)
-          .order("created_at", { ascending: false })
+        // Fetch reviews with retry logic
+        const { data: reviewsData } = await retryWithBackoff(async () =>
+          await supabase
+            .from("reviews")
+            .select(`
+              *,
+              reviewer:profiles(
+                username,
+                full_name,
+                avatar_url
+              )
+            `)
+            .eq("listing_id", params.id)
+            .order("created_at", { ascending: false })
+        )
 
-        // Get category hierarchy
+        // Get category hierarchy with retry logic
         const getCategoryHierarchy = async (categoryId: string) => {
-          // First get the subcategory (current category)
-          const { data: subcategory } = await supabase
-            .from("categories")
-            .select("*")
-            .eq("id", categoryId)
-            .single()
+          return await retryWithBackoff(async () => {
+            // First get the subcategory (current category)
+            const { data: subcategory } = await supabase
+              .from("categories")
+              .select("*")
+              .eq("id", categoryId)
+              .single()
 
-          if (!subcategory) return null;
+            if (!subcategory) return null;
 
-          // Get the subgroup (parent of subcategory)
-          const { data: subgroup } = await supabase
-            .from("categories")
-            .select("*")
-            .eq("id", subcategory.parent_id)
-            .single()
+            // Get the subgroup (parent of subcategory)
+            const { data: subgroup } = await supabase
+              .from("categories")
+              .select("*")
+              .eq("id", subcategory.parent_id)
+              .single()
 
-          if (!subgroup) {
+            if (!subgroup) {
+              return {
+                name: subcategory.name,
+                slug: subcategory.slug,
+                parent: null
+              }
+            }
+
+            // Get the main category (parent of subgroup)
+            const { data: mainCategory } = await supabase
+              .from("categories")
+              .select("*")
+              .eq("id", subgroup.parent_id)
+              .single()
+
             return {
               name: subcategory.name,
               slug: subcategory.slug,
-              parent: null
+              parent: {
+                name: subgroup.name,
+                slug: subgroup.slug,
+                parent: mainCategory ? {
+                  name: mainCategory.name,
+                  slug: mainCategory.slug
+                } : null
+              }
             }
-          }
-
-          // Get the main category (parent of subgroup)
-          const { data: mainCategory } = await supabase
-            .from("categories")
-            .select("*")
-            .eq("id", subgroup.parent_id)
-            .single()
-
-          return {
-            name: subcategory.name,
-            slug: subcategory.slug,
-            parent: {
-              name: subgroup.name,
-              slug: subgroup.slug,
-              parent: mainCategory ? {
-                name: mainCategory.name,
-                slug: mainCategory.slug
-              } : null
-            }
-          }
+          })
         }
 
         const categoryHierarchy = await getCategoryHierarchy(listingData.category_id)
 
-        // Update listing with parent location and category hierarchy
+        // Update listing with parent location and category hierarchy with retry logic
         let listingWithParentLocation = {
           ...listingData,
           location: {
             ...listingData.location,
             parent: listingData.location?.parent_id
-              ? (await supabase
-                  .from('locations2')
-                  .select('id, name, slug, type')
-                  .eq('id', listingData.location.parent_id)
-                  .single()).data
+              ? (await retryWithBackoff(async () => 
+                  (await supabase
+                    .from('locations2')
+                    .select('id, name, slug, type')
+                    .eq('id', listingData.location.parent_id)
+                    .single())
+                )).data
               : null
           },
           category: categoryHierarchy,
@@ -212,28 +237,30 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
           setListing(listingWithParentLocation)
           setReviews(reviewsData || [])
 
-        // Fetch similar listings
-          const { data: similarData } = await supabase
-            .from("listings")
-            .select(`
-              *,
-              seller:profiles(
-                username,
-                full_name,
-                avatar_url
-              ),
-              location:locations!listings_location_id_fkey(
-                id,
-                name,
-                slug,
-                parent_id,
+          // Fetch similar listings with retry logic
+          const { data: similarData } = await retryWithBackoff(async () =>
+            await supabase
+              .from("listings")
+              .select(`
+                *,
+                seller:profiles(
+                  username,
+                  full_name,
+                  avatar_url
+                ),
+                location:locations!listings_location_id_fkey(
+                  id,
+                  name,
+                  slug,
+                  parent_id,
                   type
-              ),
-              reviews:reviews(rating)
-            `)
-            .eq("category_id", listingData.category_id)
-            .neq("id", listingData.id)
-            .limit(5)
+                ),
+                reviews:reviews(rating)
+              `)
+              .eq("category_id", listingData.category_id)
+              .neq("id", listingData.id)
+              .limit(5)
+          )
 
           if (similarData) {
             const processedSimilar = similarData.map(listing => ({
@@ -375,14 +402,12 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
                 loading="eager"
                 placeholder="blur"
                 blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
-                onLoadingComplete={(img) => {
-                  img.classList.add('opacity-100')
-                }}
-                data-loaded="false"
                 onLoad={(e) => {
                   const target = e.target as HTMLImageElement
                   target.dataset.loaded = "true"
+                  target.classList.add('opacity-100')
                 }}
+                data-loaded="false"
               />
             </div>
 
@@ -408,14 +433,12 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
                       sizes="(max-width: 768px) 20vw, 10vw"
                       placeholder="blur"
                       blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
-                      onLoadingComplete={(img) => {
-                        img.classList.add('opacity-100')
-                      }}
-                      data-loaded="false"
                       onLoad={(e) => {
                         const target = e.target as HTMLImageElement
                         target.dataset.loaded = "true"
+                        target.classList.add('opacity-100')
                       }}
+                      data-loaded="false"
                     />
                   </button>
                 ))}
