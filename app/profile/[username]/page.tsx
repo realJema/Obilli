@@ -176,46 +176,50 @@ export default async function ProfilePage({
     <div className="container py-8">
       <div className="grid gap-8 md:grid-cols-[300px_1fr]">
         <div className="space-y-6">
-          <div className="aspect-square relative overflow-hidden rounded-lg">
-            <Image
-              src={profile.avatar_url || `/placeholder.svg?text=${profile.full_name.charAt(0)}`}
-              alt={profile.full_name}
-              fill
-              className="object-cover"
-            />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">{profile.full_name}</h1>
-            <p className="text-sm text-muted-foreground">@{profile.username}</p>
-          </div>
-          {profile.location && (
-            <div className="flex items-center text-sm text-muted-foreground">
-              <MapPin className="mr-2 h-4 w-4" />
-              {profile.location}
-            </div>
-          )}
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Calendar className="mr-2 h-4 w-4" />
-            Joined {format(new Date(profile.created_at), "MMMM yyyy")}
-          </div>
-          <div className="flex items-center space-x-4">
-            <div>
-              <div className="text-2xl font-bold">{totalListings || 0}</div>
-              <div className="text-sm text-muted-foreground">Listings</div>
+          <div className="flex items-center gap-4 mb-8">
+            <div className="relative h-20 w-20 rounded-full overflow-hidden">
+              <Image
+                src={profile.avatar_url || "/placeholder-avatar.svg"}
+                alt={profile.full_name || profile.username}
+                fill
+                className="object-cover"
+                sizes="80px"
+                loading="eager"
+                placeholder="blur"
+                blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+              />
             </div>
             <div>
-              <div className="flex items-center">
-                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-1" />
-                <span className="text-2xl font-bold">{averageRating.toFixed(1)}</span>
+              <h1 className="text-2xl font-bold">{profile.full_name}</h1>
+              <p className="text-sm text-muted-foreground">@{profile.username}</p>
+            </div>
+            {profile.location && (
+              <div className="flex items-center text-sm text-muted-foreground">
+                <MapPin className="mr-2 h-4 w-4" />
+                {profile.location}
               </div>
-              <div className="text-sm text-muted-foreground">{reviewCount || 0} reviews</div>
+            )}
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Calendar className="mr-2 h-4 w-4" />
+              Joined {format(new Date(profile.created_at), "MMMM yyyy")}
             </div>
+            <div className="flex items-center space-x-4">
+              <div>
+                <div className="text-2xl font-bold">{totalListings || 0}</div>
+                <div className="text-sm text-muted-foreground">Listings</div>
+              </div>
+              <div>
+                <div className="flex items-center">
+                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-1" />
+                  <span className="text-2xl font-bold">{averageRating.toFixed(1)}</span>
+                </div>
+                <div className="text-sm text-muted-foreground">{reviewCount || 0} reviews</div>
+              </div>
+            </div>
+            {profile.bio && <p className="text-sm">{profile.bio}</p>}
+            <Button className="w-full">Contact</Button>
           </div>
-          {profile.bio && <p className="text-sm">{profile.bio}</p>}
-          <Button className="w-full">Contact</Button>
-        </div>
 
-        <div>
           <Tabs defaultValue="listings" className="mt-6">
             <TabsList>
               <TabsTrigger value="listings">Listings</TabsTrigger>
@@ -226,12 +230,29 @@ export default async function ProfilePage({
               {listings?.length ? (
                 <>
                   <div key={currentPage} className="animate-fadeIn">
-                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                       {listingsWithParentLocations.map((listing) => (
                         isOwnProfile ? (
                           <ProfileListingCard key={listing.id} listing={listing} variant="compact" />
                         ) : (
-                          <ListingCard key={listing.id} listing={listing} variant="compact" />
+                          <Link
+                            key={listing.id}
+                            href={`/listings/${listing.id}`}
+                            className="group"
+                          >
+                            <div className="aspect-[4/3] relative bg-muted rounded-lg overflow-hidden">
+                              <Image
+                                src={listing.images?.[0] || "/placeholder.svg"}
+                                alt={listing.title}
+                                fill
+                                className="object-cover transition-transform group-hover:scale-105"
+                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                                loading="lazy"
+                                placeholder="blur"
+                                blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                              />
+                            </div>
+                          </Link>
                         )
                       ))}
                     </div>

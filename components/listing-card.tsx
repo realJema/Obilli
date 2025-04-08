@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Star, MapPin } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { formatDistanceToNow } from "date-fns"
+import { cn } from "@/lib/utils"
 
 interface Seller {
   username: string
@@ -53,6 +54,9 @@ interface ListingCardProps {
   variant?: 'default' | 'compact'
 }
 
+// Add shimmer loading animation styles
+const shimmer = "before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent"
+
 export function ListingCard({ listing, variant = 'default' }: ListingCardProps) {
   // Helper functions
   const getListingImage = () => {
@@ -96,15 +100,27 @@ export function ListingCard({ listing, variant = 'default' }: ListingCardProps) 
       className="block group h-full"
     >
       <div className="border rounded-lg overflow-hidden transition-colors hover:border-green-600 flex flex-col h-full">
-        <div className="aspect-[16/9] relative bg-muted w-full">
+        <div className={cn(
+          "aspect-[16/9] relative bg-muted w-full overflow-hidden",
+          shimmer
+        )}>
           <Image
             src={getListingImage()}
             alt={listing.title}
             fill
-            className="object-cover"
+            className="object-cover transition-opacity duration-700 opacity-0 data-[loaded=true]:opacity-100"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            priority={false}
             loading="lazy"
+            placeholder="blur"
+            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx0fHRsdHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/2wBDAR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR3/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+            onLoadingComplete={(img) => {
+              img.classList.add('opacity-100')
+            }}
+            data-loaded="false"
+            onLoad={(e) => {
+              const target = e.target as HTMLImageElement
+              target.dataset.loaded = "true"
+            }}
           />
         </div>
         <div className="flex-1 p-4 flex flex-col">
