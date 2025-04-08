@@ -147,6 +147,12 @@ export default function ProfilePage({ params }: { params: { username: string } }
           .from('listings')
           .select(`
             *,
+            seller:profiles(
+              id,
+              username,
+              full_name,
+              avatar_url
+            ),
             location:locations2!inner(
               id,
               name,
@@ -174,8 +180,15 @@ export default function ProfilePage({ params }: { params: { username: string } }
               parentLocation = parent
             }
 
+            // Add seller information from profile
             return {
               ...listing,
+              seller: {
+                ...listing.seller,
+                username: profile.username,
+                full_name: profile.full_name,
+                avatar_url: profile.avatar_url
+              },
               location: {
                 ...listing.location,
                 parent: parentLocation
