@@ -50,11 +50,11 @@ export async function generateMetadata({
       .from("listings")
       .select(`
         *,
-        location:locations!listings_location_id_fkey(
+        location:locations2!listings_location_id_fkey(
           id,
           name,
           slug,
-          parent:locations!locations_parent_id_fkey(
+          parent:locations2!locations2_parent_id_fkey(
             id,
             name,
             slug

@@ -24,7 +24,7 @@ async function getListingsForCategory(categoryId: string) {
   // Helper function to get parent location
   const getParentLocation = async (parentId: string) => {
     const { data } = await supabase
-      .from('locations')
+      .from('locations2')
       .select('id, name, slug, type')
       .eq('id', parentId)
       .single()
@@ -45,7 +45,7 @@ async function getListingsForCategory(categoryId: string) {
         name,
         slug
       ),
-      location:locations!listings_location_id_fkey(
+      location:locations2!listings_location_id_fkey(
         id,
         name,
         slug,

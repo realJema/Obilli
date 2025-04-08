@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft, Star } from "lucide-react"
+import { ArrowLeft, Star, ZoomIn, X } from "lucide-react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { Breadcrumbs } from "@/components/breadcrumbs"
 import { Button } from "@/components/ui/button"
@@ -70,6 +70,7 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [displayedImage, setDisplayedImage] = useState<string | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -80,32 +81,38 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
         setError(null)
         const supabase = createClientComponentClient<Database>()
 
-        // First, check if the listing exists
+        // Fetch the listing with all its relations
         const { data: listingData, error: listingError } = await supabase
           .from("listings")
           .select(`
             *,
-            seller:profiles(
+            seller:profiles!listings_seller_id_fkey(
               username,
               full_name,
               avatar_url,
               phone_number
             ),
-            location:locations!listings_location_id_fkey(
+            category:categories!listings_category_id_fkey(
+              name,
+              slug,
+              parent:categories!parent_id(
+                name,
+                slug,
+                parent:categories!parent_id(
+                  name,
+                  slug
+                )
+              )
+            ),
+            location:locations2!listings_location_id_fkey(
               id,
               name,
               slug,
               parent_id,
               type
-            ),
-            category:categories!listings_category_id_fkey(
-              id,
-                name,
-              slug,
-              parent_id
             )
           `)
-          .eq('id', params.id)
+          .eq("id", params.id)
           .single()
 
         if (listingError) {
@@ -131,67 +138,67 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
           .eq("listing_id", params.id)
           .order("created_at", { ascending: false })
 
-        // Process category hierarchy and parent location in parallel
-        const [parentLocation, categoryHierarchy] = await Promise.all([
-          // Get parent location if exists
-          listingData.location?.parent_id
-            ? supabase
-                .from('locations')
-                .select('id, name, slug, type')
-                .eq('id', listingData.location.parent_id)
-                .single()
-            : Promise.resolve({ data: null }),
+        // Get category hierarchy
+        const getCategoryHierarchy = async (categoryId: string) => {
+          // First get the subcategory (current category)
+          const { data: subcategory } = await supabase
+            .from("categories")
+            .select("*")
+            .eq("id", categoryId)
+            .single()
 
-          // Get category hierarchy
-          (async () => {
-            const category = listingData.category
-            if (!category?.parent_id) return category
+          if (!subcategory) return null;
 
-            const parentCategory = await supabase
-              .from("categories")
-              .select("*")
-              .eq("id", category.parent_id)
-              .single()
+          // Get the subgroup (parent of subcategory)
+          const { data: subgroup } = await supabase
+            .from("categories")
+            .select("*")
+            .eq("id", subcategory.parent_id)
+            .single()
 
-            if (!parentCategory.data?.parent_id) {
-              return {
-                name: category.name,
-                slug: category.slug,
-                parent: parentCategory.data ? {
-                  name: parentCategory.data.name,
-                  slug: parentCategory.data.slug,
-                  parent: null
-                } : null
-              }
-            }
-
-            const mainCategory = await supabase
-              .from("categories")
-              .select("*")
-              .eq("id", parentCategory.data.parent_id)
-              .single()
-
+          if (!subgroup) {
             return {
-              name: category.name,
-              slug: category.slug,
-              parent: {
-                name: parentCategory.data.name,
-                slug: parentCategory.data.slug,
-                parent: mainCategory.data ? {
-                  name: mainCategory.data.name,
-                  slug: mainCategory.data.slug
-                } : null
-              }
+              name: subcategory.name,
+              slug: subcategory.slug,
+              parent: null
             }
-          })()
-        ])
+          }
+
+          // Get the main category (parent of subgroup)
+          const { data: mainCategory } = await supabase
+            .from("categories")
+            .select("*")
+            .eq("id", subgroup.parent_id)
+            .single()
+
+          return {
+            name: subcategory.name,
+            slug: subcategory.slug,
+            parent: {
+              name: subgroup.name,
+              slug: subgroup.slug,
+              parent: mainCategory ? {
+                name: mainCategory.name,
+                slug: mainCategory.slug
+              } : null
+            }
+          }
+        }
+
+        const categoryHierarchy = await getCategoryHierarchy(listingData.category_id)
 
         // Update listing with parent location and category hierarchy
-        const processedListing = {
+        let listingWithParentLocation = {
           ...listingData,
           location: {
             ...listingData.location,
-            parent: parentLocation.data
+            parent: listingData.location?.parent_id
+              ? (await supabase
+                  .from('locations2')
+                  .select('id, name, slug, type')
+                  .eq('id', listingData.location.parent_id)
+                  .single()).data
+              : null
           },
           category: categoryHierarchy,
           rating: 0,
@@ -199,7 +206,7 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
         } as Listing
 
         if (mounted) {
-          setListing(processedListing)
+          setListing(listingWithParentLocation)
           setReviews(reviewsData || [])
 
         // Fetch similar listings
@@ -259,7 +266,8 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
   // Update selected image when listing changes
   useEffect(() => {
     if (listing && Array.isArray(listing.images) && listing.images.length > 0) {
-      setSelectedImage(listing.images[0])
+      // Just update the displayed image, don't open lightbox
+      setDisplayedImage(listing.images[0])
     }
   }, [listing])
 
@@ -289,26 +297,29 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
     if (location.parent) {
       return `${location.parent.name}, ${location.name}`
     }
-    return location.name
+    return location.name || "Location not specified"
   }
 
   const breadcrumbItems = [
-    {
-      label: listing.category.parent?.parent?.name || "Categories",
-      href: `/filter?category=${listing.category.parent?.parent?.slug || ""}`,
-    },
-    {
-      label: listing.category.parent?.name || "All Categories",
-      href: `/filter?category=${listing.category.parent?.slug || ""}`,
-    },
-    {
+    // Add main category if exists
+    ...(listing.category?.parent?.parent ? [{
+      label: listing.category.parent.parent.name,
+      href: `/filter?category=${listing.category.parent.parent.slug}`,
+    }] : []),
+    // Add subgroup
+    ...(listing.category?.parent ? [{
+      label: listing.category.parent.name,
+      href: `/filter?category=${listing.category.parent.slug}`,
+    }] : []),
+    // Add subcategory
+    ...(listing.category ? [{
       label: listing.category.name,
       href: `/filter?category=${listing.category.slug}`,
-    },
+    }] : []),
     {
       label: listing.title,
       href: `/listings/${listing.id}`,
-    },
+    }
   ]
 
   return (
@@ -345,26 +356,32 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
             </div>
 
             {/* Main Image */}
-            <div className="aspect-video relative mb-4">
+            <div 
+              className="aspect-video relative mb-4 cursor-zoom-in"
+              onClick={() => setSelectedImage(displayedImage || listing.images?.[0] || "")}
+            >
               <Image
-                src={selectedImage || listing.images?.[0] || "/placeholder.svg"}
+                src={displayedImage || listing.images?.[0] || "/placeholder.svg"}
                 alt={listing.title}
                 fill
                 className="object-cover rounded-lg"
               />
+              <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                <ZoomIn className="h-8 w-8 text-white" />
+              </div>
             </div>
 
             {/* Thumbnail Gallery */}
             {listing.images && listing.images.length > 0 && (
-            <div className="grid grid-cols-5 gap-4 mb-6">
+              <div className="grid grid-cols-5 gap-4 mb-6">
                 {listing.images.map((image: string, index: number) => (
-                <button
-                  key={index}
+                  <button
+                    key={index}
                     className={cn(
                       "aspect-square relative rounded-lg overflow-hidden cursor-pointer transition-opacity",
-                      selectedImage === image ? "ring-2 ring-primary" : "hover:opacity-80"
+                      displayedImage === image ? "ring-2 ring-primary" : "hover:opacity-80"
                     )}
-                  onClick={() => setSelectedImage(image)}
+                    onClick={() => setDisplayedImage(image)}
                   >
                     <Image 
                       src={image} 
@@ -372,15 +389,15 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
                       fill 
                       className="object-cover" 
                     />
-                </button>
-              ))}
-            </div>
+                  </button>
+                ))}
+              </div>
             )}
 
             {/* Description Section */}
             <div className="mb-12">
               <h2 className="text-xl font-semibold mb-4">Description</h2>
-              <div className="text-sm space-y-4 whitespace-pre-line">{listing.description}</div>
+              <div className="text-base space-y-4 whitespace-pre-line">{listing.description}</div>
             </div>
 
             {/* Reviews Section */}
@@ -395,7 +412,7 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
                 }
               }}
             />
-                </div>
+          </div>
 
           {/* Right Column - Fixed Position */}
           <div className="md:sticky md:top-8 h-fit">
@@ -422,7 +439,6 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
                   <div>
                     <p className="text-sm text-muted-foreground">Category</p>
                     <p className="font-medium">
-                      {listing.category.parent ? `${listing.category.parent.name} › ` : ''}
                       {listing.category.name}
                     </p>
                   </div>
@@ -473,6 +489,35 @@ export default function ListingDetailsPage({ params }: { params: { id: string } 
                 />
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div className="relative max-w-5xl w-full h-full">
+            <Image
+              src={selectedImage}
+              alt={listing.title}
+              fill
+              className="object-contain"
+              priority
+            />
+            <Button
+              variant="secondary"
+              size="icon"
+              className="absolute top-4 right-4"
+              onClick={(e) => {
+                e.stopPropagation()
+                setSelectedImage(null)
+              }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       )}

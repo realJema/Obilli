@@ -92,17 +92,7 @@ export function ListingCard({ listing, variant = 'default' }: ListingCardProps) 
 
   return (
     <Link
-      href={{
-        pathname: `/listings/${listing.id}`,
-        query: {
-          title: listing.title,
-          description: listing.description,
-          price: listing.price,
-          condition: listing.condition,
-          location: listing.location ? JSON.stringify(listing.location) : null,
-          images: listing.images ? JSON.stringify(listing.images) : null
-        }
-      }}
+      href={`/listings/${listing.id}`}
       className="block group h-full"
     >
       <div className="border rounded-lg overflow-hidden transition-colors hover:border-green-600 flex flex-col h-full">

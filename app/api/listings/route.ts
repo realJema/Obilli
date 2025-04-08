@@ -43,7 +43,7 @@ export async function GET(request: Request) {
             )
           )
         ),
-        location:locations!listings_location_id_fkey(
+        location:locations2!listings_location_id_fkey(
           id,
           name,
           slug,
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
     // Get parent locations in a separate query
     const getParentLocation = async (parentId: string) => {
       const { data } = await supabase
-        .from('locations')
+        .from('locations2')
         .select('id, name, slug, type')
         .eq('id', parentId)
         .single()
@@ -144,7 +144,7 @@ export async function GET(request: Request) {
         
         // Get all selected locations with their details
         const { data: selectedLocations, error: locationsError } = await supabase
-          .from('locations')
+          .from('locations2')
           .select('id, type, parent_id')
           .in('id', locationIds)
 
@@ -156,7 +156,7 @@ export async function GET(request: Request) {
         if (selectedLocations && selectedLocations.length > 0) {
           // Get all locations to find quarters for towns
           const { data: allLocations, error: allLocationsError } = await supabase
-            .from('locations')
+            .from('locations2')
             .select('id, parent_id, type')
 
           if (allLocationsError) {

@@ -10,7 +10,7 @@ export async function GET() {
 
     // Fetch only town locations
     const { data: locations, error } = await supabase
-      .from("locations")
+      .from("locations2")
       .select("id, name, slug")
       .eq("type", "town")
       .order("name", { ascending: true })

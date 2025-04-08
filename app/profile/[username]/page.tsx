@@ -112,7 +112,7 @@ export default async function ProfilePage({
       *,
       category:categories(name, slug),
       seller:profiles!seller_id(username, full_name, avatar_url),
-      location:locations!listings_location_id_fkey(
+      location:locations2!listings_location_id_fkey(
         id,
         name,
         slug,
@@ -127,7 +127,7 @@ export default async function ProfilePage({
   // Helper function to get parent location
   const getParentLocation = async (parentId: string) => {
     const { data } = await supabase
-      .from('locations')
+      .from('locations2')
       .select('id, name, slug, type')
       .eq('id', parentId)
       .single()

@@ -76,7 +76,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
           .from("listings")
           .select(`
             *,
-            location:locations!listings_location_id_fkey(
+            location:locations2!listings_location_id_fkey(
               id,
               name,
               slug,

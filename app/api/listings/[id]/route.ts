@@ -9,14 +9,14 @@ export async function GET(request: Request, { params }: { params: { id: string }
       .from("listings")
       .select(`
         *,
-        seller:profiles!seller_id(
+        seller:profiles!listings_seller_id_fkey(
           username,
           full_name,
           avatar_url,
           bio,
           location
         ),
-        category:categories!category_id(
+        category:categories!listings_category_id_fkey(
           name,
           slug,
           parent:categories!parent_id(
@@ -28,13 +28,13 @@ export async function GET(request: Request, { params }: { params: { id: string }
             )
           )
         ),
-        location:locations!location_id(
+        location:locations2!listings_location_id_fkey(
           id,
           name,
           slug,
           parent_id,
           type,
-          parent:locations!parent_id(
+          parent:locations2!locations2_parent_id_fkey(
             id,
             name,
             slug,
@@ -52,7 +52,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       .from("reviews")
       .select(`
         *,
-        reviewer:profiles!reviewer_id(
+        reviewer:profiles!reviews_reviewer_id_fkey(
           username,
           full_name,
           avatar_url
@@ -74,7 +74,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
           full_name,
           avatar_url
         ),
-        location:locations!location_id(
+        location:locations2!listings_location_id_fkey(
           id,
           name,
           slug,
