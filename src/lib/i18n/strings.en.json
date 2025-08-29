@@ -1,0 +1,99 @@
+{
+  "app": {
+    "title": "Bonas",
+    "description": "Buy and sell goods, services, and find jobs in Cameroon"
+  },
+  "nav": {
+    "home": "Home",
+    "search": "Search",
+    "sell": "Sell",
+    "messages": "Messages",
+    "profile": "Profile",
+    "admin": "Admin",
+    "login": "Login",
+    "signup": "Sign Up",
+    "logout": "Logout"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "search": "Search",
+    "filter": "Filter",
+    "clear": "Clear",
+    "apply": "Apply"
+  },
+  "currency": {
+    "symbol": "XAF",
+    "format": "{amount} {symbol}"
+  },
+  "listing": {
+    "title": "Title",
+    "description": "Description",
+    "price": "Price",
+    "location": "Location",
+    "category": "Category",
+    "condition": "Condition",
+    "type": "Type",
+    "status": "Status",
+    "created": "Created",
+    "updated": "Updated",
+    "contact": "Contact Seller",
+    "report": "Report Listing",
+    "share": "Share",
+    "save": "Save Listing"
+  },
+  "types": {
+    "good": "Good",
+    "service": "Service", 
+    "job": "Job"
+  },
+  "status": {
+    "draft": "Draft",
+    "pending": "Pending Review",
+    "published": "Published",
+    "paused": "Paused",
+    "expired": "Expired",
+    "removed": "Removed"
+  },
+  "conditions": {
+    "new": "New",
+    "used": "Used",
+    "refurbished": "Refurbished"
+  },
+  "boost": {
+    "title": "Boost Your Listing",
+    "featured": "Featured",
+    "premium": "Premium",
+    "highlighted": "Highlighted",
+    "duration": "Duration",
+    "days": "days",
+    "purchase": "Purchase Boost"
+  },
+  "messages": {
+    "inbox": "Inbox",
+    "compose": "Compose Message",
+    "reply": "Reply",
+    "send": "Send",
+    "placeholder": "Type your message..."
+  },
+  "auth": {
+    "login": "Login",
+    "signup": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "phone": "Phone Number",
+    "forgotPassword": "Forgot Password?",
+    "rememberMe": "Remember Me",
+    "alreadyAccount": "Already have an account?",
+    "noAccount": "Don't have an account?"
+  }
+}

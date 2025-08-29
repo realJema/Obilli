@@ -1,0 +1,99 @@
+{
+  "app": {
+    "title": "Bonas",
+    "description": "Achetez et vendez des biens, des services et trouvez des emplois au Cameroun"
+  },
+  "nav": {
+    "home": "Accueil",
+    "search": "Rechercher",
+    "sell": "Vendre",
+    "messages": "Messages",
+    "profile": "Profil",
+    "admin": "Admin",
+    "login": "Connexion",
+    "signup": "S'inscrire",
+    "logout": "Déconnexion"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "view": "Voir",
+    "back": "Retour",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "clear": "Effacer",
+    "apply": "Appliquer"
+  },
+  "currency": {
+    "symbol": "XAF",
+    "format": "{amount} {symbol}"
+  },
+  "listing": {
+    "title": "Titre",
+    "description": "Description",
+    "price": "Prix",
+    "location": "Localisation",
+    "category": "Catégorie",
+    "condition": "État",
+    "type": "Type",
+    "status": "Statut",
+    "created": "Créé",
+    "updated": "Mis à jour",
+    "contact": "Contacter le Vendeur",
+    "report": "Signaler l'Annonce",
+    "share": "Partager",
+    "save": "Sauvegarder l'Annonce"
+  },
+  "types": {
+    "good": "Bien",
+    "service": "Service",
+    "job": "Emploi"
+  },
+  "status": {
+    "draft": "Brouillon",
+    "pending": "En attente de révision",
+    "published": "Publié",
+    "paused": "Mis en pause",
+    "expired": "Expiré",
+    "removed": "Supprimé"
+  },
+  "conditions": {
+    "new": "Neuf",
+    "used": "Utilisé",
+    "refurbished": "Reconditionné"
+  },
+  "boost": {
+    "title": "Boostez Votre Annonce",
+    "featured": "En vedette",
+    "premium": "Premium",
+    "highlighted": "Mis en évidence",
+    "duration": "Durée",
+    "days": "jours",
+    "purchase": "Acheter un Boost"
+  },
+  "messages": {
+    "inbox": "Boîte de réception",
+    "compose": "Composer un Message",
+    "reply": "Répondre",
+    "send": "Envoyer",
+    "placeholder": "Tapez votre message..."
+  },
+  "auth": {
+    "login": "Connexion",
+    "signup": "S'inscrire",
+    "email": "Email",
+    "password": "Mot de passe",
+    "phone": "Numéro de téléphone",
+    "forgotPassword": "Mot de passe oublié?",
+    "rememberMe": "Se souvenir de moi",
+    "alreadyAccount": "Vous avez déjà un compte?",
+    "noAccount": "Vous n'avez pas de compte?"
+  }
+}
