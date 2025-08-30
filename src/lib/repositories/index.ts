@@ -4,6 +4,7 @@ export { CategoriesRepository } from './categories';
 export { ProfilesRepository } from './profiles';
 export { MessagesRepository } from './messages';
 export { ReviewsRepository } from './reviews';
+export { BoostsRepository } from './boosts';
 export { locationsRepo } from './locations';
 
 // Import classes for instances
@@ -12,6 +13,7 @@ import { CategoriesRepository } from './categories';
 import { ProfilesRepository } from './profiles';
 import { MessagesRepository } from './messages';
 import { ReviewsRepository } from './reviews';
+import { BoostsRepository } from './boosts';
 
 // Repository factory functions
 export const createListingsRepo = () => new ListingsRepository();
@@ -19,6 +21,7 @@ export const createCategoriesRepo = () => new CategoriesRepository();
 export const createProfilesRepo = () => new ProfilesRepository();
 export const createMessagesRepo = () => new MessagesRepository();
 export const createReviewsRepo = () => new ReviewsRepository();
+export const createBoostsRepo = () => new BoostsRepository();
 
 // Default instances for convenience
 export const listingsRepo = createListingsRepo();
@@ -26,6 +29,7 @@ export const categoriesRepo = createCategoriesRepo();
 export const profilesRepo = createProfilesRepo();
 export const messagesRepo = createMessagesRepo();
 export const reviewsRepo = createReviewsRepo();
+export const boostsRepo = createBoostsRepo();
 
 // Type exports
 export type { ListingFilters, ListingSort } from './listings';

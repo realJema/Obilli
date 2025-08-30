@@ -1,321 +1,574 @@
-export interface Database {
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
   public: {
     Tables: {
-      profiles: {
+      ads: {
         Row: {
-          id: string;
-          username: string | null;
-          full_name: string | null;
-          phone: string | null;
-          whatsapp_number: string | null;
-          show_phone: boolean | null;
-          show_whatsapp: boolean | null;
-          avatar_url: string | null;
-          is_verified: boolean | null;
-          kyc_status: string | null;
-          created_at: string | null;
-          updated_at: string | null;
-        };
+          active: boolean | null
+          created_at: string | null
+          id: number
+          image_url: string | null
+          link_url: string | null
+          placement: string
+        }
         Insert: {
-          id: string;
-          username?: string | null;
-          full_name?: string | null;
-          phone?: string | null;
-          whatsapp_number?: string | null;
-          show_phone?: boolean | null;
-          show_whatsapp?: boolean | null;
-          avatar_url?: string | null;
-          is_verified?: boolean | null;
-          kyc_status?: string | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
+          active?: boolean | null
+          created_at?: string | null
+          id?: number
+          image_url?: string | null
+          link_url?: string | null
+          placement: string
+        }
         Update: {
-          id?: string;
-          username?: string | null;
-          full_name?: string | null;
-          phone?: string | null;
-          whatsapp_number?: string | null;
-          show_phone?: boolean | null;
-          show_whatsapp?: boolean | null;
-          avatar_url?: string | null;
-          is_verified?: boolean | null;
-          kyc_status?: string | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-      };
-      categories: {
-        Row: {
-          id: number;
-          slug: string;
-          name_en: string;
-          name_fr: string;
-          parent_id: number | null;
-          created_at: string | null;
-          icon: string | null;
-          sort_order: number | null;
-        };
-        Insert: {
-          id?: number;
-          slug: string;
-          name_en: string;
-          name_fr: string;
-          parent_id?: number | null;
-          created_at?: string | null;
-          icon?: string | null;
-          sort_order?: number | null;
-        };
-        Update: {
-          id?: number;
-          slug?: string;
-          name_en?: string;
-          name_fr?: string;
-          parent_id?: number | null;
-          created_at?: string | null;
-          icon?: string | null;
-          sort_order?: number | null;
-        };
-      };
-      listings: {
-        Row: {
-          id: string;
-          owner_id: string;
-          category_id: number;
-          type: 'good' | 'service' | 'job';
-          title: string;
-          description: string | null;
-          price_xaf: number | null;
-          negotiable: boolean | null;
-          location_id: number | null;
-          condition: string | null;
-          status: 'draft' | 'pending' | 'published' | 'paused' | 'expired' | 'removed';
-          view_count: number | null;
-          expires_at: string | null;
-          created_at: string | null;
-          updated_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          owner_id: string;
-          category_id: number;
-          type: 'good' | 'service' | 'job';
-          title: string;
-          description?: string | null;
-          price_xaf?: number | null;
-          negotiable?: boolean | null;
-          location_id?: number | null;
-          condition?: string | null;
-          status?: 'draft' | 'pending' | 'published' | 'paused' | 'expired' | 'removed';
-          view_count?: number | null;
-          expires_at?: string | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          owner_id?: string;
-          category_id?: number;
-          type?: 'good' | 'service' | 'job';
-          title?: string;
-          description?: string | null;
-          price_xaf?: number | null;
-          negotiable?: boolean | null;
-          location_id?: number | null;
-          condition?: string | null;
-          status?: 'draft' | 'pending' | 'published' | 'paused' | 'expired' | 'removed';
-          view_count?: number | null;
-          expires_at?: string | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-      };
-      listing_media: {
-        Row: {
-          id: number;
-          listing_id: string;
-          url: string;
-          kind: 'image' | 'video';
-          position: number | null;
-        };
-        Insert: {
-          id?: number;
-          listing_id: string;
-          url: string;
-          kind?: 'image' | 'video';
-          position?: number | null;
-        };
-        Update: {
-          id?: number;
-          listing_id?: string;
-          url?: string;
-          kind?: 'image' | 'video';
-          position?: number | null;
-        };
-      };
-      service_packages: {
-        Row: {
-          id: number;
-          listing_id: string;
-          tier: 'basic' | 'standard' | 'premium';
-          name: string | null;
-          description: string | null;
-          price_xaf: number;
-          delivery_days: number;
-        };
-        Insert: {
-          id?: number;
-          listing_id: string;
-          tier: 'basic' | 'standard' | 'premium';
-          name?: string | null;
-          description?: string | null;
-          price_xaf: number;
-          delivery_days: number;
-        };
-        Update: {
-          id?: number;
-          listing_id?: string;
-          tier?: 'basic' | 'standard' | 'premium';
-          name?: string | null;
-          description?: string | null;
-          price_xaf?: number;
-          delivery_days?: number;
-        };
-      };
-      messages: {
-        Row: {
-          id: number;
-          listing_id: string | null;
-          sender_id: string;
-          recipient_id: string;
-          content: string;
-          created_at: string | null;
-          read_at: string | null;
-        };
-        Insert: {
-          id?: number;
-          listing_id?: string | null;
-          sender_id: string;
-          recipient_id: string;
-          content: string;
-          created_at?: string | null;
-          read_at?: string | null;
-        };
-        Update: {
-          id?: number;
-          listing_id?: string | null;
-          sender_id?: string;
-          recipient_id?: string;
-          content?: string;
-          created_at?: string | null;
-          read_at?: string | null;
-        };
-      };
-      reviews: {
-        Row: {
-          id: number;
-          reviewer_id: string;
-          seller_id: string;
-          listing_id: string | null;
-          rating: number | null;
-          title: string | null;
-          comment: string | null;
-          is_verified: boolean | null;
-          helpful_votes: number | null;
-          created_at: string | null;
-          updated_at: string | null;
-        };
-        Insert: {
-          id?: number;
-          reviewer_id: string;
-          seller_id: string;
-          listing_id?: string | null;
-          rating?: number | null;
-          title?: string | null;
-          comment?: string | null;
-          is_verified?: boolean | null;
-          helpful_votes?: number | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Update: {
-          id?: number;
-          reviewer_id?: string;
-          seller_id?: string;
-          listing_id?: string | null;
-          rating?: number | null;
-          title?: string | null;
-          comment?: string | null;
-          is_verified?: boolean | null;
-          helpful_votes?: number | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-      };
-      locations: {
-        Row: {
-          id: number;
-          location_en: string;
-          location_fr: string;
-          parent_id: number | null;
-          created_at: string | null;
-        };
-        Insert: {
-          id?: number;
-          location_en: string;
-          location_fr: string;
-          parent_id?: number | null;
-          created_at?: string | null;
-        };
-        Update: {
-          id?: number;
-          location_en?: string;
-          location_fr?: string;
-          parent_id?: number | null;
-          created_at?: string | null;
-        };
-      };
+          active?: boolean | null
+          created_at?: string | null
+          id?: number
+          image_url?: string | null
+          link_url?: string | null
+          placement?: string
+        }
+        Relationships: []
+      }
       boosts: {
         Row: {
-          id: number;
-          listing_id: string;
-          owner_id: string;
-          tier: 'featured' | 'premium' | 'top';
-          starts_at: string;
-          expires_at: string;
-          price_xaf: number;
-          payment_status: 'pending' | 'paid' | 'failed' | 'refunded';
-          is_active: boolean;
-          created_at: string | null;
-          updated_at: string | null;
-        };
+          created_at: string | null
+          expires_at: string
+          id: number
+          is_active: boolean
+          listing_id: string
+          owner_id: string | null
+          payment_status: string
+          price_xaf: number
+          starts_at: string
+          tier: string
+          updated_at: string | null
+        }
         Insert: {
-          id?: number;
-          listing_id: string;
-          owner_id: string;
-          tier: 'featured' | 'premium' | 'top';
-          starts_at?: string;
-          expires_at: string;
-          price_xaf: number;
-          payment_status?: 'pending' | 'paid' | 'failed' | 'refunded';
-          is_active?: boolean;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
+          created_at?: string | null
+          expires_at: string
+          id?: number
+          is_active?: boolean
+          listing_id: string
+          owner_id?: string | null
+          payment_status?: string
+          price_xaf?: number
+          starts_at?: string
+          tier: string
+          updated_at?: string | null
+        }
         Update: {
-          id?: number;
-          listing_id?: string;
-          owner_id?: string;
-          tier?: 'featured' | 'premium' | 'top';
-          starts_at?: string;
-          expires_at?: string;
-          price_xaf?: number;
-          payment_status?: 'pending' | 'paid' | 'failed' | 'refunded';
-          is_active?: boolean;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-      };
-    };
-  };
+          created_at?: string | null
+          expires_at?: string
+          id?: number
+          is_active?: boolean
+          listing_id?: string
+          owner_id?: string | null
+          payment_status?: string
+          price_xaf?: number
+          starts_at?: string
+          tier?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boosts_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boosts_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      categories: {
+        Row: {
+          created_at: string | null
+          icon: string | null
+          id: number
+          name_en: string
+          name_fr: string
+          parent_id: number | null
+          slug: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          icon?: string | null
+          id?: number
+          name_en: string
+          name_fr: string
+          parent_id?: number | null
+          slug: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          icon?: string | null
+          id?: number
+          name_en?: string
+          name_fr?: string
+          parent_id?: number | null
+          slug?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_media: {
+        Row: {
+          id: number
+          kind: string
+          listing_id: string
+          position: number | null
+          url: string
+        }
+        Insert: {
+          id?: number
+          kind?: string
+          listing_id: string
+          position?: number | null
+          url: string
+        }
+        Update: {
+          id?: number
+          kind?: string
+          listing_id?: string
+          position?: number | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_media_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listings: {
+        Row: {
+          category_id: number
+          condition: string | null
+          created_at: string | null
+          description: string | null
+          expires_at: string | null
+          id: string
+          location_id: number | null
+          negotiable: boolean | null
+          owner_id: string
+          price_xaf: number | null
+          status: string
+          title: string
+          type: string
+          updated_at: string | null
+          view_count: number | null
+        }
+        Insert: {
+          category_id: number
+          condition?: string | null
+          created_at?: string | null
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          location_id?: number | null
+          negotiable?: boolean | null
+          owner_id: string
+          price_xaf?: number | null
+          status?: string
+          title: string
+          type: string
+          updated_at?: string | null
+          view_count?: number | null
+        }
+        Update: {
+          category_id?: number
+          condition?: string | null
+          created_at?: string | null
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          location_id?: number | null
+          negotiable?: boolean | null
+          owner_id?: string
+          price_xaf?: number | null
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string | null
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listings_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listings_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listings_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      locations: {
+        Row: {
+          created_at: string | null
+          id: number
+          location_en: string
+          location_fr: string
+          parent_id: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          location_en: string
+          location_fr: string
+          parent_id?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          location_en?: string
+          location_fr?: string
+          parent_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "locations_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: number
+          listing_id: string | null
+          read_at: string | null
+          recipient_id: string
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: number
+          listing_id?: string | null
+          read_at?: string | null
+          recipient_id: string
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: number
+          listing_id?: string | null
+          read_at?: string | null
+          recipient_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moderation_flags: {
+        Row: {
+          created_at: string | null
+          id: number
+          listing_id: string
+          reason: string
+          reporter_id: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          listing_id: string
+          reason: string
+          reporter_id?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          listing_id?: string
+          reason?: string
+          reporter_id?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderation_flags_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moderation_flags_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount_xaf: number
+          created_at: string | null
+          currency: string
+          id: string
+          listing_id: string
+          provider: string
+          provider_ref: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount_xaf: number
+          created_at?: string | null
+          currency?: string
+          id?: string
+          listing_id: string
+          provider: string
+          provider_ref?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount_xaf?: number
+          created_at?: string | null
+          currency?: string
+          id?: string
+          listing_id?: string
+          provider?: string
+          provider_ref?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string
+          is_verified: boolean | null
+          kyc_status: string | null
+          phone: string | null
+          show_phone: boolean | null
+          show_whatsapp: boolean | null
+          updated_at: string | null
+          username: string | null
+          whatsapp_number: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          is_verified?: boolean | null
+          kyc_status?: string | null
+          phone?: string | null
+          show_phone?: boolean | null
+          show_whatsapp?: boolean | null
+          updated_at?: string | null
+          username?: string | null
+          whatsapp_number?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          is_verified?: boolean | null
+          kyc_status?: string | null
+          phone?: string | null
+          show_phone?: boolean | null
+          show_whatsapp?: boolean | null
+          updated_at?: string | null
+          username?: string | null
+          whatsapp_number?: string | null
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          id: number
+          listing_id: string | null
+          rating: number
+          reviewer_id: string
+          seller_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string | null
+          id?: number
+          listing_id?: string | null
+          rating: number
+          reviewer_id: string
+          seller_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string | null
+          id?: number
+          listing_id?: string | null
+          rating?: number
+          reviewer_id?: string
+          seller_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_packages: {
+        Row: {
+          delivery_days: number
+          description: string | null
+          id: number
+          listing_id: string
+          name: string | null
+          price_xaf: number
+          tier: string
+        }
+        Insert: {
+          delivery_days: number
+          description?: string | null
+          id?: number
+          listing_id: string
+          name?: string | null
+          price_xaf: number
+          tier: string
+        }
+        Update: {
+          delivery_days?: number
+          description?: string | null
+          id?: number
+          listing_id?: string
+          name?: string | null
+          price_xaf?: number
+          tier?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_packages_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      deactivate_expired_boosts: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
+
+export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
+export type TablesInsert<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert'];
+export type TablesUpdate<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Update'];

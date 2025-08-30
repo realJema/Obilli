@@ -413,12 +413,12 @@ function SimilarListings({ categoryId, currentListingId }: { categoryId: number;
     return (
       <div className="py-8">
         <h3 className="text-xl font-semibold mb-6">Similar Listings</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="bg-card border border-border rounded-lg overflow-hidden animate-pulse">
-              <div className="aspect-[4/3] bg-muted"></div>
-              <div className="p-4 space-y-3">
-                <div className="h-4 bg-muted rounded"></div>
+              <div className="aspect-[3/2] bg-muted"></div>
+              <div className="p-3 space-y-2">
+                <div className="h-3 bg-muted rounded"></div>
                 <div className="h-3 bg-muted rounded w-2/3"></div>
                 <div className="h-3 bg-muted rounded w-1/2"></div>
               </div>
@@ -436,7 +436,7 @@ function SimilarListings({ categoryId, currentListingId }: { categoryId: number;
   return (
     <div className="py-8">
       <h3 className="text-xl font-semibold mb-6">Similar Listings</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {listings.map((listing) => {
           const imageUrl = listing.media && listing.media.length > 0 
             ? listing.media[0].url 
@@ -445,7 +445,7 @@ function SimilarListings({ categoryId, currentListingId }: { categoryId: number;
           return (
             <Link key={listing.id} href={`/listing/${listing.id}`} className="block group">
               <div className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="relative aspect-[4/3]">
+                <div className="relative aspect-[3/2]">
                   <DefaultImage
                     src={imageUrl}
                     alt={listing.title}
@@ -453,19 +453,19 @@ function SimilarListings({ categoryId, currentListingId }: { categoryId: number;
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 </div>
-                <div className="p-4">
-                  <h4 className="font-medium text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                <div className="p-3">
+                  <h4 className="font-medium text-foreground mb-1 line-clamp-2 group-hover:text-primary transition-colors text-sm">
                     {listing.title}
                   </h4>
                   
                   {listing.price_xaf && (
-                    <div className="text-lg font-bold text-primary mb-2">
+                    <div className="text-lg font-bold text-primary mb-1">
                       {formatCurrency(listing.price_xaf)}
                     </div>
                   )}
                   
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4 mr-1" />
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3 mr-1" />
                     {listing.created_at ? formatRelativeTime(listing.created_at) : 'Unknown'}
                   </div>
                 </div>

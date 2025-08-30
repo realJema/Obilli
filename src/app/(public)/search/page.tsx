@@ -228,7 +228,7 @@ function ListingCard({ listing, viewMode }: { listing: ListingWithDetails; viewM
   return (
     <Link href={`/listing/${listing.id}`} className="block group">
       <div className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
-        <div className="relative aspect-[4/3]">
+        <div className="relative aspect-[3/2]">
           <DefaultImage
             src={imageUrl}
             alt={listing.title}
@@ -244,33 +244,33 @@ function ListingCard({ listing, viewMode }: { listing: ListingWithDetails; viewM
           )}
         </div>
         
-        <div className="p-4 flex-1 flex flex-col">
-          <h3 className="font-medium text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors min-h-[2.5rem]">
+        <div className="p-3 flex-1 flex flex-col">
+          <h3 className="font-medium text-foreground mb-1 line-clamp-2 group-hover:text-primary transition-colors min-h-[2rem] text-sm">
             {listing.title}
           </h3>
           
           {listing.description && (
-            <p className="text-sm text-muted-foreground mb-3 line-clamp-2 min-h-[2.5rem]">
+            <p className="text-xs text-muted-foreground mb-2 line-clamp-1">
               {listing.description}
             </p>
           )}
           
           {listing.price_xaf && (
-            <div className="text-xl font-bold text-primary mb-2">
+            <div className="text-lg font-bold text-primary mb-2">
               {formatCurrency(listing.price_xaf)}
             </div>
           )}
           
-          <div className="mt-auto space-y-2">
+          <div className="mt-auto space-y-1">
             {getLocationDisplay() && (
-              <div className="flex items-center text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4 mr-1" />
+              <div className="flex items-center text-xs text-muted-foreground">
+                <MapPin className="h-3 w-3 mr-1" />
                 {getLocationDisplay()}
               </div>
             )}
             
-            <div className="flex items-center text-sm text-muted-foreground">
-              <Clock className="h-4 w-4 mr-1" />
+            <div className="flex items-center text-xs text-muted-foreground">
+              <Clock className="h-3 w-3 mr-1" />
               {formatRelativeTime(listing.created_at || new Date().toISOString())}
             </div>
           </div>
@@ -408,7 +408,7 @@ export default function SearchPage() {
           <div className="lg:col-span-3">
             {isLoading ? (
               <div className={viewMode === 'grid' 
-                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4"
                 : "space-y-4"
               }>
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -418,11 +418,11 @@ export default function SearchPage() {
                   }>
                     {viewMode === 'grid' ? (
                       <>
-                        <div className="aspect-[4/3] bg-muted"></div>
-                        <div className="p-4">
-                          <div className="h-4 bg-muted rounded mb-2"></div>
-                          <div className="h-6 bg-muted rounded mb-2 w-2/3"></div>
-                          <div className="h-4 bg-muted rounded w-1/2"></div>
+                        <div className="aspect-[3/2] bg-muted"></div>
+                        <div className="p-3">
+                          <div className="h-3 bg-muted rounded mb-1"></div>
+                          <div className="h-4 bg-muted rounded mb-2 w-2/3"></div>
+                          <div className="h-3 bg-muted rounded w-1/2"></div>
                         </div>
                       </>
                     ) : (
@@ -447,7 +447,7 @@ export default function SearchPage() {
               </div>
             ) : (
               <div className={viewMode === 'grid' 
-                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4"
                 : "space-y-4"
               }>
                 {listings.map((listing) => (

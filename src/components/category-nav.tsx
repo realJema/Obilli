@@ -61,9 +61,9 @@ export function CategoryNav({ className = "" }: CategoryNavProps) {
   }
 
   return (
-    <nav className={`bg-card border-b border-border ${className}`}>
+    <nav className={`bg-card border-b border-border ${className} sticky top-0 z-50`}>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center space-x-8 py-3 overflow-x-auto">
+        <div className="flex items-center space-x-8 py-3 overflow-x-auto overflow-y-visible">
           {categories.map((category) => (
             <div
               key={category.id}
@@ -83,7 +83,7 @@ export function CategoryNav({ className = "" }: CategoryNavProps) {
 
               {/* Dropdown Menu */}
               {category.children && category.children.length > 0 && activeDropdown === category.id && (
-                <div className="absolute top-full left-0 mt-1 w-64 bg-popover border border-border rounded-md shadow-lg z-[9999]">
+                <div className="absolute top-full left-0 mt-1 w-64 bg-popover border border-border rounded-md shadow-lg z-[9999] min-h-0">
                   <div className="py-2">
                     {category.children.map((subcategory) => (
                       <div key={subcategory.id}>

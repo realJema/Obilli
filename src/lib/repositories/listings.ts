@@ -1,5 +1,5 @@
-import { supabase } from '@/lib/db/client';
 import type { Database } from '@/lib/types/database';
+import { supabase } from '@/lib/db/client';
 
 type Listing = Database['public']['Tables']['listings']['Row'];
 type NewListing = Database['public']['Tables']['listings']['Insert'];
@@ -198,7 +198,7 @@ export class ListingsRepository {
       throw new Error(`Failed to fetch listings: ${error.message}`);
     }
 
-    return { data: data || [], count: count || 0 };
+    return { data: (data || []) as ListingWithDetails[], count: count || 0 };
   }
 
   async getById(id: string): Promise<ListingWithDetails | null> {
@@ -245,7 +245,7 @@ export class ListingsRepository {
       throw new Error(`Failed to fetch listing: ${error.message}`);
     }
 
-    return data;
+    return data as ListingWithDetails;
   }
 
   async getFeatured(limit = 6): Promise<ListingWithDetails[]> {
@@ -298,10 +298,10 @@ export class ListingsRepository {
     if (!data || data.length < limit) {
       const boostedIds = data?.map((listing: { id: string }) => listing.id) || [];
       const regularListings = await this.getRegularFeatured(limit - (data?.length || 0), boostedIds);
-      return [...(data || []), ...regularListings];
+      return [...(data || []), ...regularListings] as ListingWithDetails[];
     }
 
-    return data || [];
+    return (data || []) as ListingWithDetails[];
   }
 
   private async getRegularFeatured(limit: number, excludeIds: string[] = []): Promise<ListingWithDetails[]> {
@@ -351,7 +351,7 @@ export class ListingsRepository {
       throw new Error(`Failed to fetch featured listings: ${error.message}`);
     }
 
-    return data || [];
+    return (data || []) as ListingWithDetails[];
   }
 
   async getByOwner(ownerId: string, status?: string): Promise<ListingWithDetails[]> {
@@ -377,13 +377,13 @@ export class ListingsRepository {
       throw new Error(`Failed to fetch user listings: ${error.message}`);
     }
 
-    return data || [];
+    return (data || []) as ListingWithDetails[];
   }
 
   async create(listing: NewListing): Promise<Listing> {
     const { data, error } = await supabase
       .from('listings')
-      .insert(listing as any)
+      .insert(listing)
       .select()
       .single();
 
@@ -396,18 +396,51 @@ export class ListingsRepository {
 
   async update(id: string, updates: UpdateListing): Promise<Listing> {
     const updateData = { ...updates, updated_at: new Date().toISOString() };
+    
+    // First check if listing exists and user has permission
+    const { data: existingListing, error: checkError } = await supabase
+      .from('listings')
+      .select('id, owner_id, status')
+      .eq('id', id)
+      .single();
+
+    if (checkError) {
+      throw new Error(`Listing not found: ${checkError.message}`);
+    }
+    
+    if (!existingListing) {
+      throw new Error('Listing not found');
+    }
+
+    // Check if user is authenticated
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    // Check if user owns the listing
+    if (existingListing.owner_id !== user.id) {
+      throw new Error('You do not have permission to update this listing');
+    }
+
+    // Now perform the update with explicit user context
     const { data, error } = await supabase
       .from('listings')
-      .update(updateData as any)
+      .update(updateData)
       .eq('id', id)
+      .eq('owner_id', user.id)  // Extra safety check
       .select()
-      .single();
+      .single();  // Use single() since we expect exactly one row
 
     if (error) {
       throw new Error(`Failed to update listing: ${error.message}`);
     }
 
-    return data;
+    if (!data) {
+      throw new Error('Failed to update listing: No data returned');
+    }
+
+    return data as Listing;
   }
 
   async delete(id: string): Promise<void> {
@@ -433,7 +466,7 @@ export class ListingsRepository {
       const currentCount = (currentListing as { view_count?: number }).view_count || 0;
       await supabase
         .from('listings')
-        .update({ view_count: currentCount + 1 } as any)
+        .update({ view_count: currentCount + 1 })
         .eq('id', id);
     }
   }

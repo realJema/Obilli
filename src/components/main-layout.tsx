@@ -17,10 +17,10 @@ export function MainLayout({
   showCategoryNav = true 
 }: MainLayoutProps) {
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col overflow-visible">
       <Header />
       {showCategoryNav && <CategoryNav />}
-      <main className={`flex-1 ${showMobileNav ? 'pb-16 md:pb-0' : ''}`}>
+      <main className={`flex-1 ${showMobileNav ? 'pb-16 md:pb-0' : ''} relative`}>
         {children}
       </main>
       <Footer />

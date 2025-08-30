@@ -91,6 +91,20 @@ export class ProfilesRepository {
   }
 
   async update(id: string, updates: UpdateProfile): Promise<Profile> {
+    // First check if the profile exists
+    const existing = await this.getById(id);
+    if (!existing) {
+      throw new Error('Profile not found');
+    }
+
+    // If username is being updated, validate it
+    if (updates.username && updates.username !== existing.username) {
+      const isAvailable = await this.checkUsernameAvailable(updates.username, id);
+      if (!isAvailable) {
+        throw new Error('Username is already taken');
+      }
+    }
+
     const { data, error } = await supabase
       .from('profiles')
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -99,6 +113,7 @@ export class ProfilesRepository {
       .single();
 
     if (error) {
+      console.error('Profile update error:', error);
       throw new Error(`Failed to update profile: ${error.message}`);
     }
 
