@@ -7,6 +7,9 @@ export interface Database {
           username: string | null;
           full_name: string | null;
           phone: string | null;
+          whatsapp_number: string | null;
+          show_phone: boolean | null;
+          show_whatsapp: boolean | null;
           avatar_url: string | null;
           is_verified: boolean | null;
           kyc_status: string | null;
@@ -18,6 +21,9 @@ export interface Database {
           username?: string | null;
           full_name?: string | null;
           phone?: string | null;
+          whatsapp_number?: string | null;
+          show_phone?: boolean | null;
+          show_whatsapp?: boolean | null;
           avatar_url?: string | null;
           is_verified?: boolean | null;
           kyc_status?: string | null;
@@ -29,6 +35,9 @@ export interface Database {
           username?: string | null;
           full_name?: string | null;
           phone?: string | null;
+          whatsapp_number?: string | null;
+          show_phone?: boolean | null;
+          show_whatsapp?: boolean | null;
           avatar_url?: string | null;
           is_verified?: boolean | null;
           kyc_status?: string | null;
@@ -78,10 +87,10 @@ export interface Database {
           description: string | null;
           price_xaf: number | null;
           negotiable: boolean | null;
-          location_city: string | null;
-          location_region: string | null;
+          location_id: number | null;
           condition: string | null;
           status: 'draft' | 'pending' | 'published' | 'paused' | 'expired' | 'removed';
+          view_count: number | null;
           expires_at: string | null;
           created_at: string | null;
           updated_at: string | null;
@@ -95,10 +104,10 @@ export interface Database {
           description?: string | null;
           price_xaf?: number | null;
           negotiable?: boolean | null;
-          location_city?: string | null;
-          location_region?: string | null;
+          location_id?: number | null;
           condition?: string | null;
           status?: 'draft' | 'pending' | 'published' | 'paused' | 'expired' | 'removed';
+          view_count?: number | null;
           expires_at?: string | null;
           created_at?: string | null;
           updated_at?: string | null;
@@ -112,10 +121,10 @@ export interface Database {
           description?: string | null;
           price_xaf?: number | null;
           negotiable?: boolean | null;
-          location_city?: string | null;
-          location_region?: string | null;
+          location_id?: number | null;
           condition?: string | null;
           status?: 'draft' | 'pending' | 'published' | 'paused' | 'expired' | 'removed';
+          view_count?: number | null;
           expires_at?: string | null;
           created_at?: string | null;
           updated_at?: string | null;
@@ -209,8 +218,12 @@ export interface Database {
           seller_id: string;
           listing_id: string | null;
           rating: number | null;
+          title: string | null;
           comment: string | null;
+          is_verified: boolean | null;
+          helpful_votes: number | null;
           created_at: string | null;
+          updated_at: string | null;
         };
         Insert: {
           id?: number;
@@ -218,8 +231,12 @@ export interface Database {
           seller_id: string;
           listing_id?: string | null;
           rating?: number | null;
+          title?: string | null;
           comment?: string | null;
+          is_verified?: boolean | null;
+          helpful_votes?: number | null;
           created_at?: string | null;
+          updated_at?: string | null;
         };
         Update: {
           id?: number;
@@ -227,8 +244,76 @@ export interface Database {
           seller_id?: string;
           listing_id?: string | null;
           rating?: number | null;
+          title?: string | null;
           comment?: string | null;
+          is_verified?: boolean | null;
+          helpful_votes?: number | null;
           created_at?: string | null;
+          updated_at?: string | null;
+        };
+      };
+      locations: {
+        Row: {
+          id: number;
+          location_en: string;
+          location_fr: string;
+          parent_id: number | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: number;
+          location_en: string;
+          location_fr: string;
+          parent_id?: number | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: number;
+          location_en?: string;
+          location_fr?: string;
+          parent_id?: number | null;
+          created_at?: string | null;
+        };
+      };
+      boosts: {
+        Row: {
+          id: number;
+          listing_id: string;
+          owner_id: string;
+          tier: 'featured' | 'premium' | 'top';
+          starts_at: string;
+          expires_at: string;
+          price_xaf: number;
+          payment_status: 'pending' | 'paid' | 'failed' | 'refunded';
+          is_active: boolean;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: number;
+          listing_id: string;
+          owner_id: string;
+          tier: 'featured' | 'premium' | 'top';
+          starts_at?: string;
+          expires_at: string;
+          price_xaf: number;
+          payment_status?: 'pending' | 'paid' | 'failed' | 'refunded';
+          is_active?: boolean;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: number;
+          listing_id?: string;
+          owner_id?: string;
+          tier?: 'featured' | 'premium' | 'top';
+          starts_at?: string;
+          expires_at?: string;
+          price_xaf?: number;
+          payment_status?: 'pending' | 'paid' | 'failed' | 'refunded';
+          is_active?: boolean;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
       };
     };

@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react";
 import { MainLayout } from "@/components/main-layout";
 import { useI18n } from "@/lib/providers";
-import { categoriesRepo } from "@/lib/repositories";
+import { categoriesRepo, locationsRepo } from "@/lib/repositories";
 import type { CategoryWithChildren } from "@/lib/repositories/categories";
+import type { LocationOption } from "@/lib/repositories/locations";
 import { 
   Upload, 
   MapPin, 
@@ -15,12 +16,17 @@ import {
   FileText, 
   Camera,
   X,
-  Plus
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  Eye
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
 type ListingType = 'good' | 'service' | 'job';
+type Step = 1 | 2 | 3 | 4 | 5;
 
 interface ServicePackage {
   tier: 'basic' | 'standard' | 'premium';
@@ -40,6 +46,9 @@ export default function SellPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasProfile, setHasProfile] = useState(false);
 
+  // Step state
+  const [currentStep, setCurrentStep] = useState<Step>(1);
+
   // Form state
   const [listingType, setListingType] = useState<ListingType>('good');
   const [title, setTitle] = useState('');
@@ -48,21 +57,129 @@ export default function SellPage() {
   const [price, setPrice] = useState('');
   const [negotiable, setNegotiable] = useState(false);
   const [condition, setCondition] = useState('new');
-  const [locationCity, setLocationCity] = useState('');
-  const [locationRegion, setLocationRegion] = useState('');
+  const [locationId, setLocationId] = useState<number | null>(null);
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [servicePackages, setServicePackages] = useState<ServicePackage[]>([]);
 
   // Data
   const [categories, setCategories] = useState<CategoryWithChildren[]>([]);
+  const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
+  const [filteredLocations, setFilteredLocations] = useState<LocationOption[]>([]);
+  const [locationSearch, setLocationSearch] = useState('');
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const cameroonRegions = [
-    'Adamawa', 'Centre', 'East', 'Far North', 'Littoral', 
-    'North', 'Northwest', 'South', 'Southwest', 'West'
+  const steps = [
+    { number: 1, title: 'Type, Category & Location', icon: Package },
+    { number: 2, title: 'Basic Info', icon: FileText },
+    { number: 3, title: 'Pricing & Details', icon: DollarSign },
+    { number: 4, title: 'Photos', icon: Camera },
+    { number: 5, title: 'Preview & Publish', icon: Eye },
   ];
+
+  // Helper function to format number with thousand separators
+  const formatNumberWithSeparators = (value: string): string => {
+    const cleanValue = value.replace(/[^0-9]/g, '');
+    if (!cleanValue) return '';
+    return parseInt(cleanValue).toLocaleString();
+  };
+
+  // Helper function to parse number from formatted string
+  const parseFormattedNumber = (value: string): string => {
+    return value.replace(/[^0-9]/g, '');
+  };
+
+  // Local storage key
+  const STORAGE_KEY = 'sell-listing-draft';
+
+  // Save form data to localStorage
+  const saveToLocalStorage = () => {
+    const formData = {
+      listingType,
+      title,
+      description,
+      categoryId,
+      price,
+      negotiable,
+      condition,
+      locationId,
+      servicePackages,
+      // Note: images are not saved to localStorage due to size
+      imagesCount: images.length
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+  };
+
+  // Load form data from localStorage
+  const loadFromLocalStorage = () => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const formData = JSON.parse(saved);
+        setListingType(formData.listingType || 'good');
+        setTitle(formData.title || '');
+        setDescription(formData.description || '');
+        setCategoryId(formData.categoryId || null);
+        setPrice(formData.price || '');
+        setNegotiable(formData.negotiable || false);
+        setCondition(formData.condition || 'new');
+        setLocationId(formData.locationId || null);
+        setServicePackages(formData.servicePackages || []);
+      }
+    } catch (error) {
+      console.error('Failed to load saved data:', error);
+    }
+  };
+
+  // Clear saved data
+  const clearLocalStorage = () => {
+    localStorage.removeItem(STORAGE_KEY);
+  };
+
+  // Step validation
+  const validateStep = (step: Step): boolean => {
+    switch (step) {
+      case 1:
+        return !!listingType && !!categoryId;
+      case 2:
+        return !!title.trim() && !!description.trim();
+      case 3:
+        if (listingType === 'service') {
+          return servicePackages.length > 0 && servicePackages.every(pkg => 
+            pkg.name.trim() && pkg.description.trim() && pkg.price_xaf > 0
+          );
+        }
+        return true; // Price is optional for jobs
+      case 4:
+        return images.length > 0;
+      case 5:
+        return true; // Preview step, just needs to review
+      default:
+        return false;
+    }
+  };
+
+  const canProceed = (step: Step): boolean => {
+    return validateStep(step);
+  };
+
+  const nextStep = () => {
+    if (currentStep < 5 && canProceed(currentStep)) {
+      setCurrentStep((prev) => (prev + 1) as Step);
+      setError('');
+    } else {
+      setError('Please complete all required fields before proceeding.');
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep((prev) => (prev - 1) as Step);
+      setError('');
+    }
+  };
 
   // Check authentication and profile on mount
   useEffect(() => {
@@ -97,35 +214,79 @@ export default function SellPage() {
     checkAuth();
   }, [user, router, supabase]);
 
-  // Load categories
+  // Load categories and locations
   useEffect(() => {
-    const loadCategories = async () => {
+    const loadData = async () => {
       try {
-        const categoriesData = await categoriesRepo.getAll();
+        const [categoriesData, locationsData] = await Promise.all([
+          categoriesRepo.getAll(),
+          locationsRepo.getQuarterOptions()
+        ]);
         setCategories(categoriesData);
+        setLocationOptions(locationsData);
+        setFilteredLocations([]); // Start with empty results
+        
+        // Load saved form data
+        loadFromLocalStorage();
       } catch (error) {
-        console.error('Failed to load categories:', error);
+        console.error('Failed to load data:', error);
       }
     };
 
     if (hasProfile) {
-      loadCategories();
+      loadData();
     }
   }, [hasProfile]);
+
+  // Save form data whenever it changes
+  useEffect(() => {
+    if (hasProfile) {
+      saveToLocalStorage();
+    }
+  }, [listingType, title, description, categoryId, price, negotiable, condition, locationId, servicePackages, hasProfile]);
+
+  // Filter locations based on search
+  useEffect(() => {
+    if (!locationSearch.trim()) {
+      setFilteredLocations(locationOptions.slice(0, 20)); // Show first 20 by default
+      setShowLocationDropdown(false);
+    } else {
+      const filtered = locationOptions.filter(location =>
+        location.label.toLowerCase().includes(locationSearch.toLowerCase())
+      );
+      setFilteredLocations(filtered.slice(0, 20)); // Show top 20 results
+      setShowLocationDropdown(filtered.length > 0);
+    }
+  }, [locationSearch, locationOptions]);
 
   // Handle image upload
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length + images.length > 5) {
-      setError('Maximum 5 images allowed');
+    
+    // Filter for valid image files
+    const validFiles = files.filter(file => {
+      const isImage = file.type.startsWith('image/');
+      const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB limit
+      return isImage && isValidSize;
+    });
+    
+    if (validFiles.length !== files.length) {
+      setError('Some files were rejected. Only images under 10MB are allowed.');
+    }
+    
+    if (validFiles.length + images.length > 10) {
+      setError('Maximum 10 images allowed');
       return;
     }
 
-    setImages([...images, ...files]);
+    setImages([...images, ...validFiles]);
     
     // Create previews
-    const newPreviews = files.map(file => URL.createObjectURL(file));
+    const newPreviews = validFiles.map(file => URL.createObjectURL(file));
     setImagePreviews([...imagePreviews, ...newPreviews]);
+    
+    // Clear the input
+    e.target.value = '';
   };
 
   // Remove image
@@ -135,6 +296,19 @@ export default function SellPage() {
     
     // Revoke object URL to prevent memory leaks
     URL.revokeObjectURL(imagePreviews[index]);
+    
+    setImages(newImages);
+    setImagePreviews(newPreviews);
+  };
+
+  // Move image (for reordering)
+  const moveImage = (fromIndex: number, toIndex: number) => {
+    const newImages = [...images];
+    const newPreviews = [...imagePreviews];
+    
+    // Swap positions
+    [newImages[fromIndex], newImages[toIndex]] = [newImages[toIndex], newImages[fromIndex]];
+    [newPreviews[fromIndex], newPreviews[toIndex]] = [newPreviews[toIndex], newPreviews[fromIndex]];
     
     setImages(newImages);
     setImagePreviews(newPreviews);
@@ -163,7 +337,7 @@ export default function SellPage() {
   };
 
   // Update service package
-  const updateServicePackage = (index: number, field: keyof ServicePackage, value: any) => {
+  const updateServicePackage = (index: number, field: keyof ServicePackage, value: string | number) => {
     const updated = servicePackages.map((pkg, i) => 
       i === index ? { ...pkg, [field]: value } : pkg
     );
@@ -215,8 +389,7 @@ export default function SellPage() {
           price_xaf: price ? parseInt(price) : null,
           negotiable,
           condition: listingType === 'good' ? condition : null,
-          location_city: locationCity,
-          location_region: locationRegion,
+          location_id: locationId,
           status: 'published',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -260,11 +433,12 @@ export default function SellPage() {
         if (packagesError) throw packagesError;
       }
 
-      // Redirect to listing
-      router.push(`/listing/${listing.id}`);
-    } catch (error: any) {
+      // Clear saved data and redirect to success page
+      clearLocalStorage();
+      router.push(`/sell/success?id=${listing.id}&title=${encodeURIComponent(title)}`);
+    } catch (error: unknown) {
       console.error('Failed to create listing:', error);
-      setError(error.message);
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -273,10 +447,51 @@ export default function SellPage() {
   if (isLoading) {
     return (
       <MainLayout>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Loading...</p>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="max-w-4xl mx-auto">
+            {/* Header skeleton */}
+            <div className="mb-8">
+              <div className="h-8 bg-muted rounded w-80 mb-2 animate-pulse"></div>
+              <div className="h-6 bg-muted rounded w-96 animate-pulse"></div>
+            </div>
+            
+            {/* Progress steps skeleton */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-6">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="flex items-center">
+                    <div className="w-10 h-10 rounded-full bg-muted animate-pulse"></div>
+                    {i < 5 && <div className="flex-1 h-0.5 mx-4 bg-muted animate-pulse"></div>}
+                  </div>
+                ))}
+              </div>
+              <div className="text-center">
+                <div className="h-6 bg-muted rounded w-64 mx-auto animate-pulse"></div>
+              </div>
+            </div>
+            
+            {/* Form skeleton */}
+            <div className="bg-card border border-border rounded-lg p-6">
+              <div className="h-6 bg-muted rounded w-48 mb-6 animate-pulse"></div>
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-24 bg-muted rounded-lg animate-pulse"></div>
+                  ))}
+                </div>
+                <div>
+                  <div className="h-4 bg-muted rounded w-24 mb-2 animate-pulse"></div>
+                  <div className="h-12 bg-muted rounded animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Navigation skeleton */}
+            <div className="flex justify-between items-center pt-6 border-t border-border mt-8">
+              <div className="h-12 bg-muted rounded w-24 animate-pulse"></div>
+              <div className="h-4 bg-muted rounded w-20 animate-pulse"></div>
+              <div className="h-12 bg-muted rounded w-24 animate-pulse"></div>
+            </div>
           </div>
         </div>
       </MainLayout>
@@ -307,12 +522,63 @@ export default function SellPage() {
   return (
     <MainLayout>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="max-w-3xl mx-auto">
+        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">Create New Listing</h1>
             <p className="text-muted-foreground">
               Share your items, services, or job opportunities with the community
             </p>
+          </div>
+
+          {/* Progress Steps */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              {steps.map((step, index) => {
+                const isActive = currentStep === step.number;
+                const isCompleted = currentStep > step.number;
+                const canAccess = currentStep >= step.number || isCompleted;
+                
+                return (
+                  <div key={step.number} className="flex items-center">
+                    <button
+                      onClick={() => {
+                        if (canAccess && (isCompleted || validateStep(currentStep))) {
+                          setCurrentStep(step.number as Step);
+                        }
+                      }}
+                      disabled={!canAccess}
+                      className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors ${
+                        isCompleted
+                          ? 'bg-primary border-primary text-primary-foreground'
+                          : isActive
+                          ? 'border-primary text-primary'
+                          : canAccess
+                          ? 'border-muted-foreground text-muted-foreground hover:border-primary hover:text-primary'
+                          : 'border-muted text-muted cursor-not-allowed'
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <Check className="h-5 w-5" />
+                      ) : (
+                        <step.icon className="h-5 w-5" />
+                      )}
+                    </button>
+                    
+                    {index < steps.length - 1 && (
+                      <div className={`flex-1 h-0.5 mx-4 ${
+                        isCompleted ? 'bg-primary' : 'bg-muted'
+                      }`} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            
+            <div className="text-center">
+              <h2 className="text-xl font-semibold text-foreground">
+                Step {currentStep}: {steps[currentStep - 1].title}
+              </h2>
+            </div>
           </div>
 
           {error && (
@@ -321,366 +587,682 @@ export default function SellPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Listing Type */}
-            <div className="bg-card border border-border rounded-lg p-6">
-              <h2 className="text-lg font-semibold mb-4">What are you listing?</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {[
-                  { value: 'good', label: 'Sell an Item', desc: 'Physical goods and products' },
-                  { value: 'service', label: 'Offer a Service', desc: 'Skills and professional services' },
-                  { value: 'job', label: 'Post a Job', desc: 'Employment opportunities' },
-                ].map((type) => (
-                  <button
-                    key={type.value}
-                    type="button"
-                    onClick={() => setListingType(type.value as ListingType)}
-                    className={`p-4 border-2 rounded-lg text-left transition-colors ${
-                      listingType === type.value
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    <div className="font-medium text-foreground">{type.label}</div>
-                    <div className="text-sm text-muted-foreground mt-1">{type.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Basic Information */}
-            <div className="bg-card border border-border rounded-lg p-6">
-              <h2 className="text-lg font-semibold mb-4 flex items-center">
-                <FileText className="h-5 w-5 mr-2" />
-                Basic Information
-              </h2>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                    placeholder="What are you listing?"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Category *
-                  </label>
-                  <select
-                    required
-                    value={categoryId || ''}
-                    onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}
-                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map((category) => (
-                      <optgroup key={category.id} label={category.name_en}>
-                        <option value={category.id}>{category.name_en}</option>
-                        {category.children?.map((child) => (
-                          <option key={child.id} value={child.id}>
-                            └ {child.name_en}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Description *
-                  </label>
-                  <textarea
-                    required
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={5}
-                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                    placeholder="Provide details about your listing..."
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Pricing */}
-            {listingType !== 'job' && (
+          <div className="space-y-8">
+            {/* Step Content */}
+            {currentStep === 1 && (
               <div className="bg-card border border-border rounded-lg p-6">
-                <h2 className="text-lg font-semibold mb-4 flex items-center">
-                  <DollarSign className="h-5 w-5 mr-2" />
-                  Pricing
-                </h2>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">
-                      Price (XAF)
-                    </label>
-                    <input
-                      type="number"
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                      className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                      placeholder="Enter price in XAF"
-                    />
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="negotiable"
-                      checked={negotiable}
-                      onChange={(e) => setNegotiable(e.target.checked)}
-                      className="rounded"
-                    />
-                    <label htmlFor="negotiable" className="text-sm text-foreground">
-                      Price is negotiable
-                    </label>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Condition (for goods) */}
-            {listingType === 'good' && (
-              <div className="bg-card border border-border rounded-lg p-6">
-                <h2 className="text-lg font-semibold mb-4 flex items-center">
-                  <Package className="h-5 w-5 mr-2" />
-                  Condition
-                </h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <h3 className="text-lg font-semibold mb-6">What are you listing?</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                   {[
-                    { value: 'new', label: 'New', desc: 'Never used, in original packaging' },
-                    { value: 'used', label: 'Used', desc: 'Previously owned, good condition' },
-                    { value: 'refurbished', label: 'Refurbished', desc: 'Restored to working condition' },
-                  ].map((cond) => (
+                    { value: 'good', label: 'Sell an Item', desc: 'Physical goods and products' },
+                    { value: 'service', label: 'Offer a Service', desc: 'Skills and professional services' },
+                    { value: 'job', label: 'Post a Job', desc: 'Employment opportunities' },
+                  ].map((type) => (
                     <button
-                      key={cond.value}
+                      key={type.value}
                       type="button"
-                      onClick={() => setCondition(cond.value)}
+                      onClick={() => setListingType(type.value as ListingType)}
                       className={`p-4 border-2 rounded-lg text-left transition-colors ${
-                        condition === cond.value
+                        listingType === type.value
                           ? 'border-primary bg-primary/5'
                           : 'border-border hover:border-primary/50'
                       }`}
                     >
-                      <div className="font-medium text-foreground">{cond.label}</div>
-                      <div className="text-sm text-muted-foreground mt-1">{cond.desc}</div>
+                      <div className="font-medium text-foreground">{type.label}</div>
+                      <div className="text-sm text-muted-foreground mt-1">{type.desc}</div>
                     </button>
                   ))}
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Category *
+                    </label>
+                    <select
+                      required
+                      value={categoryId || ''}
+                      onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}
+                      className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-background text-foreground"
+                    >
+                      <option value="">Select a category</option>
+                      {categories.map((category) => (
+                        <optgroup key={category.id} label={category.name_en}>
+                          <option value={category.id}>{category.name_en}</option>
+                          {category.children?.map((child) => (
+                            <option key={child.id} value={child.id}>
+                              └ {child.name_en}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Location (Optional)
+                    </label>
+                    <div className="relative">
+                      {/* Selected location display */}
+                      {locationId ? (
+                        <div className="w-full px-4 py-3 border border-border rounded-md bg-background text-foreground flex items-center justify-between">
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 text-primary mr-2" />
+                            <span>{locationOptions.find(l => l.value === locationId)?.label}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLocationId(null);
+                              setLocationSearch('');
+                              setShowLocationDropdown(false);
+                            }}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <input
+                            type="text"
+                            value={locationSearch}
+                            onChange={(e) => setLocationSearch(e.target.value)}
+                            onFocus={() => setShowLocationDropdown(true)}
+                            onBlur={() => {
+                              setTimeout(() => setShowLocationDropdown(false), 200);
+                            }}
+                            className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-background text-foreground"
+                            placeholder="Type to search locations..."
+                          />
+                          
+                          {/* Dropdown */}
+                          {showLocationDropdown && filteredLocations.length > 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                              <div className="py-1">
+                                {filteredLocations.map((location) => (
+                                  <div
+                                    key={location.value}
+                                    onClick={() => {
+                                      setLocationId(location.value);
+                                      setLocationSearch('');
+                                      setShowLocationDropdown(false);
+                                    }}
+                                    className="px-4 py-2 hover:bg-accent cursor-pointer transition-colors"
+                                  >
+                                    <div className="flex items-center">
+                                      <MapPin className="h-4 w-4 text-primary mr-2" />
+                                      <div>
+                                        <div className="font-medium">{location.quarter || location.city}</div>
+                                        <div className="text-sm text-muted-foreground">
+                                          {location.city && location.quarter ? `${location.city}, ` : ''}{location.region}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Service Packages */}
-            {listingType === 'service' && (
+            {currentStep === 2 && (
               <div className="bg-card border border-border rounded-lg p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold flex items-center">
-                    <Package className="h-5 w-5 mr-2" />
-                    Service Packages
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={addServicePackage}
-                    className="flex items-center text-primary hover:text-primary/80 text-sm font-medium"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Package
-                  </button>
+                <h3 className="text-lg font-semibold mb-6">Basic Information</h3>
+                
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Title *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                      placeholder="What are you listing?"
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {title.length}/100 characters
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Description *
+                    </label>
+                    <textarea
+                      required
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={6}
+                      className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                      placeholder="Provide details about your listing..."
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {description.length}/1000 characters
+                    </p>
+                  </div>
                 </div>
+              </div>
+            )}
 
-                <div className="space-y-4">
-                  {servicePackages.map((pkg, index) => (
-                    <div key={index} className="border border-border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-medium capitalize">{pkg.tier} Package</h3>
-                        <button
-                          type="button"
-                          onClick={() => removeServicePackage(index)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
+            {currentStep === 3 && (
+              <div className="bg-card border border-border rounded-lg p-6">
+                <h3 className="text-lg font-semibold mb-6">
+                  {listingType === 'job' ? 'Job Details' : listingType === 'service' ? 'Service Packages' : 'Pricing & Details'}
+                </h3>
+                
+                {listingType === 'service' ? (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <p className="text-muted-foreground">Create packages for your service</p>
+                      <button
+                        type="button"
+                        onClick={addServicePackage}
+                        disabled={servicePackages.length >= 3}
+                        className="flex items-center text-primary hover:text-primary/80 text-sm font-medium disabled:opacity-50"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Package
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {servicePackages.map((pkg, index) => (
+                        <div key={index} className="border border-border rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-medium capitalize">{pkg.tier} Package</h4>
+                            <button
+                              type="button"
+                              onClick={() => removeServicePackage(index)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium mb-1">Package Name *</label>
+                              <input
+                                type="text"
+                                required
+                                value={pkg.name}
+                                onChange={(e) => updateServicePackage(index, 'name', e.target.value)}
+                                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                                placeholder="e.g., Logo Design"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-sm font-medium mb-1">Price (XAF) *</label>
+                                <input
+                                  type="text"
+                                  required
+                                  value={formatNumberWithSeparators(pkg.price_xaf?.toString() || '')}
+                                  onChange={(e) => updateServicePackage(index, 'price_xaf', parseInt(parseFormattedNumber(e.target.value)) || 0)}
+                                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                                  placeholder="0"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium mb-1">Delivery (days) *</label>
+                                <input
+                                  type="number"
+                                  required
+                                  min="1"
+                                  value={pkg.delivery_days || ''}
+                                  onChange={(e) => updateServicePackage(index, 'delivery_days', parseInt(e.target.value) || 1)}
+                                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-medium mb-1">Description *</label>
+                              <textarea
+                                required
+                                value={pkg.description}
+                                onChange={(e) => updateServicePackage(index, 'description', e.target.value)}
+                                rows={2}
+                                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                                placeholder="What's included in this package?"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {servicePackages.length === 0 && (
+                        <div className="text-center py-8 border-2 border-dashed border-border rounded-lg">
+                          <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <p className="text-muted-foreground mb-4">
+                            Add service packages to offer different options
+                          </p>
+                          <button
+                            type="button"
+                            onClick={addServicePackage}
+                            className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium hover:bg-primary/90"
+                          >
+                            Create First Package
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {listingType === 'good' && (
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          Condition
+                        </label>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {[
+                            { value: 'new', label: 'New', desc: 'Never used, in original packaging' },
+                            { value: 'used', label: 'Used', desc: 'Previously owned, good condition' },
+                            { value: 'refurbished', label: 'Refurbished', desc: 'Restored to working condition' },
+                          ].map((cond) => (
+                            <button
+                              key={cond.value}
+                              type="button"
+                              onClick={() => setCondition(cond.value)}
+                              className={`p-4 border-2 rounded-lg text-left transition-colors ${
+                                condition === cond.value
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-border hover:border-primary/50'
+                              }`}
+                            >
+                              <div className="font-medium text-foreground">{cond.label}</div>
+                              <div className="text-sm text-muted-foreground mt-1">{cond.desc}</div>
+                            </button>
+                          ))}
+                        </div>
                       </div>
+                    )}
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {listingType !== 'job' && (
+                      <div className="space-y-4">
                         <div>
-                          <label className="block text-sm font-medium mb-1">Package Name</label>
+                          <label className="block text-sm font-medium text-foreground mb-2">
+                            Price (XAF)
+                          </label>
                           <input
                             type="text"
-                            value={pkg.name}
-                            onChange={(e) => updateServicePackage(index, 'name', e.target.value)}
-                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
-                            placeholder="e.g., Logo Design"
+                            value={formatNumberWithSeparators(price)}
+                            onChange={(e) => setPrice(parseFormattedNumber(e.target.value))}
+                            className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                            placeholder="Enter price in XAF"
                           />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-sm font-medium mb-1">Price (XAF)</label>
-                            <input
-                              type="number"
-                              value={pkg.price_xaf}
-                              onChange={(e) => updateServicePackage(index, 'price_xaf', parseInt(e.target.value))}
-                              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-1">Delivery (days)</label>
-                            <input
-                              type="number"
-                              value={pkg.delivery_days}
-                              onChange={(e) => updateServicePackage(index, 'delivery_days', parseInt(e.target.value))}
-                              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium mb-1">Description</label>
-                          <textarea
-                            value={pkg.description}
-                            onChange={(e) => updateServicePackage(index, 'description', e.target.value)}
-                            rows={2}
-                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
-                            placeholder="What's included in this package?"
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="negotiable"
+                            checked={negotiable}
+                            onChange={(e) => setNegotiable(e.target.checked)}
+                            className="rounded"
                           />
+                          <label htmlFor="negotiable" className="text-sm text-foreground">
+                            Price is negotiable
+                          </label>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
-                  {servicePackages.length === 0 && (
-                    <p className="text-muted-foreground text-center py-4">
-                      Add service packages to offer different options to your customers
-                    </p>
+            {currentStep === 4 && (
+              <div className="bg-card border border-border rounded-lg p-6">
+                <h3 className="text-lg font-semibold mb-6">Add Photos</h3>
+
+                <div className="space-y-6">
+                  <div>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
+                      id="image-upload"
+                    />
+                    <label
+                      htmlFor="image-upload"
+                      className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary transition-colors"
+                    >
+                      <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground text-center">
+                        Click to upload images<br />
+                        <span className="text-xs">(Maximum 10 images, at least 1 required)</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Supported: JPG, PNG, GIF (max 10MB each)
+                      </p>
+                    </label>
+                  </div>
+
+                  {imagePreviews.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-medium">Uploaded Images ({imagePreviews.length}/10)</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Drag to reorder • First image will be the main photo
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        {imagePreviews.map((preview, index) => (
+                          <div key={index} className="relative group">
+                            <div className="relative aspect-square">
+                              <Image
+                                src={preview}
+                                alt={`Preview ${index + 1}`}
+                                fill
+                                className="object-cover rounded-lg border border-border"
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded-lg" />
+                              
+                              {/* Remove button */}
+                              <button
+                                type="button"
+                                onClick={() => removeImage(index)}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                              
+                              {/* Main photo indicator */}
+                              {index === 0 && (
+                                <div className="absolute bottom-1 left-1 bg-primary text-primary-foreground text-xs px-2 py-1 rounded">
+                                  Main
+                                </div>
+                              )}
+                              
+                              {/* Order indicators */}
+                              <div className="absolute top-1 left-1 bg-black/50 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center">
+                                {index + 1}
+                              </div>
+                              
+                              {/* Reorder buttons */}
+                              {index > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => moveImage(index, index - 1)}
+                                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <ChevronLeft className="h-3 w-3" />
+                                </button>
+                              )}
+                              {index < imagePreviews.length - 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => moveImage(index, index + 1)}
+                                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <ChevronRight className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="mt-4 space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          <strong>Tips for better photos:</strong>
+                        </p>
+                        <ul className="text-xs text-muted-foreground space-y-1 ml-4">
+                          <li>• Use good lighting and take clear, focused shots</li>
+                          <li>• Show the item from multiple angles</li>
+                          <li>• Include any important details or flaws</li>
+                          <li>• The first image will be shown as the main photo in listings</li>
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+
+                  {imagePreviews.length === 0 && (
+                    <div className="text-center py-8 border-2 border-dashed border-border rounded-lg">
+                      <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground mb-4">
+                        Add at least one photo to showcase your listing
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Good photos help attract more buyers!
+                      </p>
+                      <label
+                        htmlFor="image-upload"
+                        className="inline-flex items-center bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium hover:bg-primary/90 cursor-pointer"
+                      >
+                        <Camera className="h-4 w-4 mr-2" />
+                        Upload Photos
+                      </label>
+                    </div>
                   )}
                 </div>
               </div>
             )}
 
-            {/* Images */}
-            <div className="bg-card border border-border rounded-lg p-6">
-              <h2 className="text-lg font-semibold mb-4 flex items-center">
-                <Camera className="h-5 w-5 mr-2" />
-                Photos
-              </h2>
-
-              <div className="space-y-4">
-                <div>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                    id="image-upload"
-                  />
-                  <label
-                    htmlFor="image-upload"
-                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary transition-colors"
-                  >
-                    <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      Click to upload images (max 5)
-                    </p>
-                  </label>
-                </div>
-
-                {imagePreviews.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    {imagePreviews.map((preview, index) => (
-                      <div key={index} className="relative">
-                        <Image
-                          src={preview}
-                          alt={`Preview ${index + 1}`}
-                          width={150}
-                          height={150}
-                          className="w-full h-24 object-cover rounded-lg"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
+            {currentStep === 5 && (
+              <div className="bg-card border border-border rounded-lg p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold">Preview Your Listing</h3>
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Eye className="h-4 w-4 mr-1" />
+                    How buyers will see your listing
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Location */}
-            <div className="bg-card border border-border rounded-lg p-6">
-              <h2 className="text-lg font-semibold mb-4 flex items-center">
-                <MapPin className="h-5 w-5 mr-2" />
-                Location
-              </h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    City
-                  </label>
-                  <input
-                    type="text"
-                    value={locationCity}
-                    onChange={(e) => setLocationCity(e.target.value)}
-                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                    placeholder="e.g., Yaoundé"
-                  />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">
-                    Region
-                  </label>
-                  <select
-                    value={locationRegion}
-                    onChange={(e) => setLocationRegion(e.target.value)}
-                    className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                  >
-                    <option value="">Select region</option>
-                    {cameroonRegions.map((region) => (
-                      <option key={region} value={region}>
-                        {region}
-                      </option>
-                    ))}
-                  </select>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Listing Preview Card */}
+                  <div className="border border-border rounded-lg overflow-hidden bg-background">
+                    <div className="relative aspect-[4/3] bg-muted">
+                      {imagePreviews.length > 0 ? (
+                        <>
+                          <Image
+                            src={imagePreviews[0]}
+                            alt="Listing preview"
+                            fill
+                            className="object-cover"
+                          />
+                          {imagePreviews.length > 1 && (
+                            <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                              +{imagePreviews.length - 1} more
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="flex items-center justify-center h-full">
+                          <Camera className="h-12 w-12 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="p-4">
+                      <h4 className="font-semibold text-lg mb-2 line-clamp-2">
+                        {title || 'Your listing title will appear here'}
+                      </h4>
+                      
+                      {(price && listingType !== 'job') && (
+                        <div className="text-xl font-bold text-primary mb-2">
+                          {formatCurrency(parseInt(price))}
+                          {negotiable && (
+                            <span className="text-sm font-normal text-muted-foreground ml-2">
+                              (Negotiable)
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
+                        <div className="flex items-center">
+                          <MapPin className="h-4 w-4 mr-1" />
+                          {locationId 
+                            ? locationOptions.find(l => l.value === locationId)?.label || 'Location'
+                            : 'No location specified'
+                          }
+                        </div>
+                        <div className="capitalize">
+                          {listingType} • {categories.find(c => c.id === categoryId)?.name_en || 'Category'}
+                        </div>
+                      </div>
+                      
+                      {description && (
+                        <p className="text-sm text-muted-foreground line-clamp-3">
+                          {description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Summary Details */}
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="font-semibold mb-3">Listing Summary</h4>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Type:</span>
+                          <span className="capitalize font-medium">{listingType}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Category:</span>
+                          <span className="font-medium">
+                            {categories.find(c => c.id === categoryId)?.name_en || 'Not selected'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Location:</span>
+                          <span className="font-medium">
+                            {locationId 
+                              ? locationOptions.find(l => l.value === locationId)?.label 
+                              : 'Not specified'
+                            }
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Images:</span>
+                          <span className="font-medium">{imagePreviews.length} uploaded</span>
+                        </div>
+                        {listingType !== 'job' && price && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Price:</span>
+                            <span className="font-medium">
+                              {formatCurrency(parseInt(price))} 
+                              {negotiable && <span className="text-xs text-muted-foreground ml-1">(Negotiable)</span>}
+                            </span>
+                          </div>
+                        )}
+                        {listingType === 'good' && condition && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Condition:</span>
+                            <span className="font-medium capitalize">{condition}</span>
+                          </div>
+                        )}
+                        {listingType === 'service' && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Service Packages:</span>
+                            <span className="font-medium">{servicePackages.length} configured</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {description && (
+                      <div>
+                        <h4 className="font-semibold mb-3">Description</h4>
+                        <div className="text-sm bg-muted/50 p-3 rounded border max-h-32 overflow-y-auto">
+                          {description}
+                        </div>
+                      </div>
+                    )}
+
+                    {listingType === 'service' && servicePackages.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold mb-3">Service Packages</h4>
+                        <div className="space-y-2">
+                          {servicePackages.map((pkg, index) => (
+                            <div key={index} className="text-sm border rounded p-2">
+                              <div className="font-medium capitalize">{pkg.tier}: {pkg.name}</div>
+                              <div className="text-muted-foreground">
+                                {formatCurrency(pkg.price_xaf)} • {pkg.delivery_days} days delivery
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Ready to publish?</strong> Once published, your listing will be visible to all users. 
+                    You can edit or remove it later from your seller dashboard.
+                  </p>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Submit */}
-            <div className="flex justify-end space-x-4">
+            {/* Navigation */}
+            <div className="flex justify-between items-center pt-6 border-t border-border">
               <button
                 type="button"
-                onClick={() => router.back()}
-                className="px-6 py-3 border border-border rounded-md font-medium text-foreground hover:bg-accent transition-colors"
+                onClick={prevStep}
+                disabled={currentStep === 1}
+                className="flex items-center px-6 py-3 border border-border rounded-md font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Cancel
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                Previous
               </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-6 py-3 bg-primary text-primary-foreground rounded-md font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? 'Publishing...' : 'Publish Listing'}
-              </button>
+              
+              <div className="text-sm text-muted-foreground">
+                Step {currentStep} of {steps.length}
+              </div>
+              
+              {currentStep < 5 ? (
+                <button
+                  type="button"
+                  onClick={nextStep}
+                  disabled={!canProceed(currentStep)}
+                  className="flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-md font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !canProceed(currentStep)}
+                  className="flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-md font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Publishing...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Publish Listing
+                    </>
+                  )}
+                </button>
+              )}
             </div>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
     </MainLayout>
   );

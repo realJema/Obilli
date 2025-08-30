@@ -4,6 +4,7 @@ export { CategoriesRepository } from './categories';
 export { ProfilesRepository } from './profiles';
 export { MessagesRepository } from './messages';
 export { ReviewsRepository } from './reviews';
+export { locationsRepo } from './locations';
 
 // Import classes for instances
 import { ListingsRepository } from './listings';
@@ -32,3 +33,4 @@ export type { CategoryWithChildren } from './categories';
 export type { ProfileWithStats } from './profiles';
 export type { MessageWithProfiles, Conversation } from './messages';
 export type { ReviewWithProfiles, ReviewStats } from './reviews';
+export type { Location, LocationOption } from './locations';

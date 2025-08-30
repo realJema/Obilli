@@ -99,24 +99,24 @@ export function Footer() {
             {/* About */}
             <div>
               <h4 className="font-semibold mb-4">About Bonas</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <ul className="space-y-2 text-base text-muted-foreground">
                 <li>
-                  <Link href="/about" className="hover:text-foreground transition-colors">
+                  <Link href="/about" className="hover:text-primary transition-colors">
                     About Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/careers" className="hover:text-foreground transition-colors">
+                  <Link href="/careers" className="hover:text-primary transition-colors">
                     Careers
                   </Link>
                 </li>
                 <li>
-                  <Link href="/press" className="hover:text-foreground transition-colors">
+                  <Link href="/press" className="hover:text-primary transition-colors">
                     Press
                   </Link>
                 </li>
                 <li>
-                  <Link href="/blog" className="hover:text-foreground transition-colors">
+                  <Link href="/blog" className="hover:text-primary transition-colors">
                     Blog
                   </Link>
                 </li>
@@ -126,24 +126,24 @@ export function Footer() {
             {/* Support */}
             <div>
               <h4 className="font-semibold mb-4">Support</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <ul className="space-y-2 text-base text-muted-foreground">
                 <li>
-                  <Link href="/help" className="hover:text-foreground transition-colors">
+                  <Link href="/help" className="hover:text-primary transition-colors">
                     Help Center
                   </Link>
                 </li>
                 <li>
-                  <Link href="/contact" className="hover:text-foreground transition-colors">
+                  <Link href="/contact" className="hover:text-primary transition-colors">
                     Contact Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/safety" className="hover:text-foreground transition-colors">
+                  <Link href="/safety" className="hover:text-primary transition-colors">
                     Safety Tips
                   </Link>
                 </li>
                 <li>
-                  <Link href="/report" className="hover:text-foreground transition-colors">
+                  <Link href="/report" className="hover:text-primary transition-colors">
                     Report Issue
                   </Link>
                 </li>
@@ -153,24 +153,24 @@ export function Footer() {
             {/* Legal */}
             <div>
               <h4 className="font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <ul className="space-y-2 text-base text-muted-foreground">
                 <li>
-                  <Link href="/terms" className="hover:text-foreground transition-colors">
+                  <Link href="/terms" className="hover:text-primary transition-colors">
                     Terms of Service
                   </Link>
                 </li>
                 <li>
-                  <Link href="/privacy" className="hover:text-foreground transition-colors">
+                  <Link href="/privacy" className="hover:text-primary transition-colors">
                     Privacy Policy
                   </Link>
                 </li>
                 <li>
-                  <Link href="/cookies" className="hover:text-foreground transition-colors">
+                  <Link href="/cookies" className="hover:text-primary transition-colors">
                     Cookie Policy
                   </Link>
                 </li>
                 <li>
-                  <Link href="/prohibited" className="hover:text-foreground transition-colors">
+                  <Link href="/prohibited" className="hover:text-primary transition-colors">
                     Prohibited Items
                   </Link>
                 </li>
@@ -180,24 +180,24 @@ export function Footer() {
             {/* Connect */}
             <div>
               <h4 className="font-semibold mb-4">Connect</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <ul className="space-y-2 text-base text-muted-foreground">
                 <li>
-                  <a href="https://facebook.com/bonas" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
+                  <a href="https://facebook.com/bonas" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
                     Facebook
                   </a>
                 </li>
                 <li>
-                  <a href="https://twitter.com/bonas" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
+                  <a href="https://twitter.com/bonas" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
                     Twitter
                   </a>
                 </li>
                 <li>
-                  <a href="https://instagram.com/bonas" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
+                  <a href="https://instagram.com/bonas" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
                     Instagram
                   </a>
                 </li>
                 <li>
-                  <a href="https://linkedin.com/company/bonas" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
+                  <a href="https://linkedin.com/company/bonas" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
                     LinkedIn
                   </a>
                 </li>

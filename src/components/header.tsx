@@ -168,6 +168,26 @@ export function Header() {
                             Settings
                           </Link>
                           
+                          <div className="border-t border-border my-2"></div>
+                          
+                          {/* Theme Toggle in dropdown */}
+                          <div className="px-4 py-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-foreground">Theme</span>
+                              <ThemeToggle />
+                            </div>
+                          </div>
+                          
+                          {/* Language Switcher in dropdown */}
+                          <div className="px-4 py-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-foreground">Language</span>
+                              <LanguageSwitcher />
+                            </div>
+                          </div>
+                          
+                          <div className="border-t border-border my-2"></div>
+                          
                           <button
                             onClick={handleSignOut}
                             className="flex items-center w-full px-4 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
@@ -197,11 +217,13 @@ export function Header() {
               </button>
             )}
 
-            {/* Theme Toggle */}
-            <ThemeToggle />
-
-            {/* Language Switcher */}
-            <LanguageSwitcher />
+            {/* Theme Toggle and Language Switcher - only show if not logged in */}
+            {!user && (
+              <>
+                <ThemeToggle />
+                <LanguageSwitcher />
+              </>
+            )}
 
             {/* Mobile Menu */}
             <button className="md:hidden p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">

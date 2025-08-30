@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/providers";
 import { Search, TrendingUp, Star, Clock, MapPin, ChevronLeft, ChevronRight, type LucideIcon } from "lucide-react";
 import { listingsRepo, categoriesRepo } from "@/lib/repositories";
 import type { ListingWithDetails } from "@/lib/repositories/listings";
+import { hasActiveBoost, getActiveBoostTier } from "@/lib/repositories/listings";
 import type { CategoryWithChildren } from "@/lib/repositories/categories";
 import Link from "next/link";
 import { DefaultImage } from "@/components/default-image";
@@ -44,7 +45,7 @@ function HeroCarousel({ listings, isLoading }: { listings: ListingWithDetails[];
 
   if (isLoading) {
     return (
-      <section className="relative h-96 bg-gradient-to-r from-primary to-primary/80 animate-pulse">
+      <section className="relative h-[800px] bg-gradient-to-r from-primary to-primary/80 animate-pulse">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-center">
           <div className="text-center text-primary-foreground">
             <div className="h-8 bg-white/20 rounded w-64 mx-auto mb-4"></div>
@@ -57,7 +58,7 @@ function HeroCarousel({ listings, isLoading }: { listings: ListingWithDetails[];
 
   if (listings.length === 0) {
     return (
-      <section className="relative h-96 bg-gradient-to-r from-primary to-primary/80">
+      <section className="relative h-[800px] bg-gradient-to-r from-primary to-primary/80">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-center">
           <div className="text-center text-primary-foreground">
             <h1 className="text-4xl font-bold mb-4">Welcome to Bonas Marketplace</h1>
@@ -74,7 +75,7 @@ function HeroCarousel({ listings, isLoading }: { listings: ListingWithDetails[];
     : 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?q=80&w=1200&h=400&auto=format&fit=crop';
 
   return (
-    <section className="relative h-96 overflow-hidden">
+    <section className="relative h-[800px] overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0">
         <DefaultImage
@@ -153,6 +154,32 @@ function ListingCard({ listing }: { listing: ListingWithDetails }) {
     ? listing.media[0].url 
     : 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?q=80&w=400&h=300&auto=format&fit=crop';
   
+  // Check if listing has active boost
+  const isActivelyBoosted = hasActiveBoost(listing);
+  const boostTier = getActiveBoostTier(listing);
+  
+  // Build location display from hierarchical data
+  const getLocationDisplay = () => {
+    if (!listing.location) return null;
+    
+    const parts = [];
+    
+    // Quarter name
+    parts.push(listing.location.location_en);
+    
+    // City name
+    if (listing.location.city) {
+      parts.push(listing.location.city.location_en);
+    }
+    
+    // Region name (only if we have city)
+    if (listing.location.city?.region) {
+      parts.push(`(${listing.location.city.region.location_en})`);
+    }
+    
+    return parts.join(', ');
+  };
+  
   return (
     <Link href={`/listing/${listing.id}`} className="block group">
       <div className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
@@ -163,15 +190,17 @@ function ListingCard({ listing }: { listing: ListingWithDetails }) {
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
-          {/* Show featured badge for boosted listings */}
-          <div className="absolute top-3 left-3 bg-primary text-primary-foreground px-2 py-1 rounded-md text-xs font-medium flex items-center">
-            <Star className="h-3 w-3 mr-1" />
-            Featured
-          </div>
+          {/* Show featured badge only for actively boosted listings */}
+          {isActivelyBoosted && (
+            <div className="absolute top-3 left-3 bg-primary text-primary-foreground px-2 py-1 rounded-md text-xs font-medium flex items-center">
+              <Star className="h-3 w-3 mr-1" />
+              {boostTier === 'top' ? 'Top' : boostTier === 'premium' ? 'Premium' : 'Featured'}
+            </div>
+          )}
         </div>
         
         <div className="p-4 flex-1 flex flex-col">
-          <h3 className="font-medium text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors min-h-[2.5rem]">
+          <h3 className="font-medium text-foreground mb-1 line-clamp-2 group-hover:text-primary transition-colors min-h-[2.5rem]">
             {listing.title}
           </h3>
           
@@ -188,10 +217,10 @@ function ListingCard({ listing }: { listing: ListingWithDetails }) {
           )}
           
           <div className="mt-auto space-y-2">
-            {(listing.location_city || listing.location_region) && (
+            {getLocationDisplay() && (
               <div className="flex items-center text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4 mr-1" />
-                {[listing.location_city, listing.location_region].filter(Boolean).join(', ')}
+                {getLocationDisplay()}
               </div>
             )}
             
@@ -229,7 +258,7 @@ function HorizontalScrollSection({ title, icon: Icon, listings, isLoading }: {
 
   if (isLoading) {
     return (
-      <section className="mb-8">
+      <section className="mb-16">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
             <Icon className="h-6 w-6 text-primary mr-3" />
@@ -272,7 +301,7 @@ function HorizontalScrollSection({ title, icon: Icon, listings, isLoading }: {
   }
 
   return (
-    <section className="mb-8">
+    <section className="mb-16">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <Icon className="h-6 w-6 text-primary mr-3" />
@@ -375,7 +404,7 @@ function CategorySection({ category, listings, isLoading }: {
   }
 
   return (
-    <section className="mb-8">
+    <section className="mb-16">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-foreground">{category.name_en}</h2>
         
@@ -441,14 +470,9 @@ export default function HomePage() {
         const hero = await listingsRepo.getFeatured(5);
         setHeroListings(hero);
         
-        // Load featured listings for horizontal scroll (different from hero)
-        const featured = await listingsRepo.getAll(
-          {},
-          { field: 'created_at', direction: 'desc' },
-          10,
-          0
-        );
-        setFeaturedListings(featured.data);
+        // Load featured listings for horizontal scroll (actually featured)
+        const featured = await listingsRepo.getFeatured(10);
+        setFeaturedListings(featured);
         
         // Load recent listings
         const recent = await listingsRepo.getAll(

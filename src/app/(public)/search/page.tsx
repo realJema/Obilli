@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { listingsRepo, categoriesRepo } from "@/lib/repositories";
 import type { ListingWithDetails, ListingFilters } from "@/lib/repositories/listings";
+import { hasActiveBoost, getActiveBoostTier } from "@/lib/repositories/listings";
 import type { CategoryWithChildren } from "@/lib/repositories/categories";
 import Link from "next/link";
 import { DefaultImage } from "@/components/default-image";
@@ -93,14 +94,24 @@ function SearchFilters({
       
       {/* Location */}
       <div>
-        <label className="block text-sm font-medium mb-2">City</label>
-        <input 
-          type="text" 
-          placeholder="Enter city"
-          value={filters.location_city || ''}
-          onChange={(e) => onFiltersChange({ ...filters, location_city: e.target.value || undefined })}
+        <label className="block text-sm font-medium mb-2">Region</label>
+        <select 
+          value={filters.region_id || ''} 
+          onChange={(e) => onFiltersChange({ ...filters, region_id: e.target.value ? Number(e.target.value) : undefined })}
           className="w-full p-2 border border-border rounded-md"
-        />
+        >
+          <option value="">Any Region</option>
+          <option value="2">Centre</option>
+          <option value="5">Littoral</option>
+          <option value="7">Northwest</option>
+          <option value="10">West</option>
+          <option value="9">Southwest</option>
+          <option value="1">Adamawa</option>
+          <option value="3">East</option>
+          <option value="4">Far North</option>
+          <option value="6">North</option>
+          <option value="8">South</option>
+        </select>
       </div>
       
       {/* Condition */}
@@ -137,6 +148,32 @@ function ListingCard({ listing, viewMode }: { listing: ListingWithDetails; viewM
     ? listing.media[0].url 
     : 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?q=80&w=400&h=300&auto=format&fit=crop';
   
+  // Check if listing has active boost
+  const isActivelyBoosted = hasActiveBoost(listing);
+  const boostTier = getActiveBoostTier(listing);
+  
+  // Build location display from hierarchical data
+  const getLocationDisplay = () => {
+    if (!listing.location) return null;
+    
+    const parts = [];
+    
+    // Quarter name
+    parts.push(listing.location.location_en);
+    
+    // City name
+    if (listing.location.city) {
+      parts.push(listing.location.city.location_en);
+    }
+    
+    // Region name (only if we have city)
+    if (listing.location.city?.region) {
+      parts.push(`(${listing.location.city.region.location_en})`);
+    }
+    
+    return parts.join(', ');
+  };
+  
   if (viewMode === 'list') {
     return (
       <Link href={`/listing/${listing.id}`} className="block group">
@@ -169,10 +206,10 @@ function ListingCard({ listing, viewMode }: { listing: ListingWithDetails; viewM
               )}
               
               <div className="flex items-center space-x-4 text-xs text-muted-foreground">
-                {(listing.location_city || listing.location_region) && (
+                {getLocationDisplay() && (
                   <div className="flex items-center">
                     <MapPin className="h-3 w-3 mr-1" />
-                    {[listing.location_city, listing.location_region].filter(Boolean).join(', ')}
+                    {getLocationDisplay()}
                   </div>
                 )}
                 
@@ -198,10 +235,13 @@ function ListingCard({ listing, viewMode }: { listing: ListingWithDetails; viewM
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
-          <div className="absolute top-3 left-3 bg-primary text-primary-foreground px-2 py-1 rounded-md text-xs font-medium flex items-center">
-            <Star className="h-3 w-3 mr-1" />
-            Featured
-          </div>
+          {/* Show featured badge only for actively boosted listings */}
+          {isActivelyBoosted && (
+            <div className="absolute top-3 left-3 bg-primary text-primary-foreground px-2 py-1 rounded-md text-xs font-medium flex items-center">
+              <Star className="h-3 w-3 mr-1" />
+              {boostTier === 'top' ? 'Top' : boostTier === 'premium' ? 'Premium' : 'Featured'}
+            </div>
+          )}
         </div>
         
         <div className="p-4 flex-1 flex flex-col">
@@ -222,10 +262,10 @@ function ListingCard({ listing, viewMode }: { listing: ListingWithDetails; viewM
           )}
           
           <div className="mt-auto space-y-2">
-            {(listing.location_city || listing.location_region) && (
+            {getLocationDisplay() && (
               <div className="flex items-center text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4 mr-1" />
-                {[listing.location_city, listing.location_region].filter(Boolean).join(', ')}
+                {getLocationDisplay()}
               </div>
             )}
             

@@ -9,15 +9,69 @@ type ListingWithDetails = Listing & {
   owner?: Database['public']['Tables']['profiles']['Row'];
   media?: Database['public']['Tables']['listing_media']['Row'][];
   service_packages?: Database['public']['Tables']['service_packages']['Row'][];
+  boosts?: Database['public']['Tables']['boosts']['Row'][];
+  location?: {
+    id: number;
+    location_en: string;
+    location_fr: string;
+    parent_id: number | null;
+    city?: {
+      id: number;
+      location_en: string;
+      location_fr: string;
+      parent_id: number | null;
+      region?: {
+        id: number;
+        location_en: string;
+        location_fr: string;
+        parent_id: number | null;
+      };
+    };
+  };
 };
 
 export type { ListingWithDetails };
 
+// Helper function to check if a listing has active boost
+export function hasActiveBoost(listing: ListingWithDetails): boolean {
+  if (!listing.boosts || listing.boosts.length === 0) return false;
+  
+  const now = new Date();
+  return listing.boosts.some(boost => 
+    boost.is_active && 
+    boost.expires_at && 
+    new Date(boost.expires_at) > now
+  );
+}
+
+// Helper function to get active boost tier
+export function getActiveBoostTier(listing: ListingWithDetails): string | null {
+  if (!listing.boosts || listing.boosts.length === 0) return null;
+  
+  const now = new Date();
+  const activeBoosts = listing.boosts.filter(boost => 
+    boost.is_active && 
+    boost.expires_at && 
+    new Date(boost.expires_at) > now
+  );
+  
+  if (activeBoosts.length === 0) return null;
+  
+  // Return highest tier boost (top > premium > featured)
+  const tierOrder = { 'top': 3, 'premium': 2, 'featured': 1 };
+  return activeBoosts.reduce((highest, boost) => {
+    const currentTier = tierOrder[boost.tier as keyof typeof tierOrder] || 0;
+    const highestTier = tierOrder[highest.tier as keyof typeof tierOrder] || 0;
+    return currentTier > highestTier ? boost : highest;
+  }).tier;
+}
+
 export interface ListingFilters {
   type?: 'good' | 'service' | 'job';
   category_id?: number;
-  location_city?: string;
-  location_region?: string;
+  location_id?: number;
+  region_id?: number;
+  city_id?: number;
   min_price?: number;
   max_price?: number;
   condition?: string;
@@ -44,7 +98,31 @@ export class ListingsRepository {
         category:categories(*),
         owner:profiles(*),
         media:listing_media(*),
-        service_packages(*)
+        service_packages(*),
+        boosts(
+          id,
+          tier,
+          is_active,
+          expires_at
+        ),
+        location:locations!location_id(
+          id,
+          location_en,
+          location_fr,
+          parent_id,
+          city:parent_id(
+            id,
+            location_en,
+            location_fr,
+            parent_id,
+            region:parent_id(
+              id,
+              location_en,
+              location_fr,
+              parent_id
+            )
+          )
+        )
       `, { count: 'exact' })
       .eq('status', 'published');
 
@@ -53,13 +131,44 @@ export class ListingsRepository {
       query = query.eq('type', filters.type);
     }
     if (filters.category_id) {
-      query = query.eq('category_id', filters.category_id);
+      // Get all subcategories of the specified category
+      const { data: subcategories, error: subcatError } = await supabase
+        .from('categories')
+        .select('id')
+        .or(`id.eq.${filters.category_id},parent_id.eq.${filters.category_id}`);
+      
+      if (!subcatError && subcategories && subcategories.length > 0) {
+        const categoryIds = subcategories.map((cat: { id: number }) => cat.id);
+        query = query.in('category_id', categoryIds);
+      } else {
+        // Fallback to just the specified category
+        query = query.eq('category_id', filters.category_id);
+      }
     }
-    if (filters.location_city) {
-      query = query.eq('location_city', filters.location_city);
+    if (filters.location_id) {
+      query = query.eq('location_id', filters.location_id);
     }
-    if (filters.location_region) {
-      query = query.eq('location_region', filters.location_region);
+    if (filters.region_id) {
+      // Filter by region - get all quarters in cities within this region
+      const { data: regionQuarters, error: regionError } = await supabase
+        .from('locations')
+        .select('id')
+        .or(`parent_id.in.(select id from locations where parent_id=${filters.region_id})`);
+      
+      if (!regionError && regionQuarters && regionQuarters.length > 0) {
+        query = query.in('location_id', regionQuarters.map((l: { id: number }) => l.id));
+      }
+    }
+    if (filters.city_id) {
+      // Filter by city - get all quarters in this city
+      const { data: cityQuarters, error: cityError } = await supabase
+        .from('locations')
+        .select('id')
+        .eq('parent_id', filters.city_id);
+        
+      if (!cityError && cityQuarters && cityQuarters.length > 0) {
+        query = query.in('location_id', cityQuarters.map((l: { id: number }) => l.id));
+      }
     }
     if (filters.min_price) {
       query = query.gte('price_xaf', filters.min_price);
@@ -100,7 +209,31 @@ export class ListingsRepository {
         category:categories(*),
         owner:profiles(*),
         media:listing_media(*),
-        service_packages(*)
+        service_packages(*),
+        boosts(
+          id,
+          tier,
+          is_active,
+          expires_at
+        ),
+        location:locations!location_id(
+          id,
+          location_en,
+          location_fr,
+          parent_id,
+          city:parent_id(
+            id,
+            location_en,
+            location_fr,
+            parent_id,
+            region:parent_id(
+              id,
+              location_en,
+              location_fr,
+              parent_id
+            )
+          )
+        )
       `)
       .eq('id', id)
       .single();
@@ -116,17 +249,103 @@ export class ListingsRepository {
   }
 
   async getFeatured(limit = 6): Promise<ListingWithDetails[]> {
+    // Get listings that have active boosts, prioritizing by boost tier
     const { data, error } = await supabase
       .from('listings')
       .select(`
         *,
         category:categories(*),
         owner:profiles(*),
-        media:listing_media(*)
+        media:listing_media(*),
+        location:locations!location_id(
+          id,
+          location_en,
+          location_fr,
+          parent_id,
+          city:parent_id(
+            id,
+            location_en,
+            location_fr,
+            parent_id,
+            region:parent_id(
+              id,
+              location_en,
+              location_fr,
+              parent_id
+            )
+          )
+        ),
+        boosts!inner(
+          tier,
+          is_active,
+          expires_at
+        )
+      `)
+      .eq('status', 'published')
+      .eq('boosts.is_active', true)
+      .gte('boosts.expires_at', new Date().toISOString())
+      .order('boosts.tier', { ascending: false }) // top > premium > featured
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      // Fallback to regular listings if boost query fails
+      console.warn('Failed to fetch boosted listings, falling back to regular:', error.message);
+      return this.getRegularFeatured(limit);
+    }
+
+    // If we don't have enough boosted listings, fill with regular listings
+    if (!data || data.length < limit) {
+      const boostedIds = data?.map((listing: { id: string }) => listing.id) || [];
+      const regularListings = await this.getRegularFeatured(limit - (data?.length || 0), boostedIds);
+      return [...(data || []), ...regularListings];
+    }
+
+    return data || [];
+  }
+
+  private async getRegularFeatured(limit: number, excludeIds: string[] = []): Promise<ListingWithDetails[]> {
+    let query = supabase
+      .from('listings')
+      .select(`
+        *,
+        category:categories(*),
+        owner:profiles(*),
+        media:listing_media(*),
+        boosts(
+          id,
+          tier,
+          is_active,
+          expires_at
+        ),
+        location:locations!location_id(
+          id,
+          location_en,
+          location_fr,
+          parent_id,
+          city:parent_id(
+            id,
+            location_en,
+            location_fr,
+            parent_id,
+            region:parent_id(
+              id,
+              location_en,
+              location_fr,
+              parent_id
+            )
+          )
+        )
       `)
       .eq('status', 'published')
       .order('created_at', { ascending: false })
       .limit(limit);
+
+    if (excludeIds.length > 0) {
+      query = query.not('id', 'in', `(${excludeIds.map(id => `'${id}'`).join(',')})`);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       throw new Error(`Failed to fetch featured listings: ${error.message}`);
@@ -164,7 +383,7 @@ export class ListingsRepository {
   async create(listing: NewListing): Promise<Listing> {
     const { data, error } = await supabase
       .from('listings')
-      .insert(listing)
+      .insert(listing as any)
       .select()
       .single();
 
@@ -176,9 +395,10 @@ export class ListingsRepository {
   }
 
   async update(id: string, updates: UpdateListing): Promise<Listing> {
+    const updateData = { ...updates, updated_at: new Date().toISOString() };
     const { data, error } = await supabase
       .from('listings')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update(updateData as any)
       .eq('id', id)
       .select()
       .single();
@@ -202,11 +422,19 @@ export class ListingsRepository {
   }
 
   async incrementViewCount(id: string): Promise<void> {
-    const { error } = await supabase.rpc('increment_listing_views', { listing_id: id });
-
-    if (error) {
-      console.error('Failed to increment view count:', error.message);
-      // Don't throw error for analytics - it shouldn't break the user experience
+    // For now, just update the view_count directly since we don't have the RPC function
+    const { data: currentListing } = await supabase
+      .from('listings')
+      .select('view_count')
+      .eq('id', id)
+      .single();
+      
+    if (currentListing) {
+      const currentCount = (currentListing as { view_count?: number }).view_count || 0;
+      await supabase
+        .from('listings')
+        .update({ view_count: currentCount + 1 } as any)
+        .eq('id', id);
     }
   }
 
