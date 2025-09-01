@@ -10,6 +10,10 @@ import {
   Star, 
   Grid, 
   List,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  ChevronDown,
   type LucideIcon 
 } from "lucide-react";
 import { listingsRepo, categoriesRepo } from "@/lib/repositories";
@@ -19,8 +23,9 @@ import type { CategoryWithChildren } from "@/lib/repositories/categories";
 import Link from "next/link";
 import { DefaultImage } from "@/components/default-image";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
+// Update the SearchFilters component with proper dark mode classes
 function SearchFilters({ 
   filters, 
   onFiltersChange, 
@@ -30,26 +35,26 @@ function SearchFilters({
   onFiltersChange: (filters: ListingFilters) => void;
   categories: CategoryWithChildren[];
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   
   return (
     <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-      <h3 className="font-semibold flex items-center">
+      <h3 className="font-semibold flex items-center text-foreground">
         <Filter className="h-5 w-5 mr-2" />
         Filters
       </h3>
       
       {/* Category Filter */}
       <div>
-        <label className="block text-sm font-medium mb-2">Category</label>
+        <label className="block text-sm font-medium mb-2 text-foreground">Category</label>
         <select 
           value={filters.category_id || ''} 
           onChange={(e) => onFiltersChange({ ...filters, category_id: e.target.value ? Number(e.target.value) : undefined })}
-          className="w-full p-2 border border-border rounded-md"
+          className="w-full p-2 border border-border rounded-md bg-background text-foreground"
         >
           <option value="">All Categories</option>
           {categories.map((category) => (
-            <option key={category.id} value={category.id}>
+            <option key={category.id} value={category.id} className="bg-background text-foreground">
               {category.name_en}
             </option>
           ))}
@@ -58,74 +63,74 @@ function SearchFilters({
       
       {/* Type Filter */}
       <div>
-        <label className="block text-sm font-medium mb-2">Type</label>
+        <label className="block text-sm font-medium mb-2 text-foreground">Type</label>
         <select 
           value={filters.type || ''} 
           onChange={(e) => onFiltersChange({ ...filters, type: e.target.value as 'good' | 'service' | 'job' | undefined })}
-          className="w-full p-2 border border-border rounded-md"
+          className="w-full p-2 border border-border rounded-md bg-background text-foreground"
         >
           <option value="">All Types</option>
-          <option value="good">Goods</option>
-          <option value="service">Services</option>
-          <option value="job">Jobs</option>
+          <option value="good" className="bg-background text-foreground">Goods</option>
+          <option value="service" className="bg-background text-foreground">Services</option>
+          <option value="job" className="bg-background text-foreground">Jobs</option>
         </select>
       </div>
       
       {/* Price Range */}
       <div>
-        <label className="block text-sm font-medium mb-2">Price Range (XAF)</label>
+        <label className="block text-sm font-medium mb-2 text-foreground">Price Range (XAF)</label>
         <div className="grid grid-cols-2 gap-2">
           <input 
             type="number" 
             placeholder="Min"
             value={filters.min_price || ''}
             onChange={(e) => onFiltersChange({ ...filters, min_price: e.target.value ? Number(e.target.value) : undefined })}
-            className="p-2 border border-border rounded-md"
+            className="p-2 border border-border rounded-md bg-background text-foreground placeholder-muted-foreground"
           />
           <input 
             type="number" 
             placeholder="Max"
             value={filters.max_price || ''}
             onChange={(e) => onFiltersChange({ ...filters, max_price: e.target.value ? Number(e.target.value) : undefined })}
-            className="p-2 border border-border rounded-md"
+            className="p-2 border border-border rounded-md bg-background text-foreground placeholder-muted-foreground"
           />
         </div>
       </div>
       
       {/* Location */}
       <div>
-        <label className="block text-sm font-medium mb-2">Region</label>
+        <label className="block text-sm font-medium mb-2 text-foreground">Region</label>
         <select 
           value={filters.region_id || ''} 
           onChange={(e) => onFiltersChange({ ...filters, region_id: e.target.value ? Number(e.target.value) : undefined })}
-          className="w-full p-2 border border-border rounded-md"
+          className="w-full p-2 border border-border rounded-md bg-background text-foreground"
         >
           <option value="">Any Region</option>
-          <option value="2">Centre</option>
-          <option value="5">Littoral</option>
-          <option value="7">Northwest</option>
-          <option value="10">West</option>
-          <option value="9">Southwest</option>
-          <option value="1">Adamawa</option>
-          <option value="3">East</option>
-          <option value="4">Far North</option>
-          <option value="6">North</option>
-          <option value="8">South</option>
+          <option value="2" className="bg-background text-foreground">Centre</option>
+          <option value="5" className="bg-background text-foreground">Littoral</option>
+          <option value="7" className="bg-background text-foreground">Northwest</option>
+          <option value="10" className="bg-background text-foreground">West</option>
+          <option value="9" className="bg-background text-foreground">Southwest</option>
+          <option value="1" className="bg-background text-foreground">Adamawa</option>
+          <option value="3" className="bg-background text-foreground">East</option>
+          <option value="4" className="bg-background text-foreground">Far North</option>
+          <option value="6" className="bg-background text-foreground">North</option>
+          <option value="8" className="bg-background text-foreground">South</option>
         </select>
       </div>
       
       {/* Condition */}
       <div>
-        <label className="block text-sm font-medium mb-2">Condition</label>
+        <label className="block text-sm font-medium mb-2 text-foreground">Condition</label>
         <select 
           value={filters.condition || ''} 
           onChange={(e) => onFiltersChange({ ...filters, condition: e.target.value || undefined })}
-          className="w-full p-2 border border-border rounded-md"
+          className="w-full p-2 border border-border rounded-md bg-background text-foreground"
         >
           <option value="">Any Condition</option>
-          <option value="new">New</option>
-          <option value="used">Used</option>
-          <option value="refurbished">Refurbished</option>
+          <option value="new" className="bg-background text-foreground">New</option>
+          <option value="used" className="bg-background text-foreground">Used</option>
+          <option value="refurbished" className="bg-background text-foreground">Refurbished</option>
         </select>
       </div>
       
@@ -282,15 +287,21 @@ function ListingCard({ listing, viewMode }: { listing: ListingWithDetails; viewM
 
 export default function SearchPage() {
   const searchParams = useSearchParams();
-  const { t } = useI18n();
+  const router = useRouter();
+  const pathname = usePathname();
+  const { t, locale } = useI18n();
   
   const [listings, setListings] = useState<ListingWithDetails[]>([]);
   const [categories, setCategories] = useState<CategoryWithChildren[]>([]);
+  const [categoryBreadcrumb, setCategoryBreadcrumb] = useState<CategoryWithChildren[]>([]);
   const [filters, setFilters] = useState<ListingFilters>({});
   const [searchQuery, setSearchQuery] = useState(searchParams?.get('q') || '');
   const [isLoading, setIsLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showFilters, setShowFilters] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -306,6 +317,24 @@ export default function SearchPage() {
   }, []);
 
   useEffect(() => {
+    const loadCategoryBreadcrumb = async () => {
+      const categoryId = searchParams?.get('category');
+      if (categoryId) {
+        try {
+          const breadcrumb = await categoriesRepo.getBreadcrumb(Number(categoryId));
+          setCategoryBreadcrumb(breadcrumb);
+        } catch (error) {
+          console.error('Failed to load category breadcrumb:', error);
+        }
+      } else {
+        setCategoryBreadcrumb([]);
+      }
+    };
+
+    loadCategoryBreadcrumb();
+  }, [searchParams]);
+
+  useEffect(() => {
     const loadListings = async () => {
       try {
         setIsLoading(true);
@@ -319,8 +348,8 @@ export default function SearchPage() {
         const { data, count } = await listingsRepo.getAll(
           searchFilters,
           { field: 'created_at', direction: 'desc' },
-          20,
-          0
+          itemsPerPage,
+          (currentPage - 1) * itemsPerPage
         );
         
         setListings(data);
@@ -333,11 +362,17 @@ export default function SearchPage() {
     };
 
     loadListings();
-  }, [filters, searchQuery, searchParams]);
+  }, [filters, searchQuery, searchParams, currentPage]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setFilters({ ...filters, search: searchQuery || undefined });
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top of results
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -363,6 +398,34 @@ export default function SearchPage() {
               </button>
             </div>
           </form>
+          
+          {/* Breadcrumbs */}
+          {categoryBreadcrumb.length > 0 && (
+            <div className="mb-4">
+              <nav className="flex text-sm text-muted-foreground">
+                <Link href="/search" className="hover:text-foreground transition-colors">
+                  All Categories
+                </Link>
+                {categoryBreadcrumb.map((category, index) => (
+                  <span key={category.id} className="flex items-center">
+                    <span className="mx-2">/</span>
+                    {index === categoryBreadcrumb.length - 1 ? (
+                      <span className="text-foreground">
+                        {locale === 'fr' ? category.name_fr : category.name_en}
+                      </span>
+                    ) : (
+                      <Link 
+                        href={`/search?category=${category.id}`} 
+                        className="hover:text-foreground transition-colors"
+                      >
+                        {locale === 'fr' ? category.name_fr : category.name_en}
+                      </Link>
+                    )}
+                  </span>
+                ))}
+              </nav>
+            </div>
+          )}
           
           <div className="flex items-center justify-between">
             <p className="text-muted-foreground">
@@ -392,23 +455,45 @@ export default function SearchPage() {
               </button>
             </div>
           </div>
+          
+          {/* Filter Toggle Button */}
+          <div className="mt-2">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center"
+            >
+              {showFilters ? (
+                <>
+                  <ChevronUp className="h-4 w-4 mr-1" />
+                  Hide Filters
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-4 w-4 mr-1" />
+                  Show Filters
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="flex flex-col lg:flex-row gap-8">
           {/* Filters Sidebar */}
-          <div className="lg:col-span-1">
-            <SearchFilters 
-              filters={filters}
-              onFiltersChange={setFilters}
-              categories={categories}
-            />
+          <div className={`transition-all duration-300 ease-in-out ${showFilters ? 'block w-full lg:w-80' : 'hidden'}`}>
+            <div className="bg-card border border-border rounded-lg">
+              <SearchFilters 
+                filters={filters}
+                onFiltersChange={setFilters}
+                categories={categories}
+              />
+            </div>
           </div>
 
           {/* Results */}
-          <div className="lg:col-span-3">
+          <div className={`${showFilters ? 'lg:w-[calc(100%-20rem)]' : 'w-full'}`}>
             {isLoading ? (
               <div className={viewMode === 'grid' 
-                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+                ? `grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-${showFilters ? '4' : '5'} xl:grid-cols-${showFilters ? '4' : '5'} gap-4`
                 : "space-y-4"
               }>
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -446,14 +531,64 @@ export default function SearchPage() {
                 <p>Try adjusting your search criteria or filters</p>
               </div>
             ) : (
-              <div className={viewMode === 'grid' 
-                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4"
-                : "space-y-4"
-              }>
-                {listings.map((listing) => (
-                  <ListingCard key={listing.id} listing={listing} viewMode={viewMode} />
-                ))}
-              </div>
+              <>
+                <div className={viewMode === 'grid' 
+                  ? `grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-${showFilters ? '4' : '5'} xl:grid-cols-${showFilters ? '4' : '5'} gap-4`
+                  : "space-y-4"
+                }>
+                  {listings.map((listing) => (
+                    <ListingCard key={listing.id} listing={listing} viewMode={viewMode} />
+                  ))}
+                </div>
+                
+                {/* Pagination */}
+                {total > itemsPerPage && (
+                  <div className="mt-8 flex justify-center">
+                    <nav className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className={`px-3 py-2 rounded-md ${
+                          currentPage === 1 
+                            ? 'bg-muted text-muted-foreground cursor-not-allowed' 
+                            : 'bg-background text-foreground hover:bg-muted'
+                        }`}
+                      >
+                        Previous
+                      </button>
+                      
+                      {Array.from({ length: Math.min(5, Math.ceil(total / itemsPerPage)) }, (_, i) => {
+                        const page = i + 1;
+                        return (
+                          <button
+                            key={page}
+                            onClick={() => handlePageChange(page)}
+                            className={`px-3 py-2 rounded-md ${
+                              currentPage === page 
+                                ? 'bg-primary text-primary-foreground' 
+                                : 'bg-background text-foreground hover:bg-muted'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      })}
+                      
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === Math.ceil(total / itemsPerPage)}
+                        className={`px-3 py-2 rounded-md ${
+                          currentPage === Math.ceil(total / itemsPerPage)
+                            ? 'bg-muted text-muted-foreground cursor-not-allowed' 
+                            : 'bg-background text-foreground hover:bg-muted'
+                        }`}
+                      >
+                        Next
+                      </button>
+                    </nav>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

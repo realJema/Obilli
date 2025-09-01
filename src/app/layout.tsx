@@ -2,6 +2,11 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
+import { Header } from "@/components/header";
+import { CategoryNav } from "@/components/category-nav";
+import { MobileNav } from "@/components/mobile-nav";
+import { HeaderVisibilityController } from "@/components/header-visibility-controller";
+import { Footer } from "@/components/footer";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -27,9 +32,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
         <Providers>
-          {children}
+          <div className="min-h-screen bg-background flex flex-col">
+            <HeaderVisibilityController />
+            <Header />
+            <CategoryNav />
+            <main className="flex-1 pb-16 md:pb-0 relative">
+              {children}
+            </main>
+            <Footer />
+            <MobileNav className="md:hidden" />
+          </div>
         </Providers>
       </body>
     </html>

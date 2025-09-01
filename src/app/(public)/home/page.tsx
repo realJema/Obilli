@@ -13,16 +13,17 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 function HeroCarousel({ listings, isLoading }: { listings: ListingWithDetails[]; isLoading: boolean }) {
-  const { formatCurrency } = useI18n();
+  const { formatCurrency, formatRelativeTime } = useI18n();
   const [currentIndex, setCurrentIndex] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   // Auto-scroll functionality
   useEffect(() => {
     if (listings.length > 0) {
       intervalRef.current = setInterval(() => {
-        setCurrentIndex((prev) => (prev + 1) % listings.length);
-      }, 5000); // Change slide every 5 seconds
+        goToSlide((currentIndex + 1) % listings.length);
+      }, 7000); // Change slide every 7 seconds
     }
 
     return () => {
@@ -30,16 +31,25 @@ function HeroCarousel({ listings, isLoading }: { listings: ListingWithDetails[];
         clearInterval(intervalRef.current);
       }
     };
-  }, [listings.length]);
+  }, [listings.length, currentIndex]);
 
   const goToSlide = (index: number) => {
+    if (isAnimating) return;
+    
+    setIsAnimating(true);
     setCurrentIndex(index);
+    
+    // Reset animation flag after transition completes
+    setTimeout(() => {
+      setIsAnimating(false);
+    }, 600);
+    
     // Reset auto-scroll timer
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = setInterval(() => {
-        setCurrentIndex((prev) => (prev + 1) % listings.length);
-      }, 5000);
+        goToSlide((index + 1) % listings.length);
+      }, 7000);
     }
   };
 
@@ -87,54 +97,87 @@ function HeroCarousel({ listings, isLoading }: { listings: ListingWithDetails[];
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="relative h-[400px] overflow-hidden rounded-2xl">
           {/* Background Image */}
-          <div className="absolute inset-0">
+          <div 
+            className="absolute inset-0 transition-transform duration-500 ease-out"
+            style={{ transform: `scale(${isAnimating ? '1.05' : '1'})` }}
+          >
             <DefaultImage
               src={imageUrl}
               alt={currentListing.title}
               fill
-              className="object-cover"
+              className="object-cover transition-opacity duration-500"
+              priority
             />
-            <div className="absolute inset-0 bg-black/40"></div>
+            {/* Gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
           </div>
 
           {/* Content */}
-          <div className="relative h-full flex items-center px-8">
-            <div className="max-w-2xl text-white">
-              <div className="inline-block bg-primary px-3 py-1 rounded-full text-sm font-medium mb-4">
-                Featured Listing
-              </div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-3 leading-tight">
-                {currentListing.title}
-              </h1>
-              {currentListing.description && (
-                <p className="text-lg mb-4 opacity-90 line-clamp-2">
-                  {currentListing.description}
-                </p>
-              )}
-              {currentListing.price_xaf && (
-                <div className="text-2xl font-bold text-yellow-400 mb-4">
-                  {formatCurrency(currentListing.price_xaf)}
+          <div 
+            className="absolute bottom-0 left-0 right-0 p-6 md:p-8 transition-transform duration-500"
+            style={{ transform: `translateY(${isAnimating ? '10px' : '0'})`, opacity: isAnimating ? 0.8 : 1 }}
+          >
+            <div className="grid md:grid-cols-3 gap-6 items-end">
+              {/* Left: Listing Info */}
+              <div className="md:col-span-2">
+                <span className="inline-block bg-primary px-3 py-1 rounded-full text-xs font-medium text-primary-foreground mb-3">
+                  {hasActiveBoost(currentListing) ? getActiveBoostTier(currentListing) === 'top' ? 'Top Listing' : getActiveBoostTier(currentListing) === 'premium' ? 'Premium Listing' : 'Featured Listing' : 'Featured Listing'}
+                </span>
+                
+                <h2 className="text-2xl md:text-3xl font-bold mb-2 text-white">
+                  {currentListing.title}
+                </h2>
+                
+                {currentListing.description && (
+                  <p className="text-white/80 mb-4 line-clamp-2 md:line-clamp-3">
+                    {currentListing.description}
+                  </p>
+                )}
+                
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-white/70">
+                  {currentListing.location && (
+                    <div className="flex items-center">
+                      <MapPin className="h-4 w-4 mr-1 text-primary" />
+                      <span>{currentListing.location.location_en}</span>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center">
+                    <Clock className="h-4 w-4 mr-1 text-primary" />
+                    <span>{formatRelativeTime(currentListing.created_at || new Date().toISOString())}</span>
+                  </div>
                 </div>
-              )}
-              <Link
-                href={`/listing/${currentListing.id}`}
-                className="inline-flex items-center bg-white text-gray-900 px-6 py-2.5 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
-              >
-                View Details
-                <ChevronRight className="ml-2 h-5 w-5" />
-              </Link>
+              </div>
+              
+              {/* Right: Price & Action */}
+              <div className="flex flex-col items-start md:items-end gap-4">
+                {currentListing.price_xaf && (
+                  <div className="text-2xl md:text-3xl font-bold text-white">
+                    {formatCurrency(currentListing.price_xaf)}
+                  </div>
+                )}
+                
+                <Link
+                  href={`/listing/${currentListing.id}`}
+                  className="inline-flex items-center bg-primary/90 text-primary-foreground px-4 py-2 text-sm rounded-md font-medium hover:bg-primary transition-colors"
+                >
+                  View Details
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Link>
+              </div>
             </div>
           </div>
 
           {/* Navigation Dots */}
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2">
             {listings.map((_, index) => (
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
-                className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                  index === currentIndex ? 'bg-white' : 'bg-white/50'
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  index === currentIndex ? 'bg-primary' : 'bg-white/50'
                 }`}
+                aria-label={`Go to slide ${index + 1}`}
               />
             ))}
           </div>
@@ -142,13 +185,15 @@ function HeroCarousel({ listings, isLoading }: { listings: ListingWithDetails[];
           {/* Navigation Arrows */}
           <button
             onClick={() => goToSlide((currentIndex - 1 + listings.length) % listings.length)}
-            className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full transition-colors"
+            className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full transition-colors"
+            aria-label="Previous slide"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
           <button
             onClick={() => goToSlide((currentIndex + 1) % listings.length)}
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full transition-colors"
+            className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full transition-colors"
+            aria-label="Next slide"
           >
             <ChevronRight className="h-5 w-5" />
           </button>

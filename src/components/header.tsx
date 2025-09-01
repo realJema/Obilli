@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Menu, Bell, User, LogOut, Settings, MessageCircle } from "lucide-react";
+import { Search, Menu, User, LogOut, Settings } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useI18n } from "@/lib/providers";
@@ -80,17 +80,23 @@ export function Header() {
           </div>
 
           {/* Search Bar - Hidden on mobile */}
-          <div className="hidden md:flex flex-1 max-w-md mx-8">
+          <div className="hidden md:flex flex-1 max-w-xl mx-8">
             <form onSubmit={handleSearch} className="w-full">
-              <div className="relative">
+              <div className="relative flex">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder={t("search.placeholder") || "Search for anything..."}
+                  placeholder="Search Bonas Marketplace..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 rounded-md border border-input bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
+                  className="w-full pl-10 pr-4 py-2 rounded-l-md border border-input bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
                 />
+                <button 
+                  type="submit" 
+                  className="bg-primary text-primary-foreground px-4 py-2 rounded-r-md hover:bg-primary/90 transition-colors"
+                >
+                  Search
+                </button>
               </div>
             </form>
           </div>
@@ -108,14 +114,6 @@ export function Header() {
               
               {user && userProfile ? (
                 <>
-                  <Link
-                    href="/messages"
-                    className="p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
-                    title="Messages"
-                  >
-                    <MessageCircle className="h-5 w-5" />
-                  </Link>
-                  
                   {/* User Menu */}
                   <div className="relative" ref={userMenuRef}>
                     <button
@@ -127,13 +125,15 @@ export function Header() {
                           src={userProfile.avatar_url}
                           alt={userProfile.username || 'User'}
                           className="h-6 w-6 rounded-full object-cover"
+                          width={24}
+                          height={24}
                         />
                       ) : (
                         <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
                           <User className="h-3 w-3 text-primary-foreground" />
                         </div>
                       )}
-                      <span className="text-sm font-medium">
+                      <span className="text-sm font-medium hidden lg:inline">
                         {userProfile.username || userProfile.full_name || 'User'}
                       </span>
                     </button>
@@ -210,12 +210,7 @@ export function Header() {
               )}
             </nav>
 
-            {/* Notifications - only if logged in */}
-            {user && (
-              <button className="p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
-                <Bell className="h-5 w-5" />
-              </button>
-            )}
+            {/* Notifications and Messages removed */}
 
             {/* Theme Toggle and Language Switcher - only show if not logged in */}
             {!user && (

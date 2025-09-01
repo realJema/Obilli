@@ -130,11 +130,8 @@ export default function SellSuccessPage() {
             </Link>
 
             {/* Boost Listing */}
-            <button 
-              onClick={() => {
-                // TODO: Implement boost functionality
-                alert('Boost feature coming soon!');
-              }}
+            <Link 
+              href={`/boost/${listingId}`}
               className="group bg-gradient-to-br from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-6 text-center hover:shadow-lg transition-all duration-200 hover:border-yellow-300"
             >
               <div className="inline-flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-full mb-4 group-hover:bg-yellow-200 transition-colors">
@@ -148,7 +145,7 @@ export default function SellSuccessPage() {
                 Explore Boosts
                 <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
               </div>
-            </button>
+            </Link>
           </div>
 
           {/* Boost Options Preview */}
@@ -161,7 +158,7 @@ export default function SellSuccessPage() {
               Increase your listing&apos;s visibility and attract more buyers with our boost options.
             </p>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               {/* Featured Boost */}
               <div className="border border-border rounded-lg p-4 text-center">
                 <div className="inline-flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full mb-3">
@@ -171,7 +168,7 @@ export default function SellSuccessPage() {
                 <p className="text-xs text-muted-foreground mb-3">
                   Stand out in search results
                 </p>
-                <div className="text-sm font-semibold text-primary">Coming Soon</div>
+                <div className="text-sm font-semibold text-blue-600">From 1,500 XAF</div>
               </div>
 
               {/* Premium Boost */}
@@ -183,7 +180,7 @@ export default function SellSuccessPage() {
                 <p className="text-xs text-muted-foreground mb-3">
                   Priority placement & badges
                 </p>
-                <div className="text-sm font-semibold text-primary">Coming Soon</div>
+                <div className="text-sm font-semibold text-purple-600">From 3,000 XAF</div>
               </div>
 
               {/* Top Boost */}
@@ -195,8 +192,19 @@ export default function SellSuccessPage() {
                 <p className="text-xs text-muted-foreground mb-3">
                   Appear at the top of listings
                 </p>
-                <div className="text-sm font-semibold text-primary">Coming Soon</div>
+                <div className="text-sm font-semibold text-green-600">From 5,000 XAF</div>
               </div>
+            </div>
+            
+            <div className="text-center">
+              <Link
+                href={`/boost/${listingId}`}
+                className="inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
+              >
+                <Zap className="h-4 w-4 mr-2" />
+                Boost My Listing
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Link>
             </div>
           </div>
 

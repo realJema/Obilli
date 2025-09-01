@@ -28,7 +28,10 @@ import {
   DollarSign,
   Grid3x3,
   List,
-  Zap
+  Zap,
+  Crown,
+  Filter,
+  Clock
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -40,10 +43,13 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [analytics, setAnalytics] = useState<UserAnalytics | null>(null);
   const [userListings, setUserListings] = useState<ListingWithDetails[]>([]);
+  const [filteredListings, setFilteredListings] = useState<ListingWithDetails[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft' | 'paused'>('all');
+  const [boostFilter, setBoostFilter] = useState<'all' | 'boosted' | 'not_boosted'>('all');
 
   useEffect(() => {
     if (!user) {
@@ -59,14 +65,21 @@ export default function DashboardPage() {
         // Load analytics and user listings in parallel
         const [analyticsData, listingsData] = await Promise.all([
           analyticsService.getUserAnalytics(user.id),
-          // Use authenticated supabase client to get all user listings
+          // Use authenticated supabase client to get all user listings with boost information
           supabase
             .from('listings')
             .select(`
               *,
               category:categories(*),
               media:listing_media(*),
-              service_packages(*)
+              service_packages(*),
+              boosts(
+                id,
+                tier,
+                is_active,
+                expires_at,
+                created_at
+              )
             `)
             .eq('owner_id', user.id)
             .order('created_at', { ascending: false })
@@ -88,6 +101,84 @@ export default function DashboardPage() {
 
     loadDashboardData();
   }, [user, router]);
+
+  // Filter listings based on selected filters
+  useEffect(() => {
+    let filtered = userListings;
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(listing => listing.status === statusFilter);
+    }
+
+    // Apply boost filter
+    if (boostFilter !== 'all') {
+      if (boostFilter === 'boosted') {
+        filtered = filtered.filter(listing => hasActiveBoost(listing));
+      } else if (boostFilter === 'not_boosted') {
+        filtered = filtered.filter(listing => !hasActiveBoost(listing));
+      }
+    }
+
+    setFilteredListings(filtered);
+  }, [userListings, statusFilter, boostFilter]);
+
+  // Helper function to check if listing has active boost
+  const hasActiveBoost = (listing: ListingWithDetails): boolean => {
+    if (!listing.boosts || listing.boosts.length === 0) return false;
+    
+    const now = new Date();
+    return listing.boosts.some((boost) => 
+      boost.is_active && 
+      boost.expires_at && 
+      new Date(boost.expires_at) > now
+    );
+  };
+
+  // Helper function to get active boost tier
+  const getActiveBoostTier = (listing: ListingWithDetails): string | null => {
+    if (!listing.boosts || listing.boosts.length === 0) return null;
+    
+    const now = new Date();
+    const activeBoosts = listing.boosts.filter((boost) => 
+      boost.is_active && 
+      boost.expires_at && 
+      new Date(boost.expires_at) > now
+    );
+    
+    if (activeBoosts.length === 0) return null;
+    
+    // Return highest tier boost (top > premium > featured)
+    const tierOrder = { 'top': 3, 'premium': 2, 'featured': 1 };
+    return activeBoosts.reduce((highest, boost) => {
+      const currentTier = tierOrder[boost.tier as keyof typeof tierOrder] || 0;
+      const highestTier = tierOrder[highest.tier as keyof typeof tierOrder] || 0;
+      return currentTier > highestTier ? boost : highest;
+    }).tier;
+  };
+
+  // Helper function to get boost expiry
+  const getBoostExpiry = (listing: ListingWithDetails): Date | null => {
+    if (!listing.boosts || listing.boosts.length === 0) return null;
+    
+    const now = new Date();
+    const activeBoosts = listing.boosts.filter((boost) => 
+      boost.is_active && 
+      boost.expires_at && 
+      new Date(boost.expires_at) > now
+    );
+    
+    if (activeBoosts.length === 0) return null;
+    
+    // Get the latest expiry date
+    const latestBoost = activeBoosts.reduce((latest, boost) => {
+      const boostExpiry = new Date(boost.expires_at!);
+      const latestExpiry = latest.expires_at ? new Date(latest.expires_at) : new Date(0);
+      return boostExpiry > latestExpiry ? boost : latest;
+    });
+    
+    return latestBoost.expires_at ? new Date(latestBoost.expires_at) : null;
+  };
 
   const handleDeleteListing = async (listingId: string) => {
     try {
@@ -330,7 +421,7 @@ export default function DashboardPage() {
         {/* Listings Management */}
         <div className="bg-card border border-border rounded-lg">
           <div className="p-6 border-b border-border">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
               <div>
                 <h3 className="text-lg font-semibold text-foreground">Your Listings</h3>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -365,21 +456,80 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+            
+            {/* Filters */}
+            {userListings.length > 0 && (
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex items-center space-x-2">
+                  <Filter className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-foreground">Filters:</span>
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                  {/* Status Filter */}
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as 'all' | 'published' | 'draft' | 'paused')}
+                    className="px-3 py-1.5 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="published">Published</option>
+                    <option value="draft">Draft</option>
+                    <option value="paused">Paused</option>
+                  </select>
+                  
+                  {/* Boost Filter */}
+                  <select
+                    value={boostFilter}
+                    onChange={(e) => setBoostFilter(e.target.value as 'all' | 'boosted' | 'not_boosted')}
+                    className="px-3 py-1.5 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    <option value="all">All Listings</option>
+                    <option value="boosted">Boosted Only</option>
+                    <option value="not_boosted">Not Boosted</option>
+                  </select>
+                  
+                  {/* Results count */}
+                  <div className="flex items-center px-3 py-1.5 text-sm text-muted-foreground bg-muted rounded-md">
+                    {filteredListings.length} of {userListings.length} listings
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="p-6">
-            {userListings.length === 0 ? (
+            {filteredListings.length === 0 ? (
               <div className="text-center py-12">
-                <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h4 className="text-lg font-medium text-foreground mb-2">No listings yet</h4>
-                <p className="text-muted-foreground mb-6">Create your first listing to get started</p>
-                <Link
-                  href="/sell/new"
-                  className="bg-primary text-primary-foreground px-6 py-3 rounded-md font-medium hover:bg-primary/90 transition-colors inline-flex items-center"
-                >
-                  <Plus className="w-5 h-5 mr-2" />
-                  Create Listing
-                </Link>
+                {userListings.length === 0 ? (
+                  <>
+                    <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <h4 className="text-lg font-medium text-foreground mb-2">No listings yet</h4>
+                    <p className="text-muted-foreground mb-6">Create your first listing to get started</p>
+                    <Link
+                      href="/sell/new"
+                      className="bg-primary text-primary-foreground px-6 py-3 rounded-md font-medium hover:bg-primary/90 transition-colors inline-flex items-center"
+                    >
+                      <Plus className="w-5 h-5 mr-2" />
+                      Create Listing
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Filter className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <h4 className="text-lg font-medium text-foreground mb-2">No listings match your filters</h4>
+                    <p className="text-muted-foreground mb-6">Try adjusting your filters to see more listings</p>
+                    <button
+                      onClick={() => {
+                        setStatusFilter('all');
+                        setBoostFilter('all');
+                      }}
+                      className="bg-primary text-primary-foreground px-6 py-3 rounded-md font-medium hover:bg-primary/90 transition-colors"
+                    >
+                      Clear Filters
+                    </button>
+                  </>
+                )}
               </div>
             ) : (
               <div className={`${
@@ -387,24 +537,30 @@ export default function DashboardPage() {
                   ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6' 
                   : 'space-y-4'
               }`}>
-                {userListings.map((listing) => (
-                  viewMode === 'grid' ? (
+                {filteredListings.map((listing) => {
+                  const isActiveBoost = hasActiveBoost(listing);
+                  const boostTier = getActiveBoostTier(listing);
+                  const boostExpiry = getBoostExpiry(listing);
+                  
+                  return viewMode === 'grid' ? (
                     // Grid View Card
-                    <Link key={listing.id} href={`/listing/${listing.id}`} className="block">
+                    <div key={listing.id} className="block">
                       <div className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer">
                         {/* Image */}
                         <div className="relative">
-                          {listing.media && listing.media.length > 0 ? (
-                            <img
-                              src={listing.media[0].url}
-                              alt={listing.title}
-                              className="w-full h-32 object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-32 bg-muted flex items-center justify-center">
-                              <Package className="w-8 h-8 text-muted-foreground" />
-                            </div>
-                          )}
+                          <Link href={`/listing/${listing.id}`} className="block">
+                            {listing.media && listing.media.length > 0 ? (
+                              <img
+                                src={listing.media[0].url}
+                                alt={listing.title}
+                                className="w-full h-32 object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-32 bg-muted flex items-center justify-center">
+                                <Package className="w-8 h-8 text-muted-foreground" />
+                              </div>
+                            )}
+                          </Link>
                           
                           {/* Status Badge */}
                           <div className="absolute top-2 left-2">
@@ -413,50 +569,92 @@ export default function DashboardPage() {
                               <span className="ml-1 capitalize">{listing.status}</span>
                             </span>
                           </div>
+                          
+                          {/* Boost Badge */}
+                          {hasActiveBoost(listing) && (
+                            <div className="absolute top-2 right-2">
+                              {(() => {
+                                const boostTier = getActiveBoostTier(listing);
+                                const boostExpiry = getBoostExpiry(listing);
+                                const daysLeft = boostExpiry ? Math.ceil((boostExpiry.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
+                                
+                                return (
+                                  <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                    boostTier === 'top' ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white' :
+                                    boostTier === 'premium' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white' :
+                                    'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+                                  }`}>
+                                    {boostTier === 'top' ? <Crown className="w-3 h-3 mr-1" /> :
+                                     boostTier === 'premium' ? <Zap className="w-3 h-3 mr-1" /> :
+                                     <Star className="w-3 h-3 mr-1" />}
+                                    <span className="capitalize">{boostTier}</span>
+                                    {daysLeft > 0 && (
+                                      <span className="ml-1 opacity-90">({daysLeft}d)</span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
                         </div>
                         
                         {/* Content */}
                         <div className="p-4">
-                          <h4 className="font-semibold text-foreground mb-2 line-clamp-2 text-sm leading-tight">
-                            {listing.title}
-                          </h4>
-                          
-                          <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-                            {listing.price_xaf && (
-                              <span className="font-semibold text-foreground text-base">
-                                {formatCurrency(listing.price_xaf)}
-                              </span>
-                            )}
-                            <div className="flex items-center">
-                              <Eye className="w-3 h-3 mr-1" />
-                              {listing.view_count || 0}
+                          <Link href={`/listing/${listing.id}`} className="block mb-4">
+                            <h4 className="font-semibold text-foreground mb-2 line-clamp-2 text-sm leading-tight hover:text-primary transition-colors">
+                              {listing.title}
+                            </h4>
+                            
+                            <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
+                              {listing.price_xaf && (
+                                <span className="font-semibold text-foreground text-base">
+                                  {formatCurrency(listing.price_xaf)}
+                                </span>
+                              )}
+                              <div className="flex items-center">
+                                <Eye className="w-3 h-3 mr-1" />
+                                {listing.view_count || 0}
+                              </div>
                             </div>
-                          </div>
-                          
-                          <div className="text-xs text-muted-foreground mb-4">
-                            <div className="flex items-center">
-                              <Calendar className="w-3 h-3 mr-1" />
-                              {new Date(listing.created_at!).toLocaleDateString()}
+                            
+                            <div className="text-xs text-muted-foreground">
+                              <div className="flex items-center">
+                                <Calendar className="w-3 h-3 mr-1" />
+                                {new Date(listing.created_at!).toLocaleDateString()}
+                              </div>
                             </div>
-                          </div>
+                          </Link>
                           
                           {/* Action Buttons */}
-                          <div className="space-y-2" onClick={(e) => e.preventDefault()}>
+                          <div className="space-y-2">
                             {/* Boost Action - Most Prominent */}
                             <Link
                               href={`/boost/${listing.id}`}
-                              className="w-full inline-flex items-center justify-center px-4 py-3 text-sm bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-md hover:from-yellow-500 hover:to-orange-600 transition-all shadow-md hover:shadow-lg font-medium"
-                              title="Boost listing"
+                              className={`w-full inline-flex items-center justify-center px-4 py-3 text-sm rounded-md transition-all shadow-md hover:shadow-lg font-medium ${
+                                hasActiveBoost(listing)
+                                  ? 'bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 text-white'
+                                  : 'bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white'
+                              }`}
+                              title={hasActiveBoost(listing) ? 'Manage boost' : 'Boost listing'}
                             >
-                              <Zap className="w-4 h-4 mr-2" />
-                              🚀 Boost Listing
+                              {hasActiveBoost(listing) ? (
+                                <>
+                                  <Crown className="w-4 h-4 mr-2" />
+                                  ✨ Boost Active
+                                </>
+                              ) : (
+                                <>
+                                  <Zap className="w-4 h-4 mr-2" />
+                                  🚀 Boost Listing
+                                </>
+                              )}
                             </Link>
                             
                             {/* Primary Actions Row */}
                             <div className="flex gap-2">
                               <Link
                                 href={`/sell/edit/${listing.id}`}
-                                className="flex-1 inline-flex items-center justify-center px-3 py-2 text-xs bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors border border-blue-200"
+                                className="flex-1 inline-flex items-center justify-center px-3 py-2 text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors border border-blue-200 dark:border-blue-800"
                                 title="Edit listing"
                               >
                                 <Edit className="w-3 h-3 mr-1" />
@@ -466,12 +664,13 @@ export default function DashboardPage() {
                               <button
                                 onClick={(e) => {
                                   e.preventDefault();
+                                  e.stopPropagation();
                                   handleToggleStatus(listing.id, listing.status);
                                 }}
                                 className={`flex-1 inline-flex items-center justify-center px-3 py-2 text-xs rounded-md transition-colors border ${
                                   listing.status === 'published'
-                                    ? 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100'
-                                    : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                                    ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800 hover:bg-yellow-100 dark:hover:bg-yellow-900/40'
+                                    : 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40'
                                 }`}
                                 disabled={processingAction === listing.id}
                                 title={listing.status === 'published' ? 'Pause listing' : 'Publish listing'}
@@ -494,9 +693,10 @@ export default function DashboardPage() {
                             <button
                               onClick={(e) => {
                                 e.preventDefault();
+                                e.stopPropagation();
                                 setShowDeleteModal(listing.id);
                               }}
-                              className="w-full inline-flex items-center justify-center px-3 py-2 text-xs bg-red-50 text-red-700 rounded-md hover:bg-red-100 transition-colors border border-red-200"
+                              className="w-full inline-flex items-center justify-center px-3 py-2 text-xs bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-md hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors border border-red-200 dark:border-red-800"
                               title="Delete listing"
                               disabled={processingAction === listing.id}
                             >
@@ -506,50 +706,84 @@ export default function DashboardPage() {
                           </div>
                         </div>
                       </div>
-                    </Link>
+                    </div>
                   ) : (
                     // List View
-                    <Link key={listing.id} href={`/listing/${listing.id}`} className="block">
-                      <div className="bg-card border border-border rounded-lg p-4 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                    <div key={listing.id} className="block">
+                      <div className="bg-card border border-border rounded-lg p-4 hover:shadow-lg transition-all duration-200">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-2">
-                              <h4 className="font-semibold text-foreground">{listing.title}</h4>
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(listing.status)}`}>
-                                {getStatusIcon(listing.status)}
-                                <span className="ml-1 capitalize">{listing.status}</span>
-                              </span>
-                            </div>
-                            
-                            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                              <div className="flex items-center">
-                                <Calendar className="w-4 h-4 mr-1" />
-                                {new Date(listing.created_at!).toLocaleDateString()}
-                              </div>
-                              {listing.price_xaf && (
-                                <div className="flex items-center">
-                                  <DollarSign className="w-4 h-4 mr-1" />
-                                  <span className="font-medium text-foreground">
-                                    {formatCurrency(listing.price_xaf)}
+                            <Link href={`/listing/${listing.id}`} className="block mb-4">
+                              <div className="flex items-center space-x-3 mb-2">
+                                <h4 className="font-semibold text-foreground hover:text-primary transition-colors">{listing.title}</h4>
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(listing.status)}`}>
+                                  {getStatusIcon(listing.status)}
+                                  <span className="ml-1 capitalize">{listing.status}</span>
+                                </span>
+                                
+                                {/* Boost Badge for List View */}
+                                {hasActiveBoost(listing) && (
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    getActiveBoostTier(listing) === 'top' ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white' :
+                                    getActiveBoostTier(listing) === 'premium' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white' :
+                                    'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+                                  }`}>
+                                    {getActiveBoostTier(listing) === 'top' ? <Crown className="w-3 h-3 mr-1" /> :
+                                     getActiveBoostTier(listing) === 'premium' ? <Zap className="w-3 h-3 mr-1" /> :
+                                     <Star className="w-3 h-3 mr-1" />}
+                                    <span className="capitalize">{getActiveBoostTier(listing)}</span>
+                                    {(() => {
+                                      const boostExpiry = getBoostExpiry(listing);
+                                      const daysLeft = boostExpiry ? Math.ceil((boostExpiry.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
+                                      return daysLeft > 0 ? ` (${daysLeft}d)` : '';
+                                    })()}
                                   </span>
-                                </div>
-                              )}
-                              <div className="flex items-center">
-                                <Eye className="w-4 h-4 mr-1" />
-                                {listing.view_count || 0} views
+                                )}
                               </div>
-                            </div>
+                              
+                              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                                <div className="flex items-center">
+                                  <Calendar className="w-4 h-4 mr-1" />
+                                  {new Date(listing.created_at!).toLocaleDateString()}
+                                </div>
+                                {listing.price_xaf && (
+                                  <div className="flex items-center">
+                                    <DollarSign className="w-4 h-4 mr-1" />
+                                    <span className="font-medium text-foreground">
+                                      {formatCurrency(listing.price_xaf)}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="flex items-center">
+                                  <Eye className="w-4 h-4 mr-1" />
+                                  {listing.view_count || 0} views
+                                </div>
+                              </div>
+                            </Link>
                           </div>
                           
                           {/* Action Buttons */}
-                          <div className="flex items-center space-x-2 ml-4" onClick={(e) => e.preventDefault()}>
+                          <div className="flex items-center space-x-2 ml-4">
                             <Link
                               href={`/boost/${listing.id}`}
-                              className="inline-flex items-center px-4 py-2 text-sm bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-md hover:from-yellow-500 hover:to-orange-600 transition-all shadow-md font-medium"
-                              title="Boost listing"
+                              className={`inline-flex items-center px-4 py-2 text-sm rounded-md transition-all shadow-md font-medium ${
+                                hasActiveBoost(listing)
+                                  ? 'bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 text-white'
+                                  : 'bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white'
+                              }`}
+                              title={hasActiveBoost(listing) ? 'Manage boost' : 'Boost listing'}
                             >
-                              <Zap className="w-4 h-4 mr-2" />
-                              🚀 Boost
+                              {hasActiveBoost(listing) ? (
+                                <>
+                                  <Crown className="w-4 h-4 mr-2" />
+                                  ✨ Active
+                                </>
+                              ) : (
+                                <>
+                                  <Zap className="w-4 h-4 mr-2" />
+                                  🚀 Boost
+                                </>
+                              )}
                             </Link>
                             
                             <Link
@@ -564,12 +798,13 @@ export default function DashboardPage() {
                             <button
                               onClick={(e) => {
                                 e.preventDefault();
+                                e.stopPropagation();
                                 handleToggleStatus(listing.id, listing.status);
                               }}
                               className={`inline-flex items-center px-3 py-2 text-sm rounded-md transition-colors border ${
                                 listing.status === 'published'
-                                  ? 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100'
-                                  : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                                  ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800 hover:bg-yellow-100 dark:hover:bg-yellow-900/40'
+                                  : 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/40'
                               }`}
                               disabled={processingAction === listing.id}
                               title={listing.status === 'published' ? 'Pause listing' : 'Publish listing'}
@@ -590,9 +825,10 @@ export default function DashboardPage() {
                             <button
                               onClick={(e) => {
                                 e.preventDefault();
+                                e.stopPropagation();
                                 setShowDeleteModal(listing.id);
                               }}
-                              className="inline-flex items-center px-3 py-2 text-sm bg-red-50 text-red-700 rounded-md hover:bg-red-100 transition-colors border border-red-200"
+                              className="inline-flex items-center px-3 py-2 text-sm bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-md hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors border border-red-200 dark:border-red-800"
                               title="Delete listing"
                               disabled={processingAction === listing.id}
                             >
@@ -602,9 +838,9 @@ export default function DashboardPage() {
                           </div>
                         </div>
                       </div>
-                    </Link>
-                  )
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

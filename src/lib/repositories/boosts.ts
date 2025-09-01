@@ -4,23 +4,25 @@ import type { Database } from '@/lib/types/database';
 type Boost = Database['public']['Tables']['boosts']['Row'];
 type NewBoost = Database['public']['Tables']['boosts']['Insert'];
 type UpdateBoost = Database['public']['Tables']['boosts']['Update'];
+type BoostPricing = Database['public']['Tables']['boost_pricing']['Row'];
 
 export interface BoostTier {
   tier: 'featured' | 'premium' | 'top';
   name: string;
   description: string;
-  duration: number; // days
-  priceXaf: number;
+  duration: number; // default duration for display
+  pricePerDay: number; // price per day in XAF
   features: string[];
 }
 
-export const BOOST_TIERS: BoostTier[] = [
+// Default pricing structure (will be overridden by database values)
+export const DEFAULT_BOOST_TIERS: BoostTier[] = [
   {
     tier: 'featured',
     name: 'Featured',
     description: 'Get your listing featured in the homepage',
     duration: 7,
-    priceXaf: 2000,
+    pricePerDay: 1000,
     features: ['Homepage visibility', 'Featured badge', '7 days duration']
   },
   {
@@ -28,7 +30,7 @@ export const BOOST_TIERS: BoostTier[] = [
     name: 'Premium',
     description: 'Priority placement in search results',
     duration: 14,
-    priceXaf: 5000,
+    pricePerDay: 2000,
     features: ['Priority in search', 'Premium badge', 'Homepage visibility', '14 days duration']
   },
   {
@@ -36,10 +38,63 @@ export const BOOST_TIERS: BoostTier[] = [
     name: 'Top',
     description: 'Maximum visibility across the platform',
     duration: 30,
-    priceXaf: 10000,
+    pricePerDay: 500,
     features: ['Top of search results', 'Top badge', 'Homepage priority', 'Featured in categories', '30 days duration']
   }
 ];
+
+// Function to calculate price based on tier and days
+export const calculateBoostPrice = async (tier: 'featured' | 'premium' | 'top', days: number): Promise<number> => {
+  try {
+    // Try to get pricing from database
+    const { data, error } = await supabase
+      .from('boost_pricing')
+      .select('price_per_day')
+      .eq('tier', tier)
+      .single();
+    
+    if (error || !data) {
+      // Fallback to default pricing
+      const tierInfo = DEFAULT_BOOST_TIERS.find(t => t.tier === tier);
+      return tierInfo ? tierInfo.pricePerDay * days : 0;
+    }
+    
+    return data.price_per_day * days;
+  } catch (error) {
+    console.error('Error calculating boost price:', error);
+    // Fallback to default pricing
+    const tierInfo = DEFAULT_BOOST_TIERS.find(t => t.tier === tier);
+    return tierInfo ? tierInfo.pricePerDay * days : 0;
+  }
+};
+
+// Function to get all boost tiers with current pricing
+export const getBoostTiers = async (): Promise<BoostTier[]> => {
+  try {
+    // Get pricing from database
+    const { data, error } = await supabase
+      .from('boost_pricing')
+      .select('*');
+    
+    if (error || !data || data.length === 0) {
+      // Fallback to default pricing
+      return DEFAULT_BOOST_TIERS;
+    }
+    
+    // Map database pricing to boost tiers
+    return DEFAULT_BOOST_TIERS.map(tier => {
+      const dbPricing = data.find(p => p.tier === tier.tier);
+      return {
+        ...tier,
+        pricePerDay: dbPricing ? dbPricing.price_per_day : tier.pricePerDay
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching boost tiers:', error);
+    // Fallback to default pricing
+    return DEFAULT_BOOST_TIERS;
+  }
+};
 
 export class BoostsRepository {
   async create(boost: NewBoost): Promise<Boost> {
@@ -142,8 +197,9 @@ export class BoostsRepository {
   }
 
   // Get boost tier information
-  getBoostTier(tier: 'featured' | 'premium' | 'top'): BoostTier | undefined {
-    return BOOST_TIERS.find(t => t.tier === tier);
+  async getBoostTier(tier: 'featured' | 'premium' | 'top'): Promise<BoostTier | undefined> {
+    const tiers = await getBoostTiers();
+    return tiers.find(t => t.tier === tier);
   }
 
   // Check if listing has active boost
