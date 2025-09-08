@@ -11,6 +11,12 @@ export interface CategoryWithChildren extends Category {
   listing_count?: number;
 }
 
+export interface FlattenedCategory extends Category {
+  level: number;
+  displayName: string;
+  parent?: Category;
+}
+
 export class CategoriesRepository {
   async getAll(): Promise<CategoryWithChildren[]> {
     const { data, error } = await supabase
@@ -123,6 +129,139 @@ export class CategoriesRepository {
     }
 
     return data || [];
+  }
+
+  async getByListingType(listingType: 'good' | 'service' | 'job'): Promise<CategoryWithChildren[]> {
+    const { data, error } = await supabase
+      .from('categories')
+      .select(`
+        *,
+        parent:categories!parent_id(*)
+      `)
+      .eq('listing_type', listingType)
+      .order('sort_order', { ascending: true });
+
+    if (error) {
+      throw new Error(`Failed to fetch categories by listing type: ${error.message}`);
+    }
+
+    // Group categories by parent
+    const categoryMap = new Map<number, CategoryWithChildren>();
+    const rootCategories: CategoryWithChildren[] = [];
+
+    // First pass: create all categories
+    data?.forEach(category => {
+      const cat: CategoryWithChildren = {
+        ...category,
+        children: []
+      };
+      categoryMap.set(category.id, cat);
+    });
+
+    // Second pass: organize hierarchy
+    data?.forEach(category => {
+      const cat = categoryMap.get(category.id)!;
+      if (category.parent_id) {
+        const parent = categoryMap.get(category.parent_id);
+        if (parent) {
+          parent.children!.push(cat);
+          cat.parent = parent;
+        }
+      } else {
+        rootCategories.push(cat);
+      }
+    });
+
+    return rootCategories;
+  }
+
+  // Get all categories for a listing type as a flat list with hierarchy info
+  async getAllByListingType(listingType: 'good' | 'service' | 'job'): Promise<CategoryWithChildren[]> {
+    const { data, error } = await supabase
+      .from('categories')
+      .select(`
+        *,
+        parent:categories!parent_id(*)
+      `)
+      .eq('listing_type', listingType)
+      .order('sort_order', { ascending: true });
+
+    if (error) {
+      throw new Error(`Failed to fetch all categories by listing type: ${error.message}`);
+    }
+
+    // Group categories by parent
+    const categoryMap = new Map<number, CategoryWithChildren>();
+    const rootCategories: CategoryWithChildren[] = [];
+
+    // First pass: create all categories
+    data?.forEach(category => {
+      const cat: CategoryWithChildren = {
+        ...category,
+        children: []
+      };
+      categoryMap.set(category.id, cat);
+    });
+
+    // Second pass: organize hierarchy
+    data?.forEach(category => {
+      const cat = categoryMap.get(category.id)!;
+      if (category.parent_id) {
+        const parent = categoryMap.get(category.parent_id);
+        if (parent) {
+          parent.children!.push(cat);
+          cat.parent = parent;
+        }
+      } else {
+        rootCategories.push(cat);
+      }
+    });
+
+    return rootCategories;
+  }
+
+  // Flatten categories for dropdown display with proper hierarchy
+  private flattenCategories(categories: CategoryWithChildren[], level = 0): FlattenedCategory[] {
+    const flattened: FlattenedCategory[] = [];
+    
+    categories.forEach(category => {
+      // Create better visual hierarchy using different approaches for better dropdown display
+      let displayName = '';
+      if (level === 0) {
+        // Root categories - bold and clear
+        displayName = `📁 ${category.name_en}`;
+      } else if (level === 1) {
+        // First level subcategories - with clear indentation
+        displayName = `    ├─ ${category.name_en}`;
+      } else if (level === 2) {
+        // Second level subcategories - much more indentation using different approach
+        displayName = `        ├─ ${category.name_en}`;
+      } else {
+        // Deeper levels - maximum indentation
+        displayName = `            ├─ ${category.name_en}`;
+      }
+      
+      // Add the current category
+      flattened.push({
+        ...category,
+        level,
+        displayName,
+        parent: category.parent
+      });
+      
+      // Recursively add children
+      if (category.children && category.children.length > 0) {
+        flattened.push(...this.flattenCategories(category.children, level + 1));
+      }
+    });
+    
+    return flattened;
+  }
+
+  // Get flattened categories for dropdown display
+  async getFlattenedByListingType(listingType: 'good' | 'service' | 'job'): Promise<FlattenedCategory[]> {
+    const hierarchicalCategories = await this.getByListingType(listingType);
+    return this.flattenCategories(hierarchicalCategories);
   }
 
   async getWithListingCounts(): Promise<CategoryWithChildren[]> {

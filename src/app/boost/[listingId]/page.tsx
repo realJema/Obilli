@@ -29,7 +29,8 @@ import {
   ChevronLeft,
   DollarSign,
   Plus,
-  Minus
+  Minus,
+  MapPin
 } from "lucide-react";
 import Link from "next/link";
 
@@ -198,23 +199,120 @@ export default function BoostListingPage() {
         </h4>
         
         {tier === 'featured' && (
-          <div className="space-y-3">
-            {/* Search Results Preview */}
+          <div className="space-y-4">
+            {/* Homepage Hero Carousel Preview */}
             <div className="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 rounded-md p-3">
-              <div className="flex items-center space-x-2 mb-2">
-                <Search className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <span className="text-sm font-medium text-blue-900 dark:text-blue-100">Search Results</span>
+              <div className="flex items-center space-x-2 mb-3">
+                <Home className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-medium text-blue-900 dark:text-blue-100">Homepage Hero Carousel</span>
               </div>
-              <div className="bg-background border border-blue-300 dark:border-blue-700 rounded p-2">
-                <div className="flex items-center space-x-2">
-                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/50 rounded flex items-center justify-center">
-                    <Image className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <div className="bg-background border border-blue-300 dark:border-blue-700 rounded-lg p-2">
+                {/* Carousel with proper dimensions */}
+                <div className="relative h-[200px] overflow-hidden rounded-xl bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30">
+                  {/* Navigation arrows */}
+                  <div className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/20 text-white p-1 rounded-full">
+                    <ChevronLeft className="h-3 w-3" />
                   </div>
-                  <div className="flex-1">
-                    <div className="h-3 bg-blue-200 dark:bg-blue-800 rounded w-3/4 mb-1"></div>
-                    <div className="h-2 bg-muted rounded w-1/2"></div>
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/20 text-white p-1 rounded-full">
+                    <ChevronRight className="h-3 w-3" />
                   </div>
-                  <span className="bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded-full font-medium">Featured</span>
+                  
+                  {/* Content */}
+                  <div className="absolute bottom-0 left-0 right-0 p-3">
+                    <div className="flex items-end justify-between">
+                      <div className="flex-1">
+                        <div className="bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded-full font-medium inline-block mb-2">
+                          Featured Listing
+                        </div>
+                        <div className="h-4 bg-blue-200 dark:bg-blue-800 rounded w-3/4 mb-1"></div>
+                        <div className="h-3 bg-blue-200/70 dark:bg-blue-800/70 rounded w-1/2 mb-2"></div>
+                        <div className="flex items-center space-x-3 text-xs text-blue-800/80 dark:text-blue-200/80">
+                          <div className="flex items-center">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            <div className="h-2 bg-blue-200/70 dark:bg-blue-800/70 rounded w-16"></div>
+                          </div>
+                          <div className="flex items-center">
+                            <Clock className="h-3 w-3 mr-1" />
+                            <div className="h-2 bg-blue-200/70 dark:bg-blue-800/70 rounded w-12"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="h-5 bg-blue-200 dark:bg-blue-800 rounded w-20 mb-2"></div>
+                        <div className="bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded font-medium">
+                          View Details
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Navigation dots */}
+                  <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+                    <div className="w-1 h-1 rounded-full bg-blue-600"></div>
+                    <div className="w-1 h-1 rounded-full bg-blue-300"></div>
+                    <div className="w-1 h-1 rounded-full bg-blue-300"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Featured Listings Section Preview */}
+            <div className="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 rounded-md p-3">
+              <div className="flex items-center space-x-2 mb-3">
+                <Star className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-medium text-blue-900 dark:text-blue-100">Featured Listings Section</span>
+              </div>
+              <div className="bg-background border border-blue-300 dark:border-blue-700 rounded-lg p-2">
+                {/* Section header */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <Star className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
+                    <div className="h-5 bg-blue-200 dark:bg-blue-800 rounded w-32"></div>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="p-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                      <ChevronLeft className="h-3 w-3" />
+                    </div>
+                    <div className="p-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                      <ChevronRight className="h-3 w-3" />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Horizontal scroll of listing cards */}
+                <div className="flex space-x-3 overflow-hidden">
+                  {/* Featured listing card (highlighted) */}
+                  <div className="flex-shrink-0 w-32 bg-blue-100 dark:bg-blue-900/50 border-2 border-blue-300 dark:border-blue-700 rounded-lg overflow-hidden">
+                    <div className="aspect-[3/2] bg-blue-200 dark:bg-blue-800 relative">
+                      <div className="absolute top-1 left-1 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 text-xs px-1 py-0.5 rounded font-medium">
+                        Featured
+                      </div>
+                    </div>
+                    <div className="p-2">
+                      <div className="h-2 bg-blue-200 dark:bg-blue-800 rounded w-3/4 mb-1"></div>
+                      <div className="h-3 bg-blue-200 dark:bg-blue-800 rounded w-1/2 mb-1"></div>
+                      <div className="h-2 bg-blue-200/70 dark:bg-blue-800/70 rounded w-1/3"></div>
+                    </div>
+                  </div>
+                  
+                  {/* Other listing cards */}
+                  <div className="flex-shrink-0 w-32 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <div className="aspect-[3/2] bg-gray-200 dark:bg-gray-700"></div>
+                    <div className="p-2">
+                      <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded w-3/4 mb-1"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2 mb-1"></div>
+                      <div className="h-2 bg-gray-200/70 dark:bg-gray-600/70 rounded w-1/3"></div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-shrink-0 w-32 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <div className="aspect-[3/2] bg-gray-200 dark:bg-gray-700"></div>
+                    <div className="p-2">
+                      <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded w-3/4 mb-1"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2 mb-1"></div>
+                      <div className="h-2 bg-gray-200/70 dark:bg-gray-600/70 rounded w-1/3"></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -222,56 +320,258 @@ export default function BoostListingPage() {
         )}
         
         {tier === 'premium' && (
-          <div className="space-y-3">
-            {/* Homepage Featured Section */}
+          <div className="space-y-4">
+            {/* Featured Listings Section Preview */}
             <div className="border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/50 rounded-md p-3">
-              <div className="flex items-center space-x-2 mb-2">
+              <div className="flex items-center space-x-2 mb-3">
                 <Star className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                <span className="text-sm font-medium text-purple-900 dark:text-purple-100">Homepage Featured</span>
+                <span className="text-sm font-medium text-purple-900 dark:text-purple-100">Featured Listings Section</span>
               </div>
-              <div className="bg-background border border-purple-300 dark:border-purple-700 rounded p-2">
-                <div className="flex items-center space-x-2">
-                  <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/50 rounded flex items-center justify-center">
-                    <Crown className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              <div className="bg-background border border-purple-300 dark:border-purple-700 rounded-lg p-2">
+                {/* Section header */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <Star className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
+                    <div className="h-5 bg-purple-200 dark:bg-purple-800 rounded w-32"></div>
                   </div>
-                  <div className="flex-1">
-                    <div className="h-3 bg-purple-200 dark:bg-purple-800 rounded w-3/4 mb-1"></div>
-                    <div className="h-2 bg-muted rounded w-1/2"></div>
+                  <div className="flex items-center space-x-1">
+                    <div className="p-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                      <ChevronLeft className="h-3 w-3" />
+                    </div>
+                    <div className="p-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                      <ChevronRight className="h-3 w-3" />
+                    </div>
                   </div>
-                  <span className="bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 text-xs px-2 py-1 rounded-full font-medium">Premium</span>
+                </div>
+                
+                {/* Horizontal scroll of listing cards */}
+                <div className="flex space-x-3 overflow-hidden">
+                  {/* Premium listing card (highlighted) */}
+                  <div className="flex-shrink-0 w-32 bg-purple-100 dark:bg-purple-900/50 border-2 border-purple-300 dark:border-purple-700 rounded-lg overflow-hidden">
+                    <div className="aspect-[3/2] bg-purple-200 dark:bg-purple-800 relative">
+                      <div className="absolute top-1 left-1 bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 text-xs px-1 py-0.5 rounded font-medium">
+                        Premium
+                      </div>
+                    </div>
+                    <div className="p-2">
+                      <div className="h-2 bg-purple-200 dark:bg-purple-800 rounded w-3/4 mb-1"></div>
+                      <div className="h-3 bg-purple-200 dark:bg-purple-800 rounded w-1/2 mb-1"></div>
+                      <div className="h-2 bg-purple-200/70 dark:bg-purple-800/70 rounded w-1/3"></div>
+                    </div>
+                  </div>
+                  
+                  {/* Other listing cards */}
+                  <div className="flex-shrink-0 w-32 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <div className="aspect-[3/2] bg-gray-200 dark:bg-gray-700"></div>
+                    <div className="p-2">
+                      <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded w-3/4 mb-1"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2 mb-1"></div>
+                      <div className="h-2 bg-gray-200/70 dark:bg-gray-600/70 rounded w-1/3"></div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-shrink-0 w-32 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <div className="aspect-[3/2] bg-gray-200 dark:bg-gray-700"></div>
+                    <div className="p-2">
+                      <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded w-3/4 mb-1"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2 mb-1"></div>
+                      <div className="h-2 bg-gray-200/70 dark:bg-gray-600/70 rounded w-1/3"></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            {/* Category Top */}
+            
+            {/* Category Top Position */}
             <div className="border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/50 rounded-md p-3">
-              <div className="flex items-center space-x-2 mb-2">
+              <div className="flex items-center space-x-2 mb-3">
                 <TrendingUp className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                 <span className="text-sm font-medium text-purple-900 dark:text-purple-100">Category Top Position</span>
+              </div>
+              <div className="bg-background border border-purple-300 dark:border-purple-700 rounded-lg p-2">
+                {/* Category section header */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="h-5 bg-purple-200 dark:bg-purple-800 rounded w-24"></div>
+                  <div className="flex items-center space-x-1">
+                    <div className="p-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                      <ChevronLeft className="h-3 w-3" />
+                    </div>
+                    <div className="p-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                      <ChevronRight className="h-3 w-3" />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Top listing cards */}
+                <div className="flex space-x-3 overflow-hidden">
+                  {/* Top listing card (highlighted) */}
+                  <div className="flex-shrink-0 w-32 bg-purple-100 dark:bg-purple-900/50 border-2 border-purple-300 dark:border-purple-700 rounded-lg overflow-hidden">
+                    <div className="aspect-[3/2] bg-purple-200 dark:bg-purple-800 relative">
+                      <div className="absolute top-1 left-1 bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 text-xs px-1 py-0.5 rounded font-medium">
+                        #1
+                      </div>
+                    </div>
+                    <div className="p-2">
+                      <div className="h-2 bg-purple-200 dark:bg-purple-800 rounded w-3/4 mb-1"></div>
+                      <div className="h-3 bg-purple-200 dark:bg-purple-800 rounded w-1/2 mb-1"></div>
+                      <div className="h-2 bg-purple-200/70 dark:bg-purple-800/70 rounded w-1/3"></div>
+                    </div>
+                  </div>
+                  
+                  {/* Other listing cards */}
+                  <div className="flex-shrink-0 w-32 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <div className="aspect-[3/2] bg-gray-200 dark:bg-gray-700"></div>
+                    <div className="p-2">
+                      <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded w-3/4 mb-1"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2 mb-1"></div>
+                      <div className="h-2 bg-gray-200/70 dark:bg-gray-600/70 rounded w-1/3"></div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-shrink-0 w-32 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <div className="aspect-[3/2] bg-gray-200 dark:bg-gray-700"></div>
+                    <div className="p-2">
+                      <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded w-3/4 mb-1"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2 mb-1"></div>
+                      <div className="h-2 bg-gray-200/70 dark:bg-gray-600/70 rounded w-1/3"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         )}
         
         {tier === 'top' && (
-          <div className="space-y-3">
-            {/* Homepage Hero */}
+          <div className="space-y-4">
+            {/* Featured Listings Section - First Position */}
             <div className="border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/50 rounded-md p-3">
-              <div className="flex items-center space-x-2 mb-2">
-                <Home className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
-                <span className="text-sm font-medium text-yellow-900 dark:text-yellow-100">Homepage Hero Carousel</span>
+              <div className="flex items-center space-x-2 mb-3">
+                <Star className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                <span className="text-sm font-medium text-yellow-900 dark:text-yellow-100">Featured Listings Section - First Position</span>
               </div>
-              <div className="bg-background border border-yellow-300 dark:border-yellow-700 rounded p-2">
-                <div className="aspect-video bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 rounded flex items-center justify-center">
-                  <div className="text-center">
-                    <Image className="w-8 h-8 text-yellow-600 dark:text-yellow-400 mx-auto mb-1" />
-                    <span className="text-xs font-medium text-yellow-800 dark:text-yellow-200">Your Listing Here</span>
+              <div className="bg-background border border-yellow-300 dark:border-yellow-700 rounded-lg p-2">
+                {/* Section header */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <Star className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mr-2" />
+                    <div className="h-5 bg-yellow-200 dark:bg-yellow-800 rounded w-32"></div>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="p-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                      <ChevronLeft className="h-3 w-3" />
+                    </div>
+                    <div className="p-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                      <ChevronRight className="h-3 w-3" />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Horizontal scroll of listing cards */}
+                <div className="flex space-x-3 overflow-hidden">
+                  {/* Top listing card (highlighted) */}
+                  <div className="flex-shrink-0 w-32 bg-yellow-100 dark:bg-yellow-900/50 border-2 border-yellow-300 dark:border-yellow-700 rounded-lg overflow-hidden">
+                    <div className="aspect-[3/2] bg-yellow-200 dark:bg-yellow-800 relative">
+                      <div className="absolute top-1 left-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 text-xs px-1 py-0.5 rounded font-medium">
+                        Top
+                      </div>
+                    </div>
+                    <div className="p-2">
+                      <div className="h-2 bg-yellow-200 dark:bg-yellow-800 rounded w-3/4 mb-1"></div>
+                      <div className="h-3 bg-yellow-200 dark:bg-yellow-800 rounded w-1/2 mb-1"></div>
+                      <div className="h-2 bg-yellow-200/70 dark:bg-yellow-800/70 rounded w-1/3"></div>
+                    </div>
+                  </div>
+                  
+                  {/* Other listing cards */}
+                  <div className="flex-shrink-0 w-32 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <div className="aspect-[3/2] bg-gray-200 dark:bg-gray-700"></div>
+                    <div className="p-2">
+                      <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded w-3/4 mb-1"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2 mb-1"></div>
+                      <div className="h-2 bg-gray-200/70 dark:bg-gray-600/70 rounded w-1/3"></div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-shrink-0 w-32 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <div className="aspect-[3/2] bg-gray-200 dark:bg-gray-700"></div>
+                    <div className="p-2">
+                      <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded w-3/4 mb-1"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2 mb-1"></div>
+                      <div className="h-2 bg-gray-200/70 dark:bg-gray-600/70 rounded w-1/3"></div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-            {/* All other premium features */}
+
+            {/* Trending Section - First Position */}
             <div className="border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/50 rounded-md p-3">
-              <span className="text-sm text-yellow-800 dark:text-yellow-200">+ All Premium & Featured benefits</span>
+              <div className="flex items-center space-x-2 mb-3">
+                <TrendingUp className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                <span className="text-sm font-medium text-yellow-900 dark:text-yellow-100">Trending Section - First Position</span>
+              </div>
+              <div className="bg-background border border-yellow-300 dark:border-yellow-700 rounded-lg p-2">
+                {/* Section header */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <TrendingUp className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mr-2" />
+                    <div className="h-5 bg-yellow-200 dark:bg-yellow-800 rounded w-24"></div>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="p-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                      <ChevronLeft className="h-3 w-3" />
+                    </div>
+                    <div className="p-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                      <ChevronRight className="h-3 w-3" />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Horizontal scroll of listing cards */}
+                <div className="flex space-x-3 overflow-hidden">
+                  {/* Top listing card (highlighted) */}
+                  <div className="flex-shrink-0 w-32 bg-yellow-100 dark:bg-yellow-900/50 border-2 border-yellow-300 dark:border-yellow-700 rounded-lg overflow-hidden">
+                    <div className="aspect-[3/2] bg-yellow-200 dark:bg-yellow-800 relative">
+                      <div className="absolute top-1 left-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 text-xs px-1 py-0.5 rounded font-medium">
+                        Top
+                      </div>
+                    </div>
+                    <div className="p-2">
+                      <div className="h-2 bg-yellow-200 dark:bg-yellow-800 rounded w-3/4 mb-1"></div>
+                      <div className="h-3 bg-yellow-200 dark:bg-yellow-800 rounded w-1/2 mb-1"></div>
+                      <div className="h-2 bg-yellow-200/70 dark:bg-yellow-800/70 rounded w-1/3"></div>
+                    </div>
+                  </div>
+                  
+                  {/* Other listing cards */}
+                  <div className="flex-shrink-0 w-32 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <div className="aspect-[3/2] bg-gray-200 dark:bg-gray-700"></div>
+                    <div className="p-2">
+                      <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded w-3/4 mb-1"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2 mb-1"></div>
+                      <div className="h-2 bg-gray-200/70 dark:bg-gray-600/70 rounded w-1/3"></div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-shrink-0 w-32 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <div className="aspect-[3/2] bg-gray-200 dark:bg-gray-700"></div>
+                    <div className="p-2">
+                      <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded w-3/4 mb-1"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2 mb-1"></div>
+                      <div className="h-2 bg-gray-200/70 dark:bg-gray-600/70 rounded w-1/3"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* All other benefits */}
+            <div className="border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/50 rounded-md p-3">
+              <div className="flex items-center space-x-2">
+                <Check className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                <span className="text-sm text-yellow-800 dark:text-yellow-200">+ All Premium & Featured benefits</span>
+              </div>
             </div>
           </div>
         )}

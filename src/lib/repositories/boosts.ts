@@ -23,7 +23,7 @@ export const DEFAULT_BOOST_TIERS: BoostTier[] = [
     description: 'Get your listing featured in the homepage',
     duration: 7,
     pricePerDay: 1000,
-    features: ['Homepage visibility', 'Featured badge', '7 days duration']
+    features: ['Homepage carousel display', 'Featured badge', 'Priority in search results', 'Enhanced visibility']
   },
   {
     tier: 'premium',
@@ -31,7 +31,7 @@ export const DEFAULT_BOOST_TIERS: BoostTier[] = [
     description: 'Priority placement in search results',
     duration: 14,
     pricePerDay: 2000,
-    features: ['Priority in search', 'Premium badge', 'Homepage visibility', '14 days duration']
+    features: ['Featured listings section', 'Premium badge', 'Category top position', 'Priority search ranking', 'Enhanced visibility']
   },
   {
     tier: 'top',
@@ -39,7 +39,7 @@ export const DEFAULT_BOOST_TIERS: BoostTier[] = [
     description: 'Maximum visibility across the platform',
     duration: 30,
     pricePerDay: 500,
-    features: ['Top of search results', 'Top badge', 'Homepage priority', 'Featured in categories', '30 days duration']
+    features: ['First position in all sections', 'Top badge', 'Homepage priority', 'Featured in categories', 'Maximum search visibility', 'Trending section priority']
   }
 ];
 

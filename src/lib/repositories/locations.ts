@@ -27,6 +27,10 @@ export interface LocationOption {
   quarter?: string;
 }
 
+export interface LocationWithChildren extends Location {
+  children?: LocationWithChildren[];
+}
+
 class LocationsRepository {
   async getAll(): Promise<Location[]> {
     const { data, error } = await supabase
@@ -189,6 +193,51 @@ class LocationsRepository {
     }
     
     return data;
+  }
+
+  async getHierarchical(): Promise<LocationWithChildren[]> {
+    // Get all locations
+    const { data: allLocations, error } = await supabase
+      .from('locations')
+      .select('*')
+      .order('location_en', { ascending: true });
+
+    if (error) throw error;
+
+    const locations = allLocations || [];
+    
+    // Build hierarchy
+    const locationMap = new Map<number, LocationWithChildren>();
+    const rootLocations: LocationWithChildren[] = [];
+
+    // First pass: create all location objects
+    locations.forEach(location => {
+      locationMap.set(location.id, {
+        ...location,
+        children: []
+      });
+    });
+
+    // Second pass: build the tree structure
+    locations.forEach(location => {
+      const locationWithChildren = locationMap.get(location.id)!;
+      
+      if (location.parent_id === null) {
+        // This is a root location (region)
+        rootLocations.push(locationWithChildren);
+      } else {
+        // This is a child location (city or quarter)
+        const parent = locationMap.get(location.parent_id);
+        if (parent) {
+          if (!parent.children) {
+            parent.children = [];
+          }
+          parent.children.push(locationWithChildren);
+        }
+      }
+    });
+
+    return rootLocations;
   }
 
   async search(query: string): Promise<LocationOption[]> {

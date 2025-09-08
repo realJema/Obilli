@@ -7,7 +7,9 @@ import { MainLayout } from "@/components/main-layout";
 import { useI18n } from "@/lib/providers";
 import { categoriesRepo, locationsRepo } from "@/lib/repositories";
 import type { CategoryWithChildren } from "@/lib/repositories/categories";
-import type { LocationOption } from "@/lib/repositories/locations";
+import type { LocationWithChildren } from "@/lib/repositories/locations";
+import { CategoryTree, type CategoryNode } from "@/components/ui/category-tree";
+import { LocationTree, type LocationNode } from "@/components/ui/location-tree";
 import { 
   Upload, 
   MapPin, 
@@ -40,7 +42,7 @@ export default function SellPage() {
   const user = useUser();
   const supabase = useSupabaseClient();
   const router = useRouter();
-  const { t, formatCurrency } = useI18n();
+  const { formatCurrency } = useI18n();
 
   // Auth state
   const [isLoading, setIsLoading] = useState(true);
@@ -64,10 +66,7 @@ export default function SellPage() {
 
   // Data
   const [categories, setCategories] = useState<CategoryWithChildren[]>([]);
-  const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
-  const [filteredLocations, setFilteredLocations] = useState<LocationOption[]>([]);
-  const [locationSearch, setLocationSearch] = useState('');
-  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+  const [locations, setLocations] = useState<LocationWithChildren[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -95,22 +94,6 @@ export default function SellPage() {
   const STORAGE_KEY = 'sell-listing-draft';
 
   // Save form data to localStorage
-  const saveToLocalStorage = () => {
-    const formData = {
-      listingType,
-      title,
-      description,
-      categoryId,
-      price,
-      negotiable,
-      condition,
-      locationId,
-      servicePackages,
-      // Note: images are not saved to localStorage due to size
-      imagesCount: images.length
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
-  };
 
   // Load form data from localStorage
   const loadFromLocalStorage = () => {
@@ -220,11 +203,10 @@ export default function SellPage() {
       try {
         const [categoriesData, locationsData] = await Promise.all([
           categoriesRepo.getAll(),
-          locationsRepo.getQuarterOptions()
+          locationsRepo.getHierarchical()
         ]);
         setCategories(categoriesData);
-        setLocationOptions(locationsData);
-        setFilteredLocations([]); // Start with empty results
+        setLocations(locationsData);
         
         // Load saved form data
         loadFromLocalStorage();
@@ -238,26 +220,76 @@ export default function SellPage() {
     }
   }, [hasProfile]);
 
+  // Load filtered categories based on listing type
+  useEffect(() => {
+    const loadFilteredCategories = async () => {
+      try {
+        const filteredData = await categoriesRepo.getByListingType(listingType);
+        setCategories(filteredData);
+        
+        // Reset category selection when listing type changes
+        setCategoryId(null);
+      } catch (error) {
+        console.error('Failed to load filtered categories:', error);
+      }
+    };
+
+    if (hasProfile) {
+      loadFilteredCategories();
+    }
+  }, [listingType, hasProfile]);
+
+  // Convert categories to tree format recursively
+  const convertToTree = (categories: CategoryWithChildren[]): CategoryNode[] => {
+    return categories.map(category => ({
+      id: category.id,
+      name: category.name_en,
+      children: category.children ? convertToTree(category.children as CategoryWithChildren[]) : []
+    }));
+  };
+
+  // Convert locations to tree format recursively
+  const convertLocationsToTree = (locations: LocationWithChildren[]): LocationNode[] => {
+    return locations.map(location => ({
+      id: location.id,
+      name: location.location_en,
+      children: location.children ? convertLocationsToTree(location.children as LocationWithChildren[]) : []
+    }));
+  };
+
+  // Get location name by ID
+  const getLocationName = (locationId: number): string => {
+    const findLocation = (nodes: LocationWithChildren[], id: number): string | null => {
+      for (const node of nodes) {
+        if (node.id === id) return node.location_en;
+        if (node.children) {
+          const found = findLocation(node.children, id);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    return findLocation(locations, locationId) || 'Location';
+  };
+
   // Save form data whenever it changes
   useEffect(() => {
     if (hasProfile) {
-      saveToLocalStorage();
+      const formData = {
+        listingType,
+        title,
+        description,
+        categoryId,
+        price,
+        negotiable,
+        condition,
+        locationId,
+        servicePackages,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
     }
   }, [listingType, title, description, categoryId, price, negotiable, condition, locationId, servicePackages, hasProfile]);
 
-  // Filter locations based on search
-  useEffect(() => {
-    if (!locationSearch.trim()) {
-      setFilteredLocations(locationOptions.slice(0, 20)); // Show first 20 by default
-      setShowLocationDropdown(false);
-    } else {
-      const filtered = locationOptions.filter(location =>
-        location.label.toLowerCase().includes(locationSearch.toLowerCase())
-      );
-      setFilteredLocations(filtered.slice(0, 20)); // Show top 20 results
-      setShowLocationDropdown(filtered.length > 0);
-    }
-  }, [locationSearch, locationOptions]);
 
   // Handle image upload
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -619,95 +651,26 @@ export default function SellPage() {
                     <label className="block text-sm font-medium text-foreground mb-2">
                       Category *
                     </label>
-                    <select
-                      required
-                      value={categoryId || ''}
-                      onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}
-                      className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-background text-foreground"
-                    >
-                      <option value="">Select a category</option>
-                      {categories.map((category) => (
-                        <optgroup key={category.id} label={category.name_en}>
-                          <option value={category.id}>{category.name_en}</option>
-                          {category.children?.map((child) => (
-                            <option key={child.id} value={child.id}>
-                              └ {child.name_en}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
+                    <CategoryTree
+                      categories={convertToTree(categories)}
+                      selectedId={categoryId}
+                      onSelect={setCategoryId}
+                      placeholder="Select a category"
+                      className="w-full"
+                    />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
                       Location (Optional)
                     </label>
-                    <div className="relative">
-                      {/* Selected location display */}
-                      {locationId ? (
-                        <div className="w-full px-4 py-3 border border-border rounded-md bg-background text-foreground flex items-center justify-between">
-                          <div className="flex items-center">
-                            <MapPin className="h-4 w-4 text-primary mr-2" />
-                            <span>{locationOptions.find(l => l.value === locationId)?.label}</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setLocationId(null);
-                              setLocationSearch('');
-                              setShowLocationDropdown(false);
-                            }}
-                            className="text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <input
-                            type="text"
-                            value={locationSearch}
-                            onChange={(e) => setLocationSearch(e.target.value)}
-                            onFocus={() => setShowLocationDropdown(true)}
-                            onBlur={() => {
-                              setTimeout(() => setShowLocationDropdown(false), 200);
-                            }}
-                            className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-background text-foreground"
-                            placeholder="Type to search locations..."
-                          />
-                          
-                          {/* Dropdown */}
-                          {showLocationDropdown && filteredLocations.length > 0 && (
-                            <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto">
-                              <div className="py-1">
-                                {filteredLocations.map((location) => (
-                                  <div
-                                    key={location.value}
-                                    onClick={() => {
-                                      setLocationId(location.value);
-                                      setLocationSearch('');
-                                      setShowLocationDropdown(false);
-                                    }}
-                                    className="px-4 py-2 hover:bg-accent cursor-pointer transition-colors"
-                                  >
-                                    <div className="flex items-center">
-                                      <MapPin className="h-4 w-4 text-primary mr-2" />
-                                      <div>
-                                        <div className="font-medium">{location.quarter || location.city}</div>
-                                        <div className="text-sm text-muted-foreground">
-                                          {location.city && location.quarter ? `${location.city}, ` : ''}{location.region}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
+                    <LocationTree
+                      locations={convertLocationsToTree(locations)}
+                      selectedId={locationId}
+                      onSelect={setLocationId}
+                      placeholder="Select a location"
+                      className="w-full"
+                    />
                   </div>
                 </div>
               </div>
@@ -1110,7 +1073,7 @@ export default function SellPage() {
                         <div className="flex items-center">
                           <MapPin className="h-4 w-4 mr-1" />
                           {locationId 
-                            ? locationOptions.find(l => l.value === locationId)?.label || 'Location'
+                            ? getLocationName(locationId)
                             : 'No location specified'
                           }
                         </div>
@@ -1146,7 +1109,7 @@ export default function SellPage() {
                           <span className="text-muted-foreground">Location:</span>
                           <span className="font-medium">
                             {locationId 
-                              ? locationOptions.find(l => l.value === locationId)?.label 
+                              ? getLocationName(locationId) 
                               : 'Not specified'
                             }
                           </span>
