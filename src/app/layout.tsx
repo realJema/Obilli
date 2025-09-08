@@ -5,7 +5,6 @@ import { Providers } from "@/lib/providers";
 import { Header } from "@/components/header";
 import { CategoryNav } from "@/components/category-nav";
 import { MobileNav } from "@/components/mobile-nav";
-import { HeaderVisibilityController } from "@/components/header-visibility-controller";
 import { Footer } from "@/components/footer";
 
 const inter = Inter({
@@ -35,7 +34,6 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
         <Providers>
           <div className="min-h-screen bg-background flex flex-col">
-            <HeaderVisibilityController />
             <Header />
             <CategoryNav />
             <main className="flex-1 pb-16 md:pb-0 relative">

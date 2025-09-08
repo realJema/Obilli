@@ -117,7 +117,7 @@ export class ReviewsRepository {
   }
 
   async create(review: NewReview): Promise<Review> {
-    // Check if user has already reviewed this seller
+    // Check if user has already reviewed this seller for this listing
     const { data: existingReview } = await supabase
       .from('reviews')
       .select('id')
@@ -143,7 +143,7 @@ export class ReviewsRepository {
     return data;
   }
 
-  async update(id: number, updates: UpdateReview, reviewerId: string): Promise<Review> {
+  async update(id: string, updates: UpdateReview, reviewerId: string): Promise<Review> {
     // Only allow updating own reviews
     const { data, error } = await supabase
       .from('reviews')
@@ -160,7 +160,7 @@ export class ReviewsRepository {
     return data;
   }
 
-  async delete(id: number, reviewerId: string): Promise<void> {
+  async delete(id: string, reviewerId: string): Promise<void> {
     // Only allow deleting own reviews
     const { error } = await supabase
       .from('reviews')

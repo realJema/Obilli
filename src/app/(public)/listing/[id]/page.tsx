@@ -340,28 +340,6 @@ function ContactCard({ listing, seller }: { listing: ListingWithDetails; seller:
         </button>
       </div>
 
-      {/* Seller Info - Compact */}
-      <div className="mb-6">
-        <div className="flex items-center space-x-3 mb-3">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <User className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1">
-            <div className="font-medium">{seller?.username || 'Anonymous'}</div>
-            <div className="text-sm text-muted-foreground flex items-center">
-              Seller
-              {seller?.is_verified && (
-                <>
-                  <span className="mx-1">•</span>
-                  <Shield className="h-3 w-3 mr-1 text-green-600" />
-                  <span className="text-green-600">Verified</span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Action Buttons */}
       <div className="flex space-x-2 pt-4 border-t border-border">
         <button className="flex-1 border border-border hover:bg-accent py-2 px-3 rounded-lg flex items-center justify-center transition-colors text-sm">
@@ -600,6 +578,45 @@ export default function ListingDetailsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2">
+            {/* Seller Info - above image */}
+            <div className="mb-4">
+              <div className="flex items-center space-x-3">
+                {seller?.avatar_url ? (
+                  <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                    <DefaultImage 
+                      src={seller.avatar_url}
+                      alt={seller?.username || 'Seller'}
+                      width={40}
+                      height={40}
+                      className="object-cover w-full h-full"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <User className="h-5 w-5 text-primary" />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <div className="font-medium">{seller?.username || 'Anonymous'}</div>
+                  <div className="text-sm text-muted-foreground flex items-center">
+                    Seller
+                    {seller?.is_verified && (
+                      <>
+                        <span className="mx-1">•</span>
+                        <Shield className="h-3 w-3 mr-1 text-green-600" />
+                        <span className="text-green-600">Verified</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Title - below seller, above image */}
+            <h1 className="text-3xl font-bold text-foreground mb-4">
+              {listing.title}
+            </h1>
+            
             {/* Image Gallery */}
             <ImageGallery images={images} title={listing.title} />
             
@@ -607,9 +624,6 @@ export default function ListingDetailsPage() {
             <div className="mt-8">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h1 className="text-3xl font-bold text-foreground mb-2">
-                    {listing.title}
-                  </h1>
                   <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                     {listing.category && (
                       <div className="flex items-center">
@@ -682,20 +696,17 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('reviews')
-        .insert({
-          listing_id: listingId,
-          reviewer_id: user.id,
-          seller_id: sellerId,
-          rating: newReview.rating,
-          title: newReview.title,
-          comment: newReview.comment
-        })
-        .select()
-        .single();
+      // Use the reviews repository for proper validation and error handling
+      const reviewData = {
+        listing_id: listingId,
+        reviewer_id: user.id,
+        seller_id: sellerId,
+        rating: newReview.rating,
+        title: newReview.title || null,
+        comment: newReview.comment
+      };
 
-      if (error) throw error;
+      await reviewsRepo.create(reviewData);
 
       // Reload reviews
       const reviewsData = await reviewsRepo.getByListing(listingId);
@@ -704,6 +715,8 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
       setShowReviewForm(false);
     } catch (error) {
       console.error('Failed to submit review:', error);
+      // Show error to user
+      alert(`Failed to submit review: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -716,32 +729,30 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-xl font-semibold mb-2">Reviews</h3>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center">
-            <div className="flex items-center mr-2">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Star
-                  key={star}
-                  className={`h-4 w-4 ${
-                    star <= averageRating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                  }`}
-                />
-              ))}
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center">
+              <div className="flex items-center mr-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    className={`h-4 w-4 ${
+                      star <= averageRating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                    }`}
+                  />
+                ))}
+              </div>
+              <span className="font-medium">{averageRating.toFixed(1)}</span>
+              <span className="text-muted-foreground ml-1">({reviews.length} reviews)</span>
             </div>
-            <span className="font-medium">{averageRating.toFixed(1)}</span>
-            <span className="text-muted-foreground ml-1">({reviews.length} reviews)</span>
           </div>
         </div>
-        </div>
         
-        {user && (
-          <button
-            onClick={() => setShowReviewForm(true)}
-            className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90"
-          >
-            Write Review
-          </button>
-        )}
+        <button
+          onClick={() => setShowReviewForm(true)}
+          className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90"
+        >
+          Write Review
+        </button>
       </div>
 
       {/* Review Form */}
@@ -844,7 +855,7 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
                   </div>
                 </div>
                 
-                {(review.helpful_votes || 0) > 0 && (
+                {review.helpful_votes !== null && review.helpful_votes !== undefined && review.helpful_votes > 0 && (
                   <div className="flex items-center text-sm text-muted-foreground">
                     <ThumbsUp className="h-4 w-4 mr-1" />
                     {review.helpful_votes}

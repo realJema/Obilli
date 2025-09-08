@@ -105,19 +105,23 @@ export class ProfilesRepository {
       }
     }
 
+    // Execute the update
     const { data, error } = await supabase
       .from('profiles')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
-      .select()
-      .single();
+      .select('*');
 
     if (error) {
       console.error('Profile update error:', error);
       throw new Error(`Failed to update profile: ${error.message}`);
     }
 
-    return data;
+    if (!data || data.length === 0) {
+      throw new Error('Failed to update profile: No data returned');
+    }
+
+    return data[0];
   }
 
   async delete(id: string): Promise<void> {
