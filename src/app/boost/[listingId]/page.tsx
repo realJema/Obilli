@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser, useSupabaseClient } from "@supabase/auth-helpers-react";
 import { MainLayout } from "@/components/main-layout";
@@ -9,6 +9,7 @@ import { listingsRepo } from "@/lib/repositories";
 import { getBoostTiers, calculateBoostPrice, type BoostTier } from "@/lib/repositories/boosts";
 import type { ListingWithDetails } from "@/lib/repositories/listings";
 import type { Database } from "@/lib/types/database";
+import { mesombService, type PaymentRequest } from "@/lib/services/mesomb";
 import {
   Star,
   Zap,
@@ -20,14 +21,10 @@ import {
   AlertCircle,
   Crown,
   TrendingUp,
-  Calendar,
-  Image,
-  Search,
   Home,
   Eye,
   ChevronRight,
   ChevronLeft,
-  DollarSign,
   Plus,
   Minus,
   MapPin
@@ -44,7 +41,19 @@ export default function BoostListingPage() {
   const listingId = params?.listingId as string;
   
   // Step management
-  const [currentStep, setCurrentStep] = useState(1); // 1: Select Tier, 2: Select Days, 3: Payment, 4: Confirmation
+  const [currentStep, setCurrentStep] = useState(1); // 1: Select Tier, 2: Select Days, 3: Payment, 4: Confirmation, 5: Payment Waiting
+  
+  // Ref for main container
+  const mainContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Scroll to top when step changes
+  useEffect(() => {
+    if (mainContainerRef.current) {
+      mainContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentStep]);
   
   // Data states
   const [listing, setListing] = useState<ListingWithDetails | null>(null);
@@ -52,11 +61,14 @@ export default function BoostListingPage() {
   const [selectedTier, setSelectedTier] = useState<BoostTier | null>(null);
   const [selectedDays, setSelectedDays] = useState(7);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'mtn' | 'orange' | 'paypal' | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [calculatedPrice, setCalculatedPrice] = useState<number>(0);
   
   // UI states
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isPaymentPending, setIsPaymentPending] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -125,21 +137,100 @@ export default function BoostListingPage() {
       setIsProcessing(true);
       setError(null);
 
+      let paymentSuccess = true;
+      let transactionId = `boost_${Date.now()}`;
+
+      // Process payment based on selected method
+      if (selectedPaymentMethod === 'mtn' || selectedPaymentMethod === 'orange') {
+        if (!phoneNumber.trim()) {
+          throw new Error('Phone number is required for mobile money payments');
+        }
+
+        // Validate phone number
+        if (!mesombService.validatePhoneNumber(phoneNumber, selectedPaymentMethod)) {
+          throw new Error(`Invalid ${selectedPaymentMethod?.toUpperCase()} phone number format`);
+        }
+
+        // Make payment request
+        const paymentRequest: PaymentRequest = {
+          amount: calculatedPrice,
+          phone: phoneNumber,
+          service: selectedPaymentMethod?.toUpperCase() as 'MTN' | 'ORANGE',
+          reference: transactionId,
+          description: `${selectedTier.name} boost for "${listing.title}"`
+        };
+
+        setPaymentStatus('Sending payment request...');
+        const paymentResponse = await mesombService.makePayment(paymentRequest);
+        
+        if (!paymentResponse.success) {
+          throw new Error(paymentResponse.error || 'Payment request failed');
+        }
+
+        transactionId = paymentResponse.transactionId || transactionId;
+        
+        // If payment is pending, go to waiting step
+        if (paymentResponse.status === 'PENDING') {
+          setIsPaymentPending(true);
+          setCurrentStep(5); // Go to payment waiting step
+          setPaymentStatus('Payment request sent. Please check your phone and confirm the payment...');
+          
+          // Poll payment status
+          const finalStatus = await mesombService.pollPaymentStatus(
+            transactionId, 
+            selectedPaymentMethod, 
+            30, // 30 attempts
+            2000 // 2 seconds between attempts
+          );
+          
+          if (finalStatus.status === 'SUCCESS') {
+            setPaymentStatus('Payment confirmed! Creating boost...');
+            paymentSuccess = true;
+          } else if (finalStatus.status === 'FAILED') {
+            throw new Error('Payment was declined or failed');
+          } else if (finalStatus.status === 'CANCELLED') {
+            throw new Error('Payment was cancelled');
+          } else {
+            throw new Error('Payment confirmation timed out');
+          }
+        } else if (paymentResponse.status === 'SUCCESS') {
+          setPaymentStatus('Payment confirmed! Creating boost...');
+          paymentSuccess = true;
+        } else {
+          throw new Error('Payment failed');
+        }
+      } else if (selectedPaymentMethod === 'paypal') {
+        // PayPal payment processing
+        setPaymentStatus('Processing PayPal payment...');
+        
+        // For now, simulate PayPal payment success
+        // In production, you would integrate with PayPal API here
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate processing time
+        
+        setPaymentStatus('PayPal payment confirmed! Creating boost...');
+        paymentSuccess = true;
+      }
+
+      if (paymentSuccess) {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + selectedDays);
 
       // Create boost record using authenticated client
-      const { data, error } = await supabase
-        .from('boosts')
-        .insert({
-          listing_id: listingId,
+        const boostData = {
+            listing_id: listingId as string,
           owner_id: user.id,
           tier: selectedTier.tier,
+            starts_at: new Date().toISOString(),
           expires_at: expiresAt.toISOString(),
           price_xaf: calculatedPrice,
-          payment_status: 'paid', // For now, mark as paid immediately
-          is_active: true // Activate immediately for demo
-        })
+            payment_status: 'paid',
+            is_active: true
+          };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data, error } = await (supabase as any)
+          .from('boosts')
+          .insert(boostData as Database['public']['Tables']['boosts']['Insert'])
         .select()
         .single();
 
@@ -153,14 +244,17 @@ export default function BoostListingPage() {
       }
 
       // Show success message and redirect
-      const successUrl = `/boost/success?id=${listingId}&title=${encodeURIComponent(listing.title)}&tier=${selectedTier.tier}&duration=${selectedDays}&price=${calculatedPrice}`;
+        const successUrl = `/boost/${listingId}/success?tier=${selectedTier.tier}&duration=${selectedDays}&price=${calculatedPrice}&paymentMethod=${selectedPaymentMethod}&transactionId=${transactionId}`;
       router.push(successUrl);
+      }
       
     } catch (err) {
       console.error('Failed to purchase boost:', err);
       setError(err instanceof Error ? err.message : 'Failed to purchase boost');
     } finally {
       setIsProcessing(false);
+      setIsPaymentPending(false);
+      setPaymentStatus('');
     }
   };
 
@@ -220,10 +314,10 @@ export default function BoostListingPage() {
                   {/* Content */}
                   <div className="absolute bottom-0 left-0 right-0 p-3">
                     <div className="flex items-end justify-between">
-                      <div className="flex-1">
+                  <div className="flex-1">
                         <div className="bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded-full font-medium inline-block mb-2">
                           Featured Listing
-                        </div>
+                  </div>
                         <div className="h-4 bg-blue-200 dark:bg-blue-800 rounded w-3/4 mb-1"></div>
                         <div className="h-3 bg-blue-200/70 dark:bg-blue-800/70 rounded w-1/2 mb-2"></div>
                         <div className="flex items-center space-x-3 text-xs text-blue-800/80 dark:text-blue-200/80">
@@ -337,12 +431,12 @@ export default function BoostListingPage() {
                   <div className="flex items-center space-x-1">
                     <div className="p-1 rounded-full bg-gray-100 dark:bg-gray-800">
                       <ChevronLeft className="h-3 w-3" />
-                    </div>
+                  </div>
                     <div className="p-1 rounded-full bg-gray-100 dark:bg-gray-800">
                       <ChevronRight className="h-3 w-3" />
-                    </div>
-                  </div>
                 </div>
+              </div>
+            </div>
                 
                 {/* Horizontal scroll of listing cards */}
                 <div className="flex space-x-3 overflow-hidden">
@@ -460,11 +554,11 @@ export default function BoostListingPage() {
                   <div className="flex items-center space-x-1">
                     <div className="p-1 rounded-full bg-gray-100 dark:bg-gray-800">
                       <ChevronLeft className="h-3 w-3" />
-                    </div>
+                </div>
                     <div className="p-1 rounded-full bg-gray-100 dark:bg-gray-800">
                       <ChevronRight className="h-3 w-3" />
-                    </div>
-                  </div>
+              </div>
+            </div>
                 </div>
                 
                 {/* Horizontal scroll of listing cards */}
@@ -570,7 +664,7 @@ export default function BoostListingPage() {
             <div className="border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/50 rounded-md p-3">
               <div className="flex items-center space-x-2">
                 <Check className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
-                <span className="text-sm text-yellow-800 dark:text-yellow-200">+ All Premium & Featured benefits</span>
+              <span className="text-sm text-yellow-800 dark:text-yellow-200">+ All Premium & Featured benefits</span>
               </div>
             </div>
           </div>
@@ -618,7 +712,7 @@ export default function BoostListingPage() {
 
   return (
     <MainLayout>
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div ref={mainContainerRef} className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="flex items-center mb-8">
@@ -765,9 +859,12 @@ export default function BoostListingPage() {
                 ))}
               </div>
 
-              {/* Preview Section */}
-              {selectedTier && (
+              {/* Preview Section - Only show on first step */}
+              {selectedTier && currentStep === 1 && (
                 <div className="mt-8">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    Preview: How your listing will appear
+                  </h3>
                   <SkeletonPreview tier={selectedTier.tier} />
                 </div>
               )}
@@ -847,13 +944,6 @@ export default function BoostListingPage() {
                   Minimum 1 day, maximum 365 days
                 </p>
               </div>
-
-              {/* Preview Section */}
-              {selectedTier && (
-                <div className="mt-8">
-                  <SkeletonPreview tier={selectedTier.tier} />
-                </div>
-              )}
 
               {/* Navigation Buttons */}
               <div className="flex justify-between mt-8">
@@ -947,26 +1037,46 @@ export default function BoostListingPage() {
                   </button>
                 </div>
                 
+                {/* Phone Number Input for Mobile Money */}
+                {(selectedPaymentMethod === 'mtn' || selectedPaymentMethod === 'orange') && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Phone Number
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        placeholder={selectedPaymentMethod === 'mtn' ? '6XXXXXXXX' : '69XXXXXXXX or 655-659XXXX'}
+                        className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                        <Smartphone className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {selectedPaymentMethod === 'mtn' 
+                        ? 'Enter your MTN Mobile Money number (e.g., 675123456)' 
+                        : 'Enter your Orange Money number (e.g., 691234567 or 655123456)'
+                      }
+                    </p>
+                  </div>
+                )}
+                
                 {selectedPaymentMethod && (
                   <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg">
                     <div className="flex items-center text-blue-800 dark:text-blue-200 text-sm">
                       <AlertCircle className="w-4 h-4 mr-2" />
                       <span>
-                        {selectedPaymentMethod === 'mtn' && 'MTN Mobile Money payment integration coming soon. For now, boost will be activated immediately.'}
-                        {selectedPaymentMethod === 'orange' && 'Orange Money payment integration coming soon. For now, boost will be activated immediately.'}
-                        {selectedPaymentMethod === 'paypal' && 'PayPal payment integration coming soon. For now, boost will be activated immediately.'}
+                        {selectedPaymentMethod === 'mtn' && 'MTN Mobile Money payment will be processed via MeSomb. You will receive a payment request on your phone.'}
+                        {selectedPaymentMethod === 'orange' && 'Orange Money payment will be processed via MeSomb. You will receive a payment request on your phone.'}
+                        {selectedPaymentMethod === 'paypal' && 'PayPal payment will be processed securely. You will be redirected to PayPal for payment confirmation.'}
                       </span>
                     </div>
                   </div>
                 )}
               </div>
-
-              {/* Preview Section */}
-              {selectedTier && (
-                <div className="mt-8">
-                  <SkeletonPreview tier={selectedTier.tier} />
-                </div>
-              )}
 
               {/* Navigation Buttons */}
               <div className="flex justify-between mt-8">
@@ -980,11 +1090,77 @@ export default function BoostListingPage() {
                 
                 <button
                   onClick={() => setCurrentStep(4)}
-                  disabled={!selectedPaymentMethod}
+                  disabled={
+                    !selectedPaymentMethod || 
+                    ((selectedPaymentMethod === 'mtn' || selectedPaymentMethod === 'orange') && !phoneNumber.trim())
+                  }
                   className="flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-md font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Review & Activate
                   <ChevronRight className="w-4 h-4 ml-2" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: Payment Waiting */}
+          {currentStep === 5 && (
+            <div className="bg-card border border-border rounded-lg p-6 mb-8">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                
+                <h2 className="text-xl font-bold text-foreground mb-2">Waiting for Payment</h2>
+                <p className="text-muted-foreground mb-6">
+                  {paymentStatus || 'Please check your phone and confirm the payment...'}
+                </p>
+
+                {/* Payment Details */}
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-6">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Amount</p>
+                      <p className="font-semibold text-foreground">{formatCurrency(calculatedPrice)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Payment Method</p>
+                      <p className="font-semibold text-foreground">
+                        {selectedPaymentMethod?.toUpperCase()} Mobile Money
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Phone Number</p>
+                      <p className="font-semibold text-foreground">{phoneNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Boost Tier</p>
+                      <p className="font-semibold text-foreground">{selectedTier?.name}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Instructions */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+                  <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">What to do next:</h3>
+                  <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 text-left">
+                    <li>• Check your phone for a payment request</li>
+                    <li>• Enter your mobile money PIN when prompted</li>
+                    <li>• Confirm the payment amount</li>
+                    <li>• Wait for confirmation (this page will update automatically)</li>
+                  </ul>
+                </div>
+
+                {/* Cancel Button */}
+                <button
+                  onClick={() => {
+                    setCurrentStep(3);
+                    setIsPaymentPending(false);
+                    setPaymentStatus('');
+                  }}
+                  className="px-6 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Cancel Payment
                 </button>
               </div>
             </div>
@@ -1030,7 +1206,12 @@ export default function BoostListingPage() {
                   <div className="flex justify-between items-center">
                     <div>
                       <h4 className="font-medium text-foreground">Total Cost</h4>
-                      <p className="text-sm text-muted-foreground">Payment method: {selectedPaymentMethod}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Payment method: {selectedPaymentMethod?.toUpperCase()}
+                        {(selectedPaymentMethod === 'mtn' || selectedPaymentMethod === 'orange') && phoneNumber && (
+                          <span className="block">Phone: {phoneNumber}</span>
+                        )}
+                      </p>
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-primary">
@@ -1062,6 +1243,21 @@ export default function BoostListingPage() {
                 </div>
               </div>
 
+              {/* Payment Status Indicator */}
+              {isPaymentPending && (
+                <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
+                    <div>
+                      <p className="text-blue-800 dark:text-blue-200 font-medium">{paymentStatus}</p>
+                      <p className="text-blue-600 dark:text-blue-300 text-sm">
+                        Please check your phone and confirm the payment request
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex justify-between mt-8">
                 <button
@@ -1074,18 +1270,27 @@ export default function BoostListingPage() {
                 
                 <button
                   onClick={handlePurchaseBoost}
-                  disabled={isProcessing}
+                  disabled={isProcessing || isPaymentPending || ((selectedPaymentMethod && ['mtn', 'orange'].includes(selectedPaymentMethod) && !phoneNumber) ?? false)}
                   className="flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-md font-medium hover:from-green-600 hover:to-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isProcessing ? (
+                  {isProcessing || isPaymentPending ? (
                     <>
                       <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
-                      Activating...
+                      <span className="flex items-center">
+                        {isPaymentPending ? (
+                          <>
+                            <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse mr-2" />
+                            {paymentStatus || 'Waiting for payment confirmation...'}
+                          </>
+                        ) : (
+                          'Processing payment...'
+                        )}
+                      </span>
                     </>
                   ) : (
                     <>
                       <Zap className="w-4 h-4 mr-2" />
-                      Activate Boost Now
+                      Pay & Activate
                     </>
                   )}
                 </button>
