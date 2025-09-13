@@ -3,19 +3,19 @@ import type { Database } from '@/lib/types/database';
 
 type Message = Database['public']['Tables']['messages']['Row'];
 type NewMessage = Database['public']['Tables']['messages']['Insert'];
-type UpdateMessage = Database['public']['Tables']['messages']['Update'];
+// type UpdateMessage = Database['public']['Tables']['messages']['Update'];
 
 export interface MessageWithProfiles extends Message {
   sender?: Database['public']['Tables']['profiles']['Row'];
   recipient?: Database['public']['Tables']['profiles']['Row'];
-  listing?: Database['public']['Tables']['listings']['Row'];
+  listing?: Database['public']['Tables']['listings']['Row'] | null;
 }
 
 export interface Conversation {
   participant: Database['public']['Tables']['profiles']['Row'];
   last_message: MessageWithProfiles;
   unread_count: number;
-  listing?: Database['public']['Tables']['listings']['Row'];
+  listing?: Database['public']['Tables']['listings']['Row'] | null;
 }
 
 export class MessagesRepository {
@@ -42,7 +42,7 @@ export class MessagesRepository {
     const conversationMap = new Map<string, {
       participant: Database['public']['Tables']['profiles']['Row'];
       messages: MessageWithProfiles[];
-      listing?: Database['public']['Tables']['listings']['Row'];
+      listing?: Database['public']['Tables']['listings']['Row'] | null;
     }>();
 
     messages.forEach(message => {
@@ -57,7 +57,7 @@ export class MessagesRepository {
         conversationMap.set(key, {
           participant: otherParticipant,
           messages: [],
-          listing: message.listing || undefined
+          listing: message.listing
         });
       }
       

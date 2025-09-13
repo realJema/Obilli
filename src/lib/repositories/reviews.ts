@@ -8,7 +8,7 @@ type UpdateReview = Database['public']['Tables']['reviews']['Update'];
 export interface ReviewWithProfiles extends Review {
   reviewer?: Database['public']['Tables']['profiles']['Row'];
   seller?: Database['public']['Tables']['profiles']['Row'];
-  listing?: Database['public']['Tables']['listings']['Row'];
+  listing?: Database['public']['Tables']['listings']['Row'] | null;
 }
 
 export interface ReviewStats {
@@ -118,13 +118,19 @@ export class ReviewsRepository {
 
   async create(review: NewReview): Promise<Review> {
     // Check if user has already reviewed this seller for this listing
-    const { data: existingReview } = await supabase
+    let existingQuery = supabase
       .from('reviews')
       .select('id')
       .eq('reviewer_id', review.reviewer_id)
-      .eq('seller_id', review.seller_id)
-      .eq('listing_id', review.listing_id)
-      .single();
+      .eq('seller_id', review.seller_id);
+    
+    if (review.listing_id) {
+      existingQuery = existingQuery.eq('listing_id', review.listing_id);
+    } else {
+      existingQuery = existingQuery.is('listing_id', null);
+    }
+
+    const { data: existingReview } = await existingQuery.single();
 
     if (existingReview) {
       throw new Error('You have already reviewed this seller for this listing');

@@ -1,4 +1,4 @@
-import { Database } from '@/lib/types/database';
+// import { Database } from '@/lib/types/database';
 import { supabase } from '@/lib/db/client';
 
 export interface Location {
@@ -6,7 +6,7 @@ export interface Location {
   location_en: string;
   location_fr: string;
   parent_id: number | null;
-  created_at: string;
+  created_at: string | null;
 }
 
 export interface LocationHierarchy {
@@ -148,7 +148,7 @@ class LocationsRepository {
       return this.getQuarterOptionsManually();
     }
 
-    return (data || []).map((location: Location & { city?: { location_en: string; region?: { location_en: string } } }) => ({
+    return (data || []).map((location: { id: number; location_en: string; location_fr: string; city?: { location_en: string; region?: { location_en: string } } | null }) => ({
       value: location.id,
       label: `${location.city?.location_en}, ${location.location_en} (${location.city?.region?.location_en})`,
       region: location.city?.region?.location_en || '',

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useUser, useSupabaseClient } from "@supabase/auth-helpers-react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { MainLayout } from "@/components/main-layout";
 import { useI18n } from "@/lib/providers";
 import {
@@ -24,7 +25,7 @@ export default function SettingsPage() {
   const user = useUser();
   const supabase = useSupabaseClient();
   const router = useRouter();
-  const { t } = useI18n();
+  const { } = useI18n();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -104,7 +105,7 @@ export default function SettingsPage() {
     if (!username || username.length < 3) return false;
     
     // Exclude current user's ID when checking availability
-    const { data, error, count } = await supabase
+    const { error, count } = await supabase
       .from('profiles')
       .select('id', { count: 'exact' })
       .eq('username', username.toLowerCase())
@@ -209,7 +210,7 @@ export default function SettingsPage() {
       }
       
       // Prepare profile update data
-      let profileUpdate: ProfileUpdate = {
+      const profileUpdate: ProfileUpdate = {
         username: formData.username.trim().toLowerCase(),
         full_name: formData.full_name.trim(),
         phone: formData.phone || null,
@@ -329,9 +330,11 @@ export default function SettingsPage() {
               <div className="flex flex-col sm:flex-row items-center gap-6">
                 <div className="relative">
                   {avatarPreview ? (
-                    <img
+                    <Image
                       src={avatarPreview}
                       alt="Profile"
+                      width={96}
+                      height={96}
                       className="w-24 h-24 rounded-full object-cover"
                     />
                   ) : (

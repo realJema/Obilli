@@ -21,25 +21,25 @@ export function MobileNav({ className = "" }: { className?: string }) {
       href: "/search",
       icon: Search,
       label: t("nav.search"),
-      isActive: pathname.startsWith("/search"),
+      isActive: pathname?.startsWith("/search") || false,
     },
     {
       href: "/sell/new",
       icon: Plus,
       label: t("nav.sell"),
-      isActive: pathname.startsWith("/sell"),
+      isActive: pathname?.startsWith("/sell") || false,
     },
     {
       href: "/inbox",
       icon: MessageCircle,
       label: t("nav.messages"),
-      isActive: pathname.startsWith("/inbox"),
+      isActive: pathname?.startsWith("/inbox") || false,
     },
     {
       href: "/profile",
       icon: User,
       label: t("nav.profile"),
-      isActive: pathname.startsWith("/profile"),
+      isActive: pathname?.startsWith("/profile") || false,
     },
   ];
 

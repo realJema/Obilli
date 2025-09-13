@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { MainLayout } from "@/components/main-layout";
 import { useI18n } from "@/lib/providers";
@@ -15,7 +15,6 @@ import {
   Star,
   TrendingUp,
   Crown,
-  Calendar,
   BarChart3,
   Users,
   Target
@@ -23,9 +22,26 @@ import {
 import Link from "next/link";
 
 export default function BoostSuccessPage() {
+  return (
+    <Suspense fallback={
+      <MainLayout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      </MainLayout>
+    }>
+      <BoostSuccessContent />
+    </Suspense>
+  );
+}
+
+function BoostSuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { t, formatCurrency } = useI18n();
+  const { formatCurrency } = useI18n();
   const [copied, setCopied] = useState(false);
   
   const listingId = searchParams?.get('id');
@@ -58,7 +74,7 @@ export default function BoostSuccessPage() {
       try {
         await navigator.share({
           title: listingTitle || 'My Boosted Listing',
-          text: `Check out my ${boostTier} listing on Bonas Marketplace`,
+          text: `Check out my ${boostTier} listing on Obilli Marketplace`,
           url: listingUrl,
         });
       } catch (error) {

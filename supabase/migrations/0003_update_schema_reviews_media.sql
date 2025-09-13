@@ -1,5 +1,5 @@
 -- Update database schema for reviews and media improvements
--- This builds on the existing schema from 0001_init_bonas_schema.sql
+-- This builds on the existing schema from 0001_init_obilli_schema.sql
 
 -- Update listings table to support location_id and remove old location fields
 ALTER TABLE public.listings 

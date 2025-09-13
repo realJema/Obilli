@@ -41,8 +41,6 @@ export const createAdminClient = () =>
 // Database types (will be generated)
 export type Database = {
   public: {
-    Tables: {
-      // Will be populated after schema creation
-    }
+    Tables: Record<string, unknown>
   }
 }

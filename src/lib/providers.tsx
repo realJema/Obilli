@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider, useTheme as useNextTheme } from "next-themes";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { SessionContextProvider } from "@supabase/auth-helpers-react";
 import { Locale, defaultLocale, formatCurrency, formatDate, formatRelativeTime } from "./i18n/config";
@@ -52,13 +52,18 @@ function I18nProvider({ children }: { children: React.ReactNode }) {
 
   const t = (key: string) => {
     const keys = key.split(".");
-    let value: any = translations[locale];
+    let value: unknown = translations[locale];
     
     for (const k of keys) {
-      value = value?.[k];
+      if (value && typeof value === 'object' && value !== null && k in value) {
+        value = (value as Record<string, unknown>)[k];
+      } else {
+        value = undefined;
+        break;
+      }
     }
     
-    return value || key;
+    return (typeof value === 'string' ? value : key);
   };
 
   return (
@@ -105,6 +110,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
 // Theme hook for convenience
 export const useTheme = () => {
   // Re-export from next-themes but with better typing
-  const { theme, setTheme, systemTheme } = require('next-themes').useTheme();
+  const { theme, setTheme, systemTheme } = useNextTheme();
   return { theme, setTheme, systemTheme };
 };

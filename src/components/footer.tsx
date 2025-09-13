@@ -9,7 +9,7 @@ import type { CategoryWithChildren } from "@/lib/repositories/categories";
 export function Footer() {
   const [categories, setCategories] = useState<CategoryWithChildren[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { t, locale } = useI18n();
+  const { locale } = useI18n();
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -33,7 +33,7 @@ export function Footer() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Categories Section */}
         <div className="mb-12">
-          <h3 className="text-lg font-semibold mb-6">Browse Categories</h3>
+          <h3 className="text-xl font-semibold mb-6">Browse Categories</h3>
           
           {isLoading ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
@@ -54,7 +54,7 @@ export function Footer() {
                 <div key={category.id} className="space-y-3">
                   <Link
                     href={`/search?category=${category.id}`}
-                    className="font-medium text-foreground hover:text-primary transition-colors block"
+                    className="font-medium text-base text-foreground hover:text-primary transition-colors block"
                   >
                     {locale === 'fr' ? category.name_fr : category.name_en}
                   </Link>
@@ -65,7 +65,7 @@ export function Footer() {
                         <div key={subcategory.id}>
                           <Link
                             href={`/search?category=${subcategory.id}`}
-                            className="text-sm text-muted-foreground hover:text-foreground transition-colors block"
+                            className="text-base text-muted-foreground hover:text-foreground transition-colors block"
                           >
                             {locale === 'fr' ? subcategory.name_fr : subcategory.name_en}
                           </Link>
@@ -76,7 +76,7 @@ export function Footer() {
                                 <Link
                                   key={subsubcategory.id}
                                   href={`/search?category=${subsubcategory.id}`}
-                                  className="text-xs text-muted-foreground hover:text-foreground transition-colors block"
+                                  className="text-sm text-muted-foreground hover:text-foreground transition-colors block"
                                 >
                                   {locale === 'fr' ? subsubcategory.name_fr : subsubcategory.name_en}
                                 </Link>
@@ -96,8 +96,8 @@ export function Footer() {
         {/* Bottom Section */}
         <div className="border-t border-border pt-8">
           {/* Copyright */}
-          <div className="text-center text-sm text-muted-foreground">
-            <p>&copy; {currentYear} Bonas Marketplace. All rights reserved.</p>
+          <div className="text-center text-base text-muted-foreground">
+            <p>&copy; {currentYear} Obilli Marketplace. All rights reserved.</p>
             <p className="mt-2">Made with ❤️ in Cameroon</p>
           </div>
         </div>

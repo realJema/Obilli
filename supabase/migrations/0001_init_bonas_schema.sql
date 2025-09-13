@@ -1,4 +1,4 @@
--- Bonas Marketplace Database Schema
+-- Obilli Marketplace Database Schema
 -- Initial migration for core tables and RLS policies
 
 -- Enable UUID extension

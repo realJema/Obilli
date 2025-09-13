@@ -14,7 +14,7 @@ export interface CategoryNode {
 interface CategoryTreeProps {
   categories: CategoryNode[];
   selectedId: number | null;
-  onSelect: (id: number) => void;
+  onSelect: (id: number | null) => void;
   placeholder?: string;
   className?: string;
 }
@@ -68,7 +68,7 @@ export function CategoryTree({
     setExpandedNodes(new Set());
   };
 
-  const selectedCategory = allCategories.find(cat => cat.id === selectedId);
+  // const selectedCategory = allCategories.find(cat => cat.id === selectedId);
 
   // Get the full path of the selected category
   const getCategoryPath = (nodeId: number): string[] => {

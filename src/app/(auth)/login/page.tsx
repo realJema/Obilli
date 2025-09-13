@@ -25,7 +25,7 @@ export default function AuthPage() {
   const supabase = useSupabaseClient();
   const user = useUser();
   const router = useRouter();
-  const { t } = useI18n();
+  const { } = useI18n();
 
   // Redirect if user is already authenticated and has a complete profile
   useEffect(() => {
@@ -237,7 +237,7 @@ export default function AuthPage() {
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
             <h2 className="text-3xl font-bold text-foreground">
-              {mode === 'signin' ? 'Sign in to Bonas' : 'Create your account'}
+              {mode === 'signin' ? 'Sign in to Obilli' : 'Create your account'}
             </h2>
             <p className="mt-2 text-muted-foreground">
               {mode === 'signin' 

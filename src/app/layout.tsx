@@ -13,7 +13,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Bonas - Classified Marketplace",
+  title: "Obilli - Classified Marketplace",
   description: "Buy and sell goods, services, and find jobs in Cameroon",
   keywords: ["marketplace", "classified", "cameroon", "buy", "sell", "services", "jobs"],
 };

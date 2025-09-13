@@ -116,7 +116,7 @@ export function uniqueBy<T>(array: T[], key: keyof T): T[] {
 }
 
 // Local storage helpers with error handling
-export function setLocalStorage(key: string, value: any): void {
+export function setLocalStorage(key: string, value: unknown): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (error) {

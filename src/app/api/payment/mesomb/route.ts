@@ -8,14 +8,13 @@ const MESOMB_CONFIG = {
   secretKey: process.env.MESOMB_SECRET_KEY || '1532a68f-5b88-4883-8200-946f9e090e7b',
 };
 
+// Check if we're using environment variables or fallback test credentials
+const isUsingTestCredentials = !process.env.MESOMB_APP_KEY || !process.env.MESOMB_ACCESS_KEY || !process.env.MESOMB_SECRET_KEY;
+
 export async function POST(request: NextRequest) {
   try {
-    console.log('MeSomb API Route: POST request received');
-    
     const body = await request.json();
     const { amount, phone, service, reference, description } = body;
-
-    console.log('Payment request:', { amount, phone, service, reference, description });
 
     // Validate required fields
     if (!amount || !phone || !service) {
@@ -25,24 +24,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Format phone number (remove 237 prefix if present)
-    let formattedPhone = phone;
-    if (phone.startsWith('237')) {
-      formattedPhone = phone.substring(3);
+    // Format phone number for MeSomb (should be 9 digits without country code)
+    let formattedPhone = phone.replace(/\D/g, ''); // Remove all non-digits
+    
+    // Remove country code if present
+    if (formattedPhone.startsWith('237')) {
+      formattedPhone = formattedPhone.substring(3);
+    }
+    
+    // Ensure it's 9 digits
+    if (formattedPhone.length !== 9) {
+      return NextResponse.json(
+        { success: false, error: `Invalid phone number format. Expected 9 digits, got ${formattedPhone.length}` },
+        { status: 400 }
+      );
     }
 
-    console.log('Formatted phone number:', formattedPhone);
 
     try {
       // Initialize PaymentOperation with credentials
-      const paymentOperation = new PaymentOperation({
+      const paymentConfig = {
         applicationKey: MESOMB_CONFIG.appKey,
         accessKey: MESOMB_CONFIG.accessKey,
         secretKey: MESOMB_CONFIG.secretKey,
-      });
+      };
+      
+      // Add test mode if using test credentials (if supported by SDK)
+      if (isUsingTestCredentials) {
+        Object.assign(paymentConfig, { testMode: true });
+      }
+      
+      const paymentOperation = new PaymentOperation(paymentConfig);
 
       // Use MeSomb SDK to make payment
-      const response = await paymentOperation.makeCollect({
+      const collectRequest = {
         amount: amount,
         service: service,
         payer: formattedPhone,
@@ -51,9 +66,9 @@ export async function POST(request: NextRequest) {
         fees: true,
         message: description || 'Payment for boost',
         reference: reference || `boost_${Date.now()}`,
-      });
-
-      console.log('MeSomb SDK response:', response);
+      };
+      
+      const response = await paymentOperation.makeCollect(collectRequest);
 
       if (response.isOperationSuccess()) {
         return NextResponse.json({
@@ -68,12 +83,12 @@ export async function POST(request: NextRequest) {
             success: false,
             error: response.message || 'Payment failed',
             status: response.status,
+            details: `MeSomb error: ${response.message || 'Unknown error'}`
           },
           { status: 400 }
         );
       }
     } catch (error: unknown) {
-      console.error('MeSomb SDK error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Payment request failed';
       return NextResponse.json(
         {
@@ -83,8 +98,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  } catch (error: unknown) {
-    console.error('API route error:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
@@ -107,17 +121,22 @@ export async function GET(request: NextRequest) {
 
     try {
       // Initialize PaymentOperation with credentials
-      const paymentOperation = new PaymentOperation({
+      const paymentConfig = {
         applicationKey: MESOMB_CONFIG.appKey,
         accessKey: MESOMB_CONFIG.accessKey,
         secretKey: MESOMB_CONFIG.secretKey,
-      });
+      };
+      
+      // Add test mode if using test credentials (if supported by SDK)
+      if (isUsingTestCredentials) {
+        Object.assign(paymentConfig, { testMode: true });
+      }
+      
+      const paymentOperation = new PaymentOperation(paymentConfig);
 
       // Use MeSomb SDK to check payment status
       // getTransactions returns an array, so we need to find the specific transaction
       const transactions = await paymentOperation.getTransactions([transactionId]);
-
-      console.log('MeSomb status check response:', transactions);
 
       if (transactions && transactions.length > 0) {
         const transaction = transactions[0];

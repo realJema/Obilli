@@ -2,21 +2,37 @@
 
 import { MainLayout } from "@/components/main-layout";
 import { useI18n } from "@/lib/providers";
-import { Search, TrendingUp, Star, Clock, MapPin, ChevronLeft, ChevronRight, type LucideIcon } from "lucide-react";
+import { TrendingUp, Star, Clock, MapPin, ChevronLeft, ChevronRight, type LucideIcon } from "lucide-react";
 import { listingsRepo, categoriesRepo } from "@/lib/repositories";
 import type { ListingWithDetails } from "@/lib/repositories/listings";
 import { hasActiveBoost, getActiveBoostTier } from "@/lib/repositories/listings";
 import type { CategoryWithChildren } from "@/lib/repositories/categories";
 import Link from "next/link";
 import { DefaultImage } from "@/components/default-image";
-import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useRef, useCallback } from "react";
 
 function HeroCarousel({ listings, isLoading }: { listings: ListingWithDetails[]; isLoading: boolean }) {
   const { formatCurrency, formatRelativeTime } = useI18n();
   const [currentIndex, setCurrentIndex] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+
+  const goToSlide = useCallback((index: number) => {
+    if (isAnimating) return;
+    
+    setIsAnimating(true);
+    setCurrentIndex(index);
+    
+    // Reset animation flag after transition completes
+    setTimeout(() => {
+      setIsAnimating(false);
+    }, 600);
+    
+    // Reset auto-scroll timer
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+  }, [isAnimating]);
 
   // Auto-scroll functionality
   useEffect(() => {
@@ -31,27 +47,7 @@ function HeroCarousel({ listings, isLoading }: { listings: ListingWithDetails[];
         clearInterval(intervalRef.current);
       }
     };
-  }, [listings.length, currentIndex]);
-
-  const goToSlide = (index: number) => {
-    if (isAnimating) return;
-    
-    setIsAnimating(true);
-    setCurrentIndex(index);
-    
-    // Reset animation flag after transition completes
-    setTimeout(() => {
-      setIsAnimating(false);
-    }, 600);
-    
-    // Reset auto-scroll timer
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = setInterval(() => {
-        goToSlide((index + 1) % listings.length);
-      }, 7000);
-    }
-  };
+  }, [listings.length, currentIndex, goToSlide]);
 
   if (isLoading) {
     return (
@@ -77,7 +73,7 @@ function HeroCarousel({ listings, isLoading }: { listings: ListingWithDetails[];
           <div className="relative h-[400px] bg-gradient-to-r from-primary to-primary/80 rounded-2xl">
             <div className="h-full flex items-center justify-center">
               <div className="text-center text-primary-foreground">
-                <h1 className="text-4xl font-bold mb-4">Welcome to Bonas Marketplace</h1>
+                <h1 className="text-4xl font-bold mb-4">Welcome to Obilli Marketplace</h1>
                 <p className="text-xl opacity-90">Discover amazing deals in Cameroon</p>
               </div>
             </div>
@@ -298,7 +294,7 @@ function HorizontalScrollSection({ title, icon: Icon, listings, isLoading }: {
   listings: ListingWithDetails[];
   isLoading: boolean;
 }) {
-  const { t } = useI18n();
+  const { } = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scrollLeft = () => {

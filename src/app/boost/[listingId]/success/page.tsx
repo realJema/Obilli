@@ -3,16 +3,23 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { CheckCircle, ArrowRight, Star, TrendingUp, Eye } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 
 export default function BoostSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [boostDetails, setBoostDetails] = useState<any>(null);
+  const [boostDetails, setBoostDetails] = useState<{
+    tier: string;
+    duration: number;
+    price: number;
+    paymentMethod: string;
+    transactionId: string;
+    status: string;
+  } | null>(null);
 
   useEffect(() => {
     // Get boost details from URL params
+    if (!searchParams) return;
+    
     const tier = searchParams.get('tier');
     const duration = searchParams.get('duration');
     const price = searchParams.get('price');
@@ -20,11 +27,12 @@ export default function BoostSuccessPage() {
     const transactionId = searchParams.get('transactionId');
 
     setBoostDetails({
-      tier,
-      duration,
-      price,
-      paymentMethod,
-      transactionId
+      tier: tier || '',
+      duration: duration ? parseInt(duration, 10) : 0,
+      price: price ? parseFloat(price) : 0,
+      paymentMethod: paymentMethod || '',
+      transactionId: transactionId || '',
+      status: 'completed'
     });
   }, [searchParams]);
 
@@ -70,8 +78,8 @@ export default function BoostSuccessPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 flex items-center justify-center p-4">
       <div className="max-w-2xl w-full">
-        <Card className="border-0 shadow-2xl">
-          <CardContent className="p-8 text-center">
+        <div className="bg-white dark:bg-gray-900 border-0 shadow-2xl rounded-lg">
+          <div className="p-8 text-center">
             {/* Success Icon */}
             <div className="flex justify-center mb-6">
               <div className="relative">
@@ -149,7 +157,7 @@ export default function BoostSuccessPage() {
                 </li>
                 <li className="flex items-center">
                   <CheckCircle className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                  You'll receive more views and potential buyers
+                  You&apos;ll receive more views and potential buyers
                 </li>
                 <li className="flex items-center">
                   <CheckCircle className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
@@ -164,21 +172,20 @@ export default function BoostSuccessPage() {
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button
+              <button
                 onClick={() => router.push('/')}
-                className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-semibold flex items-center"
+                className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-semibold flex items-center transition-colors"
               >
                 View Homepage
                 <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
+              </button>
               
-              <Button
+              <button
                 onClick={() => router.push('/sell')}
-                variant="outline"
-                className="px-8 py-3 rounded-lg font-semibold"
+                className="px-8 py-3 rounded-lg font-semibold border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
                 Create Another Listing
-              </Button>
+              </button>
             </div>
 
             {/* Additional Info */}
@@ -188,8 +195,8 @@ export default function BoostSuccessPage() {
                 and attract more potential buyers to your items.
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

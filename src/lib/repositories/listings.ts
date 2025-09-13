@@ -1,5 +1,6 @@
 import type { Database } from '@/lib/types/database';
 import { supabase } from '@/lib/db/client';
+import { categoriesRepo } from './index';
 
 type Listing = Database['public']['Tables']['listings']['Row'];
 type NewListing = Database['public']['Tables']['listings']['Insert'];
@@ -131,17 +132,13 @@ export class ListingsRepository {
       query = query.eq('type', filters.type);
     }
     if (filters.category_id) {
-      // Get all subcategories of the specified category
-      const { data: subcategories, error: subcatError } = await supabase
-        .from('categories')
-        .select('id')
-        .or(`id.eq.${filters.category_id},parent_id.eq.${filters.category_id}`);
+      // Get all descendant categories (including subcategories and sub-subcategories)
+      const categoryIds = await categoriesRepo.getAllDescendantIds(filters.category_id);
       
-      if (!subcatError && subcategories && subcategories.length > 0) {
-        const categoryIds = subcategories.map((cat: { id: number }) => cat.id);
+      if (categoryIds.length > 0) {
         query = query.in('category_id', categoryIds);
       } else {
-        // Fallback to just the specified category
+        // Fallback to just the specified category if no descendants found
         query = query.eq('category_id', filters.category_id);
       }
     }

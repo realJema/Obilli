@@ -14,7 +14,7 @@ export interface LocationNode {
 interface LocationTreeProps {
   locations: LocationNode[];
   selectedId: number | null;
-  onSelect: (id: number) => void;
+  onSelect: (id: number | null) => void;
   placeholder?: string;
   className?: string;
 }
@@ -68,7 +68,7 @@ export function LocationTree({
     setExpandedNodes(new Set());
   };
 
-  const selectedLocation = allLocations.find(loc => loc.id === selectedId);
+  // const selectedLocation = allLocations.find(loc => loc.id === selectedId);
 
   // Get the full path of the selected location
   const getLocationPath = (nodeId: number): string[] => {

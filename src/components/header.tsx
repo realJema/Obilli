@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Search, Menu, User, LogOut, Settings } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -64,7 +65,7 @@ export function Header() {
   };
 
   return (
-    <header className="z-40 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="z-[60] w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
@@ -86,7 +87,7 @@ export function Header() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Search Bonas Marketplace..."
+                  placeholder="Search Obilli Marketplace..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 rounded-l-md border border-input bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
@@ -121,7 +122,7 @@ export function Header() {
                       className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
                     >
                       {userProfile.avatar_url ? (
-                        <img
+                        <Image
                           src={userProfile.avatar_url}
                           alt={userProfile.username || 'User'}
                           className="h-6 w-6 rounded-full object-cover"
@@ -139,7 +140,7 @@ export function Header() {
                     </button>
 
                     {showUserMenu && (
-                      <div className="absolute right-0 mt-2 w-56 bg-popover border border-border rounded-md shadow-lg z-50">
+                      <div className="absolute right-0 mt-2 w-56 bg-popover border border-border rounded-md shadow-lg z-[60]">
                         <div className="py-2">
                           <div className="px-4 py-2 border-b border-border">
                             <p className="text-sm font-medium text-foreground">

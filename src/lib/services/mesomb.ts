@@ -5,8 +5,6 @@ const MESOMB_CONFIG = {
   secretKey: process.env.NEXT_PUBLIC_MESOMB_SECRET_KEY || '1532a68f-5b88-4883-8200-946f9e090e7b',
 };
 
-// MeSomb API base URL - using the same URL as your Flutter app
-const MESOMB_API_URL = process.env.NEXT_PUBLIC_MESOMB_API_URL || 'https://mesomb.hachther.com/en/api/v1.1';
 
 export interface PaymentRequest {
   amount: number;
@@ -105,7 +103,8 @@ export class MeSombService {
 
   public async makePayment(request: PaymentRequest): Promise<PaymentResponse> {
     try {
-      console.log('MeSomb Service: Making payment request:', request);
+      // Format phone number before sending
+      const formattedPhone = this.formatPhoneNumber(request.phone);
       
       // Use our API route to avoid CORS issues
       const response = await fetch('/api/payment/mesomb', {
@@ -115,17 +114,14 @@ export class MeSombService {
         },
         body: JSON.stringify({
           amount: request.amount,
-          phone: request.phone,
+          phone: formattedPhone,
           service: request.service,
           reference: request.reference,
           description: request.description
         })
       });
 
-      console.log('MeSomb Service: API response status:', response.status);
-
       const result = await response.json();
-      console.log('MeSomb Service: API response body:', result);
 
       if (!response.ok) {
         return {
@@ -141,11 +137,11 @@ export class MeSombService {
         message: result.message
       };
 
-    } catch (error: any) {
-      console.error('MeSomb payment error:', error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Payment failed. Please try again.';
       return {
         success: false,
-        error: error.message || 'Payment failed. Please try again.'
+        error: errorMessage
       };
     }
   }
@@ -176,42 +172,38 @@ export class MeSombService {
         message: result.message
       };
 
-    } catch (error: any) {
-      console.error('MeSomb status check error:', error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to check payment status.';
       return {
         success: false,
-        error: error.message || 'Failed to check payment status.'
+        error: errorMessage
       };
     }
   }
 
-  private formatPhoneNumber(phone: string, service: 'mtn' | 'orange'): string {
+  private formatPhoneNumber(phone: string): string {
     // Remove any non-digit characters
     const cleaned = phone.replace(/\D/g, '');
     
-    // Add country code if not present
-    if (service === 'mtn') {
-      // MTN Cameroon numbers start with 6
-      if (cleaned.startsWith('6') && cleaned.length === 9) {
-        return `237${cleaned}`;
-      } else if (cleaned.startsWith('2376') && cleaned.length === 12) {
-        return cleaned;
-      }
-    } else if (service === 'orange') {
-      // Orange Cameroon numbers start with 69 or 655-659
-      if (cleaned.length === 9 && (cleaned.startsWith('69') || (cleaned.startsWith('65') && parseInt(cleaned[2]) >= 5))) {
-        return `237${cleaned}`;
-      } else if (cleaned.length === 12 && (cleaned.startsWith('23769') || (cleaned.startsWith('23765') && parseInt(cleaned[5]) >= 5))) {
-        return cleaned;
-      }
+    // Always add 237 prefix if not present
+    if (cleaned.startsWith('237')) {
+      return cleaned;
+    } else if (cleaned.length === 9) {
+      return `237${cleaned}`;
     }
     
-    // Return as-is if already formatted or if we can't determine the format
+    // Return as-is if we can't determine the format
     return cleaned;
   }
 
   public validatePhoneNumber(phone: string, service: 'mtn' | 'orange'): boolean {
     const cleaned = phone.replace(/\D/g, '');
+    
+    // MeSomb test numbers (always valid for testing)
+    const testNumbers = ['237400001019', '237400001020', '237670000000'];
+    if (testNumbers.includes(cleaned)) {
+      return true;
+    }
     
     if (service === 'mtn') {
       // MTN: 6XXXXXXXX (9 digits) or 2376XXXXXXXX (12 digits)

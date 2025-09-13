@@ -1,23 +1,23 @@
 import { supabase } from '@/lib/db/client';
-import type { Database } from '@/lib/types/database';
+// import type { Database } from '@/lib/types/database';
 
-type Listing = Database['public']['Tables']['listings']['Row'];
-type Review = Database['public']['Tables']['reviews']['Row'];
-type Message = Database['public']['Tables']['messages']['Row'];
+// type Listing = Database['public']['Tables']['listings']['Row'];
+// type Review = Database['public']['Tables']['reviews']['Row'];
+// type Message = Database['public']['Tables']['messages']['Row'];
 
-type ListingAnalytics = {
-  status: string;
-  view_count: number | null;
-};
+// type ListingAnalytics = {
+//   status: string;
+//   view_count: number | null;
+// };
 
-type MessageAnalytics = {
-  sender_id: string;
-  recipient_id: string;
-};
+// type MessageAnalytics = {
+//   sender_id: string;
+//   recipient_id: string;
+// };
 
-type ReviewAnalytics = {
-  rating: number | null;
-};
+// type ReviewAnalytics = {
+//   rating: number | null;
+// };
 
 export interface UserAnalytics {
   listings: {
@@ -208,7 +208,7 @@ export class AnalyticsService {
     const now = new Date();
     const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+    // const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
 
     // Listings this month
     const { count: listingsThisMonth } = await supabase

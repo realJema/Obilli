@@ -4,7 +4,7 @@ import type { Database } from '@/lib/types/database';
 type Boost = Database['public']['Tables']['boosts']['Row'];
 type NewBoost = Database['public']['Tables']['boosts']['Insert'];
 type UpdateBoost = Database['public']['Tables']['boosts']['Update'];
-type BoostPricing = Database['public']['Tables']['boost_pricing']['Row'];
+// type BoostPricing = Database['public']['Tables']['boost_pricing']['Row'];
 
 export interface BoostTier {
   tier: 'featured' | 'premium' | 'top';
@@ -160,7 +160,7 @@ export class BoostsRepository {
     const { data, error } = await supabase
       .from('boosts')
       .update(updateData)
-      .eq('id', id)
+      .eq('id', parseInt(id, 10))
       .select()
       .single();
 
@@ -189,7 +189,7 @@ export class BoostsRepository {
     const { error } = await supabase
       .from('boosts')
       .delete()
-      .eq('id', id);
+      .eq('id', parseInt(id, 10));
 
     if (error) {
       throw new Error(`Failed to delete boost: ${error.message}`);

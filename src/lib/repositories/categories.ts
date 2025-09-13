@@ -39,7 +39,8 @@ export class CategoriesRepository {
     data?.forEach(category => {
       const cat: CategoryWithChildren = {
         ...category,
-        children: []
+        children: [],
+        parent: category.parent || undefined
       };
       categoryMap.set(category.id, cat);
     });
@@ -79,7 +80,11 @@ export class CategoriesRepository {
       throw new Error(`Failed to fetch category: ${error.message}`);
     }
 
-    return data;
+    return {
+      ...data,
+      children: Array.isArray(data.children) ? data.children : (data.children ? [data.children] : []),
+      parent: data.parent || undefined
+    };
   }
 
   async getBySlug(slug: string): Promise<CategoryWithChildren | null> {
@@ -100,7 +105,11 @@ export class CategoriesRepository {
       throw new Error(`Failed to fetch category: ${error.message}`);
     }
 
-    return data;
+    return {
+      ...data,
+      children: Array.isArray(data.children) ? data.children : (data.children ? [data.children] : []),
+      parent: data.parent || undefined
+    };
   }
 
   async getTopLevel(): Promise<CategoryWithChildren[]> {
@@ -153,7 +162,8 @@ export class CategoriesRepository {
     data?.forEach(category => {
       const cat: CategoryWithChildren = {
         ...category,
-        children: []
+        children: [],
+        parent: category.parent || undefined
       };
       categoryMap.set(category.id, cat);
     });
@@ -198,7 +208,8 @@ export class CategoriesRepository {
     data?.forEach(category => {
       const cat: CategoryWithChildren = {
         ...category,
-        children: []
+        children: [],
+        parent: category.parent || undefined
       };
       categoryMap.set(category.id, cat);
     });
@@ -335,5 +346,31 @@ export class CategoriesRepository {
     }
 
     return breadcrumb;
+  }
+
+  // Get all descendant category IDs for a given category (includes the category itself)
+  async getAllDescendantIds(categoryId: number): Promise<number[]> {
+    const allIds = [categoryId]; // Include the original category
+    
+    // Get immediate children
+    const { data: children, error } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('parent_id', categoryId);
+    
+    if (error) {
+      console.warn(`Failed to fetch subcategories for ${categoryId}:`, error.message);
+      return allIds;
+    }
+    
+    if (children && children.length > 0) {
+      // For each child, recursively get their descendants
+      for (const child of children) {
+        const descendantIds = await this.getAllDescendantIds(child.id);
+        allIds.push(...descendantIds);
+      }
+    }
+    
+    return allIds;
   }
 }

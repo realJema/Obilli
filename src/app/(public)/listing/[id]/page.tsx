@@ -15,24 +15,23 @@ import {
   Clock,
   Star,
   Share2,
-  Flag,
-  Heart,
   Phone,
   MessageCircle,
   Eye,
   Package,
   Shield,
-  Truck,
   X,
   MessageSquare,
   ThumbsUp,
   Calendar,
   User,
   Tag,
-  CreditCard
+  Facebook,
+  Twitter,
+  Copy
 } from "lucide-react";
 import Link from "next/link";
-import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react";
+import { useUser, useSupabaseClient } from "@supabase/auth-helpers-react";
 
 interface BreadcrumbItem {
   label: string;
@@ -88,7 +87,7 @@ function ImageGallery({ images, title }: ImageGalleryProps) {
       <div className="relative">
         {/* Main Image */}
         <div 
-          className="relative aspect-[4/3] rounded-lg overflow-hidden cursor-pointer"
+          className="relative aspect-[3/2] rounded-lg overflow-hidden cursor-pointer"
           onClick={() => setShowFullscreen(true)}
         >
           <DefaultImage
@@ -209,9 +208,102 @@ function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
   );
 }
 
+function ShareButton({ listing }: { listing: ListingWithDetails }) {
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const shareText = `Check out this listing: ${listing.title}`;
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy link:', error);
+    }
+  };
+
+  const handleShareFacebook = () => {
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+    window.open(url, '_blank', 'width=600,height=400');
+  };
+
+  const handleShareTwitter = () => {
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+    window.open(url, '_blank', 'width=600,height=400');
+  };
+
+  const handleShareWhatsApp = () => {
+    const url = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`;
+    window.open(url, '_blank');
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setShowShareMenu(!showShareMenu)}
+        className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium flex items-center justify-center transition-colors hover:bg-primary/90"
+      >
+        <Share2 className="h-5 w-5 mr-2" />
+        Share Listing
+      </button>
+
+      {showShareMenu && (
+        <div className="absolute bottom-full left-0 right-0 mb-2 bg-card border border-border rounded-lg shadow-lg p-4 z-50">
+          <div className="space-y-2">
+            <button
+              onClick={handleShareFacebook}
+              className="w-full flex items-center justify-center space-x-2 bg-blue-600 text-white py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Facebook className="h-4 w-4" />
+              <span>Facebook</span>
+            </button>
+            
+            <button
+              onClick={handleShareTwitter}
+              className="w-full flex items-center justify-center space-x-2 bg-sky-500 text-white py-2 px-3 rounded-lg hover:bg-sky-600 transition-colors"
+            >
+              <Twitter className="h-4 w-4" />
+              <span>Twitter</span>
+            </button>
+            
+            <button
+              onClick={handleShareWhatsApp}
+              className="w-full flex items-center justify-center space-x-2 bg-green-600 text-white py-2 px-3 rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <MessageCircle className="h-4 w-4" />
+              <span>WhatsApp</span>
+            </button>
+            
+            <button
+              onClick={handleCopyLink}
+              className={`w-full flex items-center justify-center space-x-2 py-2 px-3 rounded-lg transition-colors ${
+                copied 
+                  ? 'bg-green-100 text-green-700 border border-green-300' 
+                  : 'bg-muted text-muted-foreground hover:bg-accent'
+              }`}
+            >
+              <Copy className="h-4 w-4" />
+              <span>{copied ? 'Copied!' : 'Copy Link'}</span>
+            </button>
+          </div>
+          
+          <button
+            onClick={() => setShowShareMenu(false)}
+            className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ContactCard({ listing, seller }: { listing: ListingWithDetails; seller: SellerProfile | null }) {
   const { formatCurrency, formatRelativeTime } = useI18n();
-  const [showContactForm, setShowContactForm] = useState(false);
 
   // Helper function to format location hierarchy
   const getLocationDisplay = () => {
@@ -331,29 +423,12 @@ function ContactCard({ listing, seller }: { listing: ListingWithDetails; seller:
           </button>
         )}
         
-        <button
-          onClick={() => setShowContactForm(true)}
-          className="w-full border border-border hover:bg-accent py-3 px-4 rounded-lg font-medium flex items-center justify-center transition-colors"
-        >
-          <MessageSquare className="h-5 w-5 mr-2" />
-          Send Message
-        </button>
+
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex space-x-2 pt-4 border-t border-border">
-        <button className="flex-1 border border-border hover:bg-accent py-2 px-3 rounded-lg flex items-center justify-center transition-colors text-sm">
-          <Heart className="h-4 w-4 mr-1" />
-          Save
-        </button>
-        <button className="flex-1 border border-border hover:bg-accent py-2 px-3 rounded-lg flex items-center justify-center transition-colors text-sm">
-          <Share2 className="h-4 w-4 mr-1" />
-          Share
-        </button>
-        <button className="flex-1 border border-border hover:bg-accent py-2 px-3 rounded-lg flex items-center justify-center transition-colors text-sm">
-          <Flag className="h-4 w-4 mr-1" />
-          Report
-        </button>
+      {/* Share Button */}
+      <div className="pt-4 border-t border-border">
+        <ShareButton listing={listing} />
       </div>
     </div>
   );
@@ -464,7 +539,7 @@ export default function ListingDetailsPage() {
   const [category, setCategory] = useState<CategoryInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { formatCurrency, formatRelativeTime } = useI18n();
+  const { } = useI18n();
   const supabase = useSupabaseClient();
 
   useEffect(() => {
@@ -672,6 +747,7 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
   const [isLoading, setIsLoading] = useState(true);
   const [newReview, setNewReview] = useState({ rating: 5, title: '', comment: '' });
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const user = useUser();
   const supabase = useSupabaseClient();
 
@@ -693,10 +769,33 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user) {
+      alert('Please log in to submit a review.');
+      return;
+    }
 
+    if (user.id === sellerId) {
+      alert('You cannot review your own listing.');
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      // Use the reviews repository for proper validation and error handling
+      // Check if user has already reviewed this seller for this listing
+      const { data: existingReview } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('reviewer_id', user.id)
+        .eq('seller_id', sellerId)
+        .eq('listing_id', listingId)
+        .single();
+
+      if (existingReview) {
+        alert('You have already reviewed this seller for this listing.');
+        return;
+      }
+
+      // Create the review using the authenticated Supabase client
       const reviewData = {
         listing_id: listingId,
         reviewer_id: user.id,
@@ -706,7 +805,20 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
         comment: newReview.comment
       };
 
-      await reviewsRepo.create(reviewData);
+      const { data, error } = await supabase
+        .from('reviews')
+        .insert(reviewData)
+        .select(`
+          *,
+          reviewer:profiles!reviewer_id(*),
+          seller:profiles!seller_id(*),
+          listing:listings(*)
+        `)
+        .single();
+
+      if (error) {
+        throw new Error(`Failed to submit review: ${error.message}`);
+      }
 
       // Reload reviews
       const reviewsData = await reviewsRepo.getByListing(listingId);
@@ -715,8 +827,9 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
       setShowReviewForm(false);
     } catch (error) {
       console.error('Failed to submit review:', error);
-      // Show error to user
       alert(`Failed to submit review: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -749,9 +862,14 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
         
         <button
           onClick={() => setShowReviewForm(true)}
-          className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90"
+          disabled={!user || user.id === sellerId}
+          className={`px-4 py-2 rounded-lg ${
+            !user || user.id === sellerId
+              ? 'bg-muted text-muted-foreground cursor-not-allowed'
+              : 'bg-primary text-primary-foreground hover:bg-primary/90'
+          }`}
         >
-          Write Review
+          {!user ? 'Login to Review' : user.id === sellerId ? 'Cannot Review Own Listing' : 'Write Review'}
         </button>
       </div>
 
@@ -805,14 +923,20 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
             <div className="flex space-x-3">
               <button
                 type="submit"
-                className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90"
+                disabled={isSubmitting || !newReview.comment.trim()}
+                className={`px-4 py-2 rounded-lg ${
+                  isSubmitting || !newReview.comment.trim()
+                    ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                }`}
               >
-                Submit Review
+                {isSubmitting ? 'Submitting...' : 'Submit Review'}
               </button>
               <button
                 type="button"
                 onClick={() => setShowReviewForm(false)}
-                className="border border-border px-4 py-2 rounded-lg hover:bg-accent"
+                disabled={isSubmitting}
+                className="border border-border px-4 py-2 rounded-lg hover:bg-accent disabled:opacity-50"
               >
                 Cancel
               </button>

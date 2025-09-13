@@ -4,15 +4,14 @@ import { useState, useEffect } from "react";
 import { useUser, useSupabaseClient } from "@supabase/auth-helpers-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { MainLayout } from "@/components/main-layout";
 import { useI18n } from "@/lib/providers";
-import { boostsRepo } from "@/lib/repositories";
 import { analyticsService } from "@/lib/utils/analytics";
 import type { UserAnalytics } from "@/lib/utils/analytics";
 import type { ListingWithDetails } from "@/lib/repositories/listings";
 import type { Database } from "@/lib/types/database";
 import {
-  BarChart3,
   Eye,
   MessageSquare,
   Star,
@@ -23,7 +22,6 @@ import {
   Trash2,
   Pause,
   Play,
-  MoreVertical,
   Calendar,
   DollarSign,
   Grid3x3,
@@ -31,14 +29,13 @@ import {
   Zap,
   Crown,
   Filter,
-  Clock
 } from "lucide-react";
 
 export default function DashboardPage() {
   const user = useUser();
   const supabase = useSupabaseClient<Database>();
   const router = useRouter();
-  const { t, formatCurrency } = useI18n();
+  const { formatCurrency } = useI18n();
 
   const [isLoading, setIsLoading] = useState(true);
   const [analytics, setAnalytics] = useState<UserAnalytics | null>(null);
@@ -100,7 +97,7 @@ export default function DashboardPage() {
     };
 
     loadDashboardData();
-  }, [user, router]);
+  }, [user, router, supabase]);
 
   // Filter listings based on selected filters
   useEffect(() => {
@@ -538,10 +535,6 @@ export default function DashboardPage() {
                   : 'space-y-4'
               }`}>
                 {filteredListings.map((listing) => {
-                  const isActiveBoost = hasActiveBoost(listing);
-                  const boostTier = getActiveBoostTier(listing);
-                  const boostExpiry = getBoostExpiry(listing);
-                  
                   return viewMode === 'grid' ? (
                     // Grid View Card
                     <div key={listing.id} className="block">
@@ -550,9 +543,11 @@ export default function DashboardPage() {
                         <div className="relative">
                           <Link href={`/listing/${listing.id}`} className="block">
                             {listing.media && listing.media.length > 0 ? (
-                              <img
+                              <Image
                                 src={listing.media[0].url}
                                 alt={listing.title}
+                                width={400}
+                                height={128}
                                 className="w-full h-32 object-cover"
                               />
                             ) : (

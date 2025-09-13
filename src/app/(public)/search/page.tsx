@@ -10,11 +10,9 @@ import {
   Star, 
   Grid, 
   List,
-  ChevronLeft,
-  ChevronRight,
   ChevronUp,
   ChevronDown,
-  type LucideIcon 
+  // type LucideIcon 
 } from "lucide-react";
 import { listingsRepo, categoriesRepo } from "@/lib/repositories";
 import type { ListingWithDetails, ListingFilters } from "@/lib/repositories/listings";
@@ -22,8 +20,8 @@ import { hasActiveBoost, getActiveBoostTier } from "@/lib/repositories/listings"
 import type { CategoryWithChildren } from "@/lib/repositories/categories";
 import Link from "next/link";
 import { DefaultImage } from "@/components/default-image";
-import { useEffect, useState } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 
 // Update the SearchFilters component with proper dark mode classes
 function SearchFilters({ 
@@ -35,7 +33,7 @@ function SearchFilters({
   onFiltersChange: (filters: ListingFilters) => void;
   categories: CategoryWithChildren[];
 }) {
-  const { t, locale } = useI18n();
+  const { } = useI18n();
   
   return (
     <div className="bg-card border border-border rounded-lg p-6 space-y-6">
@@ -286,10 +284,25 @@ function ListingCard({ listing, viewMode }: { listing: ListingWithDetails; viewM
 }
 
 export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <MainLayout>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading search...</p>
+          </div>
+        </div>
+      </MainLayout>
+    }>
+      <SearchPageContent />
+    </Suspense>
+  );
+}
+
+function SearchPageContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-  const { t, locale } = useI18n();
+  const { locale } = useI18n();
   
   const [listings, setListings] = useState<ListingWithDetails[]>([]);
   const [categories, setCategories] = useState<CategoryWithChildren[]>([]);

@@ -5,7 +5,7 @@ import { useI18n } from "@/lib/providers";
 import { useState, useRef, useEffect } from "react";
 
 export function LanguageSwitcher() {
-  const { locale, setLocale, t } = useI18n();
+  const { locale, setLocale } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -44,7 +44,7 @@ export function LanguageSwitcher() {
               <button
                 key={lang.code}
                 onClick={() => {
-                  setLocale(lang.code);
+                  setLocale(lang.code as "en" | "fr");
                   setIsOpen(false);
                 }}
                 className="flex items-center w-full px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
