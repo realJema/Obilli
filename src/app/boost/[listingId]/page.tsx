@@ -21,15 +21,20 @@ import {
   AlertCircle,
   Crown,
   TrendingUp,
-  Home,
   Eye,
   ChevronRight,
   ChevronLeft,
   Plus,
   Minus,
+  Home,
   MapPin
 } from "lucide-react";
 import Link from "next/link";
+
+// Helper function to validate required customer fields
+const areCustomerFieldsValid = (phoneNumber: string): boolean => {
+  return phoneNumber.trim().length > 0;
+};
 
 export default function BoostListingPage() {
   const params = useParams();
@@ -70,6 +75,13 @@ export default function BoostListingPage() {
   // const [isPaymentPending, setIsPaymentPending] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(true);
+
+  useEffect(() => {
+    return () => {
+      setIsMounted(false);
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -82,16 +94,23 @@ export default function BoostListingPage() {
       return;
     }
 
-    const loadListing = async () => {
+    const loadData = async () => {
       try {
         setIsLoading(true);
         setError(null);
         
-        // Load boost tiers and listing in parallel
+        // Load boost tiers, listing data, and user profile in parallel
         const [tiers, listingData] = await Promise.all([
           getBoostTiers(),
           listingsRepo.getById(listingId)
         ]);
+        
+        // Load user profile separately
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('phone')
+          .eq('id', user.id)
+          .single() as { data: { phone?: string } | null };
         
         setBoostTiers(tiers);
         
@@ -107,6 +126,11 @@ export default function BoostListingPage() {
         }
 
         setListing(listingData);
+        
+        // Pre-fill phone number if available in profile
+        if (profileData?.phone) {
+          setPhoneNumber(profileData.phone);
+        }
       } catch (err) {
         console.error('Failed to load data:', err);
         setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -115,8 +139,8 @@ export default function BoostListingPage() {
       }
     };
 
-    loadListing();
-  }, [listingId, user, router]);
+    loadData();
+  }, [listingId, user, router, supabase]);
 
   // Calculate price when tier or days change
   useEffect(() => {
@@ -134,10 +158,8 @@ export default function BoostListingPage() {
     if (!selectedTier || !listing || !user) return;
 
     try {
-      // setIsProcessing(true);
       setError(null);
 
-      let paymentSuccess = true;
       let transactionId = `boost_${Date.now()}`;
 
       // Process payment based on selected method
@@ -146,10 +168,19 @@ export default function BoostListingPage() {
           throw new Error('Phone number is required for mobile money payments');
         }
 
+        // Validate customer information
+        if (!areCustomerFieldsValid(phoneNumber)) {
+          throw new Error('Please enter your phone number');
+        }
+
         // Validate phone number
         if (!mesombService.validatePhoneNumber(phoneNumber, selectedPaymentMethod)) {
           throw new Error(`Invalid ${selectedPaymentMethod?.toUpperCase()} phone number format`);
         }
+
+        // Immediately show confirmation step
+        setCurrentStep(5);
+        setPaymentStatus('Sending payment request...');
 
         // Make payment request
         const paymentRequest: PaymentRequest = {
@@ -160,7 +191,6 @@ export default function BoostListingPage() {
           description: `${selectedTier.name} boost for "${listing.title}"`
         };
 
-        setPaymentStatus('Sending payment request...');
         const paymentResponse = await mesombService.makePayment(paymentRequest);
         
         if (!paymentResponse.success) {
@@ -180,10 +210,8 @@ export default function BoostListingPage() {
 
         transactionId = paymentResponse.transactionId || transactionId;
         
-        // If payment is pending, go to confirmation step
+        // If payment is pending, continue on confirmation step
         if (paymentResponse.status === 'PENDING') {
-          // setIsPaymentPending(true);
-          setCurrentStep(5); // Go to payment confirmation step
           setPaymentStatus('Payment request sent. Please check your phone and confirm the payment...');
           
           // Start polling in the background
@@ -201,66 +229,104 @@ export default function BoostListingPage() {
               );
               
               if (finalStatus.status === 'SUCCESS') {
+                if (!isMounted) return;
                 setPaymentStatus('Payment confirmed! Creating boost...');
-                paymentSuccess = true;
+                try {
+                  await createBoost(transactionId);
+                } catch (boostError) {
+                  console.error('Boost creation failed after successful payment:', boostError);
+                  if (isMounted) {
+                    setCurrentStep(7);
+                    setError(boostError instanceof Error ? boostError.message : 'Failed to create boost after payment');
+                    setPaymentStatus('');
+                  }
+                }
               } else if (finalStatus.status === 'FAILED') {
+                if (!isMounted) return;
                 setCurrentStep(7); // Go to error step
                 setError('Payment was declined or failed');
+                setPaymentStatus('');
                 return;
               } else if (finalStatus.status === 'CANCELLED') {
+                if (!isMounted) return;
                 setCurrentStep(7); // Go to error step
                 setError('Payment was cancelled');
+                setPaymentStatus('');
                 return;
               } else {
+                if (!isMounted) return;
                 setCurrentStep(7); // Go to error step
                 setError('Payment confirmation timed out');
+                setPaymentStatus('');
                 return;
               }
             } catch (pollError) {
-              setCurrentStep(7); // Go to error step
-              setError(pollError instanceof Error ? pollError.message : 'Payment processing failed');
+              console.error('Payment polling failed:', pollError);
+              if (isMounted) {
+                setCurrentStep(7); // Go to error step
+                setError(pollError instanceof Error ? pollError.message : 'Payment processing failed');
+                setPaymentStatus('');
+              }
               return;
             }
           }, 2000); // Wait 2 seconds before starting processing
         } else if (paymentResponse.status === 'SUCCESS') {
           setCurrentStep(6); // Go to processing step
           setPaymentStatus('Payment confirmed! Creating boost...');
-          paymentSuccess = true;
+          try {
+            await createBoost(transactionId);
+          } catch (boostError) {
+            console.error('Boost creation failed after successful payment:', boostError);
+            setCurrentStep(7);
+            setError(boostError instanceof Error ? boostError.message : 'Failed to create boost after payment');
+            setPaymentStatus('');
+          }
         } else {
           throw new Error('Payment failed');
         }
       } else if (selectedPaymentMethod === 'paypal') {
         // PayPal payment processing
-        setPaymentStatus('Processing PayPal payment...');
-        
-        // For now, simulate PayPal payment success
-        // In production, you would integrate with PayPal API here
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate processing time
-        
-        setPaymentStatus('PayPal payment confirmed! Creating boost...');
-        paymentSuccess = true;
+        throw new Error('PayPal payment integration is not yet implemented. Please use MTN or Orange Mobile Money.');
+      } else {
+        throw new Error('Please select a payment method');
       }
+      
+    } catch (err) {
+      console.error('Failed to purchase boost:', err);
+      
+      // Ensure we're on the error step regardless of where the error occurred
+      setCurrentStep(7);
+      setError(err instanceof Error ? err.message : 'Failed to purchase boost');
+      setPaymentStatus('');
+    }
+  };
 
-      if (paymentSuccess) {
+  // Separate function to create boost after successful payment
+  const createBoost = async (transactionId: string) => {
+    if (!selectedTier || !user) {
+      throw new Error('Missing required data for boost creation');
+    }
+    
+    try {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + selectedDays);
 
       // Create boost record using authenticated client
-        const boostData = {
-            listing_id: listingId as string,
-          owner_id: user.id,
-          tier: selectedTier.tier,
-            starts_at: new Date().toISOString(),
-          expires_at: expiresAt.toISOString(),
-          price_xaf: calculatedPrice,
-            payment_status: 'paid',
-            is_active: true
-          };
+      const boostData = {
+        listing_id: listingId as string,
+        owner_id: user.id,
+        tier: selectedTier.tier,
+        starts_at: new Date().toISOString(),
+        expires_at: expiresAt.toISOString(),
+        price_xaf: calculatedPrice,
+        payment_status: 'paid',
+        is_active: true
+      };
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data, error } = await (supabase as any)
-          .from('boosts')
-          .insert(boostData as Database['public']['Tables']['boosts']['Insert'])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from('boosts')
+        .insert(boostData as Database['public']['Tables']['boosts']['Insert'])
         .select()
         .single();
 
@@ -274,18 +340,17 @@ export default function BoostListingPage() {
       }
 
       // Show success message and redirect
-        const successUrl = `/boost/${listingId}/success?tier=${selectedTier.tier}&duration=${selectedDays}&price=${calculatedPrice}&paymentMethod=${selectedPaymentMethod}&transactionId=${transactionId}`;
-      router.push(successUrl);
-      }
+      const successUrl = `/boost/${listingId}/success?tier=${selectedTier.tier}&duration=${selectedDays}&price=${calculatedPrice}&paymentMethod=${selectedPaymentMethod}&transactionId=${transactionId}`;
+      
+      // Use setTimeout to ensure state updates are completed before navigation
+      setTimeout(() => {
+        router.push(successUrl);
+      }, 100);
       
     } catch (err) {
-      console.error('Failed to purchase boost:', err);
-      setError(err instanceof Error ? err.message : 'Failed to purchase boost');
-      setCurrentStep(7); // Go to error step
-    } finally {
-      // setIsProcessing(false);
-      // setIsPaymentPending(false);
-      setPaymentStatus('');
+      console.error('Failed to create boost:', err);
+      // Re-throw the error to be handled by the caller
+      throw err;
     }
   };
 
@@ -1044,15 +1109,16 @@ export default function BoostListingPage() {
                     {(selectedPaymentMethod === 'mtn' || selectedPaymentMethod === 'orange') && (
                       <div>
                         <label className="block text-sm font-medium text-foreground mb-2">
-                          Phone Number
+                          Phone Number *
                         </label>
                         <div className="relative">
+                          <Smartphone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <input
                             type="tel"
                             value={phoneNumber}
                             onChange={(e) => setPhoneNumber(e.target.value)}
-                            placeholder={selectedPaymentMethod === 'mtn' ? '400001019' : '400001020'}
-                            className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                            placeholder={selectedPaymentMethod === 'mtn' ? '670123456' : '691234567'}
+                            className="w-full pl-10 pr-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                           />
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
@@ -1097,18 +1163,6 @@ export default function BoostListingPage() {
                   <p className="text-muted-foreground mb-6">
                     Review your selection and activate your boost.
                   </p>
-                  
-                  <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-                    <div className="flex items-start">
-                      <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
-                      <div>
-                        <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-1">Demo Mode</h4>
-                        <p className="text-sm text-blue-800 dark:text-blue-200">
-                          This is a demo version. Your boost will be activated immediately without actual payment processing.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
 
                   {/* Action Buttons */}
                   <div className="flex justify-between">
@@ -1125,7 +1179,7 @@ export default function BoostListingPage() {
                       className="flex items-center px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-md font-medium hover:from-green-600 hover:to-emerald-700 transition-colors"
                     >
                       <Zap className="w-4 h-4 mr-2" />
-                      Activate Boost
+                      Pay and Activate
                     </button>
                   </div>
                 </div>
@@ -1138,18 +1192,24 @@ export default function BoostListingPage() {
                   {currentStep === 5 && (
                     <div className="text-center">
                       <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Smartphone className="w-8 h-8 text-blue-500" />
+                        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                       </div>
                       <h2 className="text-xl font-bold text-foreground mb-2">Confirm Payment on Your Phone</h2>
                       <p className="text-muted-foreground mb-6">
                         A payment request has been sent to your phone. Please check your device and confirm the payment.
                       </p>
+                      <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground mb-4">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                        <span className="ml-2">Waiting for confirmation...</span>
+                      </div>
                       <button
                         onClick={() => {
-                          setCurrentStep(3);
+                          setCurrentStep(4);
                           setPaymentStatus('');
                         }}
-                        className="px-6 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        className="px-6 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors border border-border rounded-md hover:bg-accent"
                       >
                         Cancel Payment
                       </button>
@@ -1180,25 +1240,24 @@ export default function BoostListingPage() {
                       <div className="flex flex-col sm:flex-row gap-3 justify-center">
                         <button
                           onClick={() => {
-                            setCurrentStep(3);
+                            setCurrentStep(4);
                             setError(null);
                             setPaymentStatus('');
                           }}
-                          className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                          className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center"
                         >
+                          <Zap className="w-4 h-4 mr-2" />
                           Try Again
                         </button>
                         <button
                           onClick={() => {
-                            setCurrentStep(1);
+                            setCurrentStep(3);
                             setError(null);
                             setPaymentStatus('');
-                            setSelectedPaymentMethod(null);
-                            setPhoneNumber('');
                           }}
                           className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                         >
-                          Start Over
+                          Change Payment Method
                         </button>
                       </div>
                     </div>

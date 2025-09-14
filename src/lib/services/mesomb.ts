@@ -1,9 +1,14 @@
-// MeSomb API configuration - using the same structure as your Flutter app
+// MeSomb API configuration - PRODUCTION MODE ONLY
 const MESOMB_CONFIG = {
-  appKey: process.env.NEXT_PUBLIC_MESOMB_APP_KEY || '25eb2d514e1cb9ebbb9866792f25763164130eb5',
-  accessKey: process.env.NEXT_PUBLIC_MESOMB_ACCESS_KEY || 'cb0adea9-4ed2-4e25-bf45-73c7f1b80e61',
-  secretKey: process.env.NEXT_PUBLIC_MESOMB_SECRET_KEY || '1532a68f-5b88-4883-8200-946f9e090e7b',
+  appKey: process.env.NEXT_PUBLIC_MESOMB_APP_KEY,
+  accessKey: process.env.NEXT_PUBLIC_MESOMB_ACCESS_KEY,
+  secretKey: process.env.NEXT_PUBLIC_MESOMB_SECRET_KEY,
 };
+
+// Validate that all required environment variables are set
+if (!MESOMB_CONFIG.appKey || !MESOMB_CONFIG.accessKey || !MESOMB_CONFIG.secretKey) {
+  console.warn('⚠️ MeSomb credentials not configured. Please set NEXT_PUBLIC_MESOMB_APP_KEY, NEXT_PUBLIC_MESOMB_ACCESS_KEY, and NEXT_PUBLIC_MESOMB_SECRET_KEY environment variables.');
+}
 
 
 export interface PaymentRequest {
@@ -199,11 +204,7 @@ export class MeSombService {
   public validatePhoneNumber(phone: string, service: 'mtn' | 'orange'): boolean {
     const cleaned = phone.replace(/\D/g, '');
     
-    // MeSomb test numbers (always valid for testing)
-    const testNumbers = ['237400001019', '237400001020', '237670000000'];
-    if (testNumbers.includes(cleaned)) {
-      return true;
-    }
+    // Production mode - no test numbers accepted
     
     if (service === 'mtn') {
       // MTN: 6XXXXXXXX (9 digits) or 2376XXXXXXXX (12 digits)

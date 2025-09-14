@@ -1,18 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PaymentOperation, RandomGenerator } from '@hachther/mesomb';
 
-// MeSomb API configuration
+// MeSomb API configuration - PRODUCTION MODE ONLY
 const MESOMB_CONFIG = {
-  appKey: process.env.MESOMB_APP_KEY || '25eb2d514e1cb9ebbb9866792f25763164130eb5',
-  accessKey: process.env.MESOMB_ACCESS_KEY || 'cb0adea9-4ed2-4e25-bf45-73c7f1b80e61',
-  secretKey: process.env.MESOMB_SECRET_KEY || '1532a68f-5b88-4883-8200-946f9e090e7b',
+  appKey: process.env.MESOMB_APP_KEY,
+  accessKey: process.env.MESOMB_ACCESS_KEY,
+  secretKey: process.env.MESOMB_SECRET_KEY,
 };
 
-// Check if we're using environment variables or fallback test credentials
-const isUsingTestCredentials = !process.env.MESOMB_APP_KEY || !process.env.MESOMB_ACCESS_KEY || !process.env.MESOMB_SECRET_KEY;
+// Validate that all required environment variables are set
+if (!MESOMB_CONFIG.appKey || !MESOMB_CONFIG.accessKey || !MESOMB_CONFIG.secretKey) {
+  console.error('❌ MeSomb credentials not configured. Please set MESOMB_APP_KEY, MESOMB_ACCESS_KEY, and MESOMB_SECRET_KEY environment variables.');
+}
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if production credentials are configured
+    if (!MESOMB_CONFIG.appKey || !MESOMB_CONFIG.accessKey || !MESOMB_CONFIG.secretKey) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'MeSomb payment gateway is not configured. Please contact support.' 
+        },
+        { status: 503 }
+      );
+    }
+
     const body = await request.json();
     const { amount, phone, service, reference, description } = body;
 
@@ -49,10 +62,7 @@ export async function POST(request: NextRequest) {
         secretKey: MESOMB_CONFIG.secretKey,
       };
       
-      // Add test mode if using test credentials (if supported by SDK)
-      if (isUsingTestCredentials) {
-        Object.assign(paymentConfig, { testMode: true });
-      }
+      // Production mode only - no test mode configuration
       
       const paymentOperation = new PaymentOperation(paymentConfig);
 
@@ -63,9 +73,10 @@ export async function POST(request: NextRequest) {
         payer: formattedPhone,
         nonce: RandomGenerator.nonce(),
         currency: 'XAF',
+        country: 'CM',
         fees: true,
         message: description || 'Payment for boost',
-        reference: reference || `boost_${Date.now()}`,
+        reference: reference || `boost_${Date.now()}`
       };
       
       const response = await paymentOperation.makeCollect(collectRequest);
@@ -108,6 +119,17 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Check if production credentials are configured
+    if (!MESOMB_CONFIG.appKey || !MESOMB_CONFIG.accessKey || !MESOMB_CONFIG.secretKey) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'MeSomb payment gateway is not configured. Please contact support.' 
+        },
+        { status: 503 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const transactionId = searchParams.get('transactionId');
     const service = searchParams.get('service');
@@ -127,10 +149,7 @@ export async function GET(request: NextRequest) {
         secretKey: MESOMB_CONFIG.secretKey,
       };
       
-      // Add test mode if using test credentials (if supported by SDK)
-      if (isUsingTestCredentials) {
-        Object.assign(paymentConfig, { testMode: true });
-      }
+      // Production mode only - no test mode configuration
       
       const paymentOperation = new PaymentOperation(paymentConfig);
 
