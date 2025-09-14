@@ -1,133 +1,77 @@
-# Obilli - Africa's Leading Classified Listings Platform
 
-Welcome to **Obilli**, the online marketplace for buying, selling, and trading in Africa. Whether you're looking for products, services, or even job opportunities, **Obilli** connects you with a wide range of listings tailored for African communities.
+# Obilli – Africa's Leading Classified Listings Platform
+
+Welcome to **Obilli**, the online marketplace built for Africa. Our mission is simple: make it easier for people across the continent to **buy, sell, and connect** in a safe, fast, and reliable way.
+
+Obilli is more than just a listings platform—it’s a hub for local commerce, opportunities, and community.
 
 [Visit Obilli](https://obilli.com)
 
-## Features
+---
 
-- **Buy & Sell**: List and browse products and services within Africa's thriving local communities.
-- **Categories**: A wide range of categories including electronics, fashion, vehicles, jobs, and real estate.
-- **Search & Filters**: Easily search listings and apply filters to find exactly what you're looking for.
-- **User Profiles**: Users can create profiles to manage their listings and interactions.
-- **Secure Messaging**: Contact sellers directly through a secure messaging system.
-- **Local Listings**: Targeted listings for different African countries and cities.
-- **Responsive Design**: Optimized for mobile and desktop devices.
+## What You Can Do on Obilli
 
-## Tech Stack
+* **Buy and Sell Products**
+  From everyday items to big purchases, Obilli makes trading simple. Browse listings for electronics, fashion, home appliances, vehicles, and more.
 
-- **Frontend**: Next.js
-- **Backend**: Supabase (for authentication, database, and storage)
-- **Hosting**: Vercel
-- **Authentication**: Supabase Auth (JWT-based authentication)
-- **Database**: Supabase (PostgreSQL)
-- **Real-time**: Supabase Realtime (for notifications, chat, etc.)
+* **Access Services**
+  Find skilled professionals, artisans, and service providers in your area—whether you need repairs, lessons, or business support.
 
-## Getting Started
+* **Find Jobs and Opportunities**
+  Job seekers can browse openings while businesses and individuals can post opportunities to reach a wide audience.
 
-To get a copy of the project running locally on your machine, follow these steps.
+* **Real Estate Listings**
+  Search for houses, land, or rental properties tailored to your city or region.
 
-### Prerequisites
+* **Community Connections**
+  Beyond transactions, Obilli helps people network, collaborate, and grow their businesses.
 
-- **Node.js** (version 14 or higher)
-- **npm** or **yarn** (package manager)
-- **Git** for version control
-- **Supabase** account (for database and authentication)
+---
 
-### Installation
+## Key Features
 
-1. Clone the repository to your local machine:
+* **Wide Range of Categories**: Electronics, fashion, vehicles, jobs, real estate, services, and more.
+* **Smart Search & Filters**: Quickly find what you’re looking for with advanced filters.
+* **User Profiles**: Every user has a profile to manage listings, track interactions, and build trust.
+* **Secure Messaging**: Contact buyers and sellers directly through safe in-platform messaging.
+* **Local Focus**: Browse listings tailored to your city or country.
+* **Responsive Design**: Works smoothly on both mobile and desktop devices.
 
-    ```bash
-    git clone https://github.com/realjema/obilli.git
-    cd obilli
-    ```
+---
 
-2. Install dependencies:
+## Why Obilli?
 
-    If you're using **npm**:
-    ```bash
-    npm install
-    ```
+* **Built for Africa**: Many international marketplaces don’t fully reflect African needs. Obilli is designed specifically for African communities.
+* **Trustworthy**: Secure messaging and user profiles ensure safer transactions.
+* **Accessibility**: Easy to use, no matter your technical experience.
+* **Growth-Oriented**: Whether you’re an individual seller, a small business, or a company, Obilli helps you reach more people.
 
-    Or if you're using **yarn**:
-    ```bash
-    yarn install
-    ```
+---
 
-3. Set up environment variables:
+## How It Works
 
-    Copy the `.env.example` file to `.env` and update with your Supabase configuration and any other local settings:
+1. **Sign Up**: Create a free account on [Obilli](https://obilli.com).
+2. **Post a Listing**: Upload photos, add a description, set a price, and publish.
+3. **Search & Browse**: Use categories and filters to find what you want.
+4. **Connect**: Message sellers or buyers securely inside the platform.
+5. **Make the Deal**: Arrange safe payments and delivery directly with your contact.
 
-    ```bash
-    cp .env.example .env
-    ```
+---
 
-    - Add your **Supabase URL** and **Supabase Anon Key** in the `.env` file.
+## Vision for Obilli
 
-4. Start the development server:
+Obilli is not just a marketplace—it’s part of Africa’s digital future. Our vision is to empower communities with tools to trade, find opportunities, and grow economically. By connecting people locally and across borders, we aim to:
 
-    If you're using **npm**:
-    ```bash
-    npm run dev
-    ```
+* Reduce barriers to trade within Africa.
+* Help small businesses and entrepreneurs scale.
+* Provide everyday users with an easier way to buy, sell, and find opportunities.
+* Support Africa’s transition into a fully digital economy.
 
-    Or if you're using **yarn**:
-    ```bash
-    yarn dev
-    ```
-
-    This will start the local development server at `http://localhost:3000`.
-
-### Setting Up Supabase
-
-1. Create an account on [Supabase](https://supabase.io).
-2. Create a new project and note down the **API URL** and **Anon Key**.
-3. Set up your database tables and authentication settings in the Supabase dashboard (you can import or create them from scratch).
-4. Make sure to update your `.env` file with the correct details for Supabase.
-
-### Database Setup
-
-- If you're using Supabase (PostgreSQL), create the necessary tables for your listings, users, messages, etc., from the Supabase dashboard.
-- Ensure that the **Supabase URL** and **API keys** are added correctly in the `.env` file.
-
-## Contributing
-
-We welcome contributions to Obilli! If you'd like to help improve the platform, please follow these guidelines:
-
-1. **Fork the repository** and clone it to your machine.
-2. Create a **new branch** for your changes:
-    ```bash
-    git checkout -b feature/your-feature
-    ```
-3. **Make your changes** and ensure that they work.
-4. **Commit your changes**:
-    ```bash
-    git commit -m "Added feature X"
-    ```
-5. **Push to your forked repository**:
-    ```bash
-    git push origin feature/your-feature
-    ```
-6. **Create a pull request** against the main branch.
-
-Please ensure that your code follows the existing coding style and includes any necessary documentation or tests.
+---
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
 
----
-
-## **Website URL**
-[Obilli](https://obilli.com) – Your trusted platform for classifieds in Africa!
-
-## **Contact**
-
-For support or questions, feel free to reach out via:
-
-- Email: support@obilli.com
-- Twitter: [@ObilliClassified](https://twitter.com/ObilliClassified)
-- Instagram: [@ObilliOfficial](https://instagram.com/ObilliOfficial)
-
----
+[Obilli](https://obilli.com) – Your trusted classifieds platform for Africa.
+ 
