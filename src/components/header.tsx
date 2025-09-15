@@ -87,7 +87,7 @@ export function Header() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Search Obilli Marketplace..."
+                  placeholder={t("search.placeholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 rounded-l-md border border-input bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
@@ -96,7 +96,7 @@ export function Header() {
                   type="submit" 
                   className="bg-primary text-primary-foreground px-4 py-2 rounded-r-md hover:bg-primary/90 transition-colors"
                 >
-                  Search
+                  {t("common.search")}
                 </button>
               </div>
             </form>
@@ -110,7 +110,7 @@ export function Header() {
                 href="/sell/new"
                 className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium hover:bg-primary/90 transition-colors"
               >
-                {t("nav.sell") || "Sell"}
+                {t("nav.sell")}
               </Link>
               
               {user && userProfile ? (
@@ -157,7 +157,7 @@ export function Header() {
                             onClick={() => setShowUserMenu(false)}
                           >
                             <User className="h-4 w-4 mr-3" />
-                            Dashboard
+                            {t("nav.dashboard")}
                           </Link>
                           
                           <Link
@@ -166,7 +166,7 @@ export function Header() {
                             onClick={() => setShowUserMenu(false)}
                           >
                             <Settings className="h-4 w-4 mr-3" />
-                            Settings
+                            {t("nav.settings")}
                           </Link>
                           
                           <div className="border-t border-border my-2"></div>
@@ -174,7 +174,7 @@ export function Header() {
                           {/* Theme Toggle in dropdown */}
                           <div className="px-4 py-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-sm text-foreground">Theme</span>
+                              <span className="text-sm text-foreground">{t("common.theme")}</span>
                               <ThemeToggle />
                             </div>
                           </div>
@@ -182,7 +182,7 @@ export function Header() {
                           {/* Language Switcher in dropdown */}
                           <div className="px-4 py-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-sm text-foreground">Language</span>
+                              <span className="text-sm text-foreground">{t("common.language")}</span>
                               <LanguageSwitcher />
                             </div>
                           </div>
@@ -194,7 +194,7 @@ export function Header() {
                             className="flex items-center w-full px-4 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
                           >
                             <LogOut className="h-4 w-4 mr-3" />
-                            Sign Out
+                            {t("nav.logout")}
                           </button>
                         </div>
                       </div>
@@ -206,7 +206,7 @@ export function Header() {
                   href="/login"
                   className="text-foreground hover:text-primary transition-colors font-medium"
                 >
-                  Sign In
+                  {t("nav.login")}
                 </Link>
               )}
             </nav>

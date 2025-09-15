@@ -187,10 +187,12 @@ function ImageGallery({ images, title }: ImageGalleryProps) {
 }
 
 function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
+  const { t } = useI18n();
+  
   return (
     <nav className="flex items-center space-x-2 text-sm text-muted-foreground mb-6">
       <Link href="/" className="hover:text-primary transition-colors">
-        Home
+        {t('nav.home')}
       </Link>
       {items.map((item, index) => (
         <div key={index} className="flex items-center space-x-2">
@@ -209,6 +211,7 @@ function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
 }
 
 function ShareButton({ listing }: { listing: ListingWithDetails }) {
+  const { t } = useI18n();
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -247,7 +250,7 @@ function ShareButton({ listing }: { listing: ListingWithDetails }) {
         className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg font-medium flex items-center justify-center transition-colors hover:bg-primary/90"
       >
         <Share2 className="h-5 w-5 mr-2" />
-        Share Listing
+        {t('listing.share')}
       </button>
 
       {showShareMenu && (
@@ -286,7 +289,7 @@ function ShareButton({ listing }: { listing: ListingWithDetails }) {
               }`}
             >
               <Copy className="h-4 w-4" />
-              <span>{copied ? 'Copied!' : 'Copy Link'}</span>
+              <span>{copied ? 'Copied!' : t('common.copy')}</span>
             </button>
           </div>
           
@@ -303,11 +306,11 @@ function ShareButton({ listing }: { listing: ListingWithDetails }) {
 }
 
 function ContactCard({ listing, seller }: { listing: ListingWithDetails; seller: SellerProfile | null }) {
-  const { formatCurrency, formatRelativeTime } = useI18n();
+  const { formatCurrency, formatRelativeTime, t } = useI18n();
 
   // Helper function to format location hierarchy
   const getLocationDisplay = () => {
-    if (!listing.location) return 'Location not specified';
+    if (!listing.location) return t('listing.notSpecified');
     
     const parts = [];
     parts.push(listing.location.location_en); // Quarter
@@ -342,16 +345,16 @@ function ContactCard({ listing, seller }: { listing: ListingWithDetails; seller:
   return (
     <div className="bg-card border border-border rounded-lg p-6 sticky top-6">
       {/* Price - Most Important */}
-      {listing.price_xaf && (
-        <div className="mb-6">
-          <div className="text-3xl font-bold text-primary mb-1">
-            {formatCurrency(listing.price_xaf)}
-          </div>
-          {listing.negotiable && (
-            <div className="text-sm text-muted-foreground">Negotiable</div>
-          )}
+      <div className="mb-6">
+        <div className="text-3xl font-bold text-primary mb-1">
+          {listing.price_xaf && listing.price_xaf > 0 
+            ? formatCurrency(listing.price_xaf) 
+            : t('listing.negotiable')}
         </div>
-      )}
+        {listing.negotiable && (
+          <div className="text-sm text-muted-foreground">{t('listing.negotiable')}</div>
+        )}
+      </div>
 
       {/* Key Information - Location, Date, Views */}
       <div className="space-y-4 mb-6">
@@ -360,7 +363,7 @@ function ContactCard({ listing, seller }: { listing: ListingWithDetails; seller:
           <MapPin className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
           <div>
             <div className="font-medium text-foreground">{getLocationDisplay()}</div>
-            <div className="text-sm text-muted-foreground">Location</div>
+            <div className="text-sm text-muted-foreground">{t('listing.location')}</div>
           </div>
         </div>
         
@@ -369,9 +372,9 @@ function ContactCard({ listing, seller }: { listing: ListingWithDetails; seller:
           <Calendar className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
           <div>
             <div className="font-medium text-foreground">
-              {listing.created_at ? formatRelativeTime(listing.created_at) : 'Unknown'}
+              {listing.created_at ? formatRelativeTime(listing.created_at) : t('listing.notSpecified')}
             </div>
-            <div className="text-sm text-muted-foreground">Posted</div>
+            <div className="text-sm text-muted-foreground">{t('listing.posted')}</div>
           </div>
         </div>
         
@@ -379,8 +382,8 @@ function ContactCard({ listing, seller }: { listing: ListingWithDetails; seller:
         <div className="flex items-start space-x-3">
           <Eye className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
           <div>
-            <div className="font-medium text-foreground">{listing.view_count || 0} views</div>
-            <div className="text-sm text-muted-foreground">Interest level</div>
+            <div className="font-medium text-foreground">{listing.view_count || 0} {t('listing.views')}</div>
+            <div className="text-sm text-muted-foreground">{t('listing.interestLevel')}</div>
           </div>
         </div>
       </div>
@@ -390,14 +393,14 @@ function ContactCard({ listing, seller }: { listing: ListingWithDetails; seller:
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground flex items-center">
             <Tag className="h-4 w-4 mr-1" />
-            Condition:
+            {t('listing.condition')}:
           </span>
-          <span className="font-medium capitalize">{listing.condition || 'Not specified'}</span>
+          <span className="font-medium capitalize">{listing.condition || t('listing.notSpecified')}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground flex items-center">
             <Package className="h-4 w-4 mr-1" />
-            Type:
+            {t('listing.type')}:
           </span>
           <span className="font-medium capitalize">{listing.type}</span>
         </div>
@@ -437,7 +440,7 @@ function ContactCard({ listing, seller }: { listing: ListingWithDetails; seller:
 function SimilarListings({ categoryId, currentListingId }: { categoryId: number; currentListingId: string }) {
   const [listings, setListings] = useState<ListingWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { formatCurrency, formatRelativeTime } = useI18n();
+  const { formatCurrency, formatRelativeTime, t } = useI18n();
 
   useEffect(() => {
     const loadSimilarListings = async () => {
@@ -465,7 +468,7 @@ function SimilarListings({ categoryId, currentListingId }: { categoryId: number;
   if (isLoading) {
     return (
       <div className="py-8">
-        <h3 className="text-xl font-semibold mb-6">Similar Listings</h3>
+        <h3 className="text-xl font-semibold mb-6">{t('search.similarListings')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="bg-card border border-border rounded-lg overflow-hidden animate-pulse">
@@ -488,7 +491,7 @@ function SimilarListings({ categoryId, currentListingId }: { categoryId: number;
 
   return (
     <div className="py-8">
-      <h3 className="text-xl font-semibold mb-6">Similar Listings</h3>
+      <h3 className="text-xl font-semibold mb-6">{t('search.similarListings')}</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {listings.map((listing) => {
           const imageUrl = listing.media && listing.media.length > 0 
@@ -517,13 +520,13 @@ function SimilarListings({ categoryId, currentListingId }: { categoryId: number;
                     </div>
                   ) : (
                     <div className="text-lg font-bold text-primary mb-1">
-                      Negotiable
+                      {t('listing.negotiable')}
                     </div>
                   )}
                   
                   <div className="flex items-center text-xs text-muted-foreground">
                     <Clock className="h-3 w-3 mr-1" />
-                    {listing.created_at ? formatRelativeTime(listing.created_at) : 'Unknown'}
+                    {listing.created_at ? formatRelativeTime(listing.created_at) : t('listing.notSpecified')}
                   </div>
                 </div>
               </div>
@@ -543,7 +546,7 @@ export default function ListingDetailsPage() {
   const [category, setCategory] = useState<CategoryInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { } = useI18n();
+  const { t } = useI18n();
   const supabase = useSupabaseClient();
 
   useEffect(() => {
@@ -557,7 +560,7 @@ export default function ListingDetailsPage() {
         // Get listing details
         const listingData = await listingsRepo.getById(listingId);
         if (!listingData) {
-          setError('Listing not found');
+          setError(t('common.error'));
           return;
         }
         
@@ -586,14 +589,14 @@ export default function ListingDetailsPage() {
         
       } catch (err) {
         console.error('Failed to load listing:', err);
-        setError('Failed to load listing');
+        setError(t('common.error'));
       } finally {
         setIsLoading(false);
       }
     };
 
     loadListing();
-  }, [listingId, supabase]);
+  }, [listingId, supabase, t]);
 
   if (isLoading) {
     return (
@@ -625,16 +628,16 @@ export default function ListingDetailsPage() {
           <div className="text-center py-12">
             <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-foreground mb-2">
-              {error || 'Listing not found'}
+              {error || t('common.error')}
             </h1>
             <p className="text-muted-foreground mb-6">
-              The listing you&apos;re looking for doesn&apos;t exist or has been removed.
+              {t('search.tryAdjusting')}
             </p>
             <Link
               href="/"
               className="bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors"
             >
-              Go to Homepage
+              {t('common.goToHomepage')}
             </Link>
           </div>
         </div>
@@ -644,7 +647,7 @@ export default function ListingDetailsPage() {
 
   const images = listing.media?.map(m => m.url) || [];
   const breadcrumbItems: BreadcrumbItem[] = [
-    category ? { label: category.name_en, href: `/search?category=${category.id}` } : { label: 'Category' },
+    category ? { label: category.name_en, href: `/search?category=${category.id}` } : { label: t('home.category') },
     { label: listing.title }
   ];
 
@@ -716,7 +719,7 @@ export default function ListingDetailsPage() {
               
               {/* Description */}
               <div className="prose max-w-none">
-                <h3 className="text-lg font-semibold mb-3">Description</h3>
+                <h3 className="text-lg font-semibold mb-3">{t('listing.description')}</h3>
                 <p className="text-muted-foreground whitespace-pre-wrap">
                   {listing.description}
                 </p>
@@ -754,6 +757,7 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const user = useUser();
   const supabase = useSupabaseClient();
+  const { t } = useI18n();
 
   useEffect(() => {
     const loadReviews = async () => {
@@ -774,12 +778,12 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      alert('Please log in to submit a review.');
+      alert(t('auth.login'));
       return;
     }
 
     if (user.id === sellerId) {
-      alert('You cannot review your own listing.');
+      alert(t('reviews.cannotReviewOwn'));
       return;
     }
 
@@ -795,7 +799,7 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
         .single();
 
       if (existingReview) {
-        alert('You have already reviewed this seller for this listing.');
+        alert(t('reviews.alreadyReviewed'));
         return;
       }
 
@@ -821,7 +825,7 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
         .single();
 
       if (error) {
-        throw new Error(`Failed to submit review: ${error.message}`);
+        throw new Error(`${t('reviews.failedSubmit')}: ${error.message}`);
       }
 
       // Reload reviews
@@ -831,7 +835,7 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
       setShowReviewForm(false);
     } catch (error) {
       console.error('Failed to submit review:', error);
-      alert(`Failed to submit review: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`${t('reviews.failedSubmit')}: ${error instanceof Error ? error.message : t('common.unknownError')}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -845,7 +849,7 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
     <div className="bg-card border border-border rounded-lg p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-xl font-semibold mb-2">Reviews</h3>
+          <h3 className="text-xl font-semibold mb-2">{t('reviews.title')}</h3>
           <div className="flex items-center space-x-4">
             <div className="flex items-center">
               <div className="flex items-center mr-2">
@@ -859,7 +863,7 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
                 ))}
               </div>
               <span className="font-medium">{averageRating.toFixed(1)}</span>
-              <span className="text-muted-foreground ml-1">({reviews.length} reviews)</span>
+              <span className="text-muted-foreground ml-1">({reviews.length} {t('reviews.reviews')})</span>
             </div>
           </div>
         </div>
@@ -873,7 +877,7 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
               : 'bg-primary text-primary-foreground hover:bg-primary/90'
           }`}
         >
-          {!user ? 'Login to Review' : user.id === sellerId ? 'Cannot Review Own Listing' : 'Write Review'}
+          {!user ? t('auth.login') : user.id === sellerId ? t('reviews.cannotReviewOwn') : t('reviews.writeReview')}
         </button>
       </div>
 
@@ -882,7 +886,7 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
         <div className="mb-6 p-4 border border-border rounded-lg bg-muted/50">
           <form onSubmit={handleSubmitReview} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Rating</label>
+              <label className="block text-sm font-medium mb-2">{t('reviews.rating')}</label>
               <div className="flex items-center space-x-1">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
@@ -902,24 +906,24 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
             </div>
             
             <div>
-              <label className="block text-sm font-medium mb-2">Title (optional)</label>
+              <label className="block text-sm font-medium mb-2">{t('reviews.title')} ({t('common.optional')})</label>
               <input
                 type="text"
                 value={newReview.title}
                 onChange={(e) => setNewReview({ ...newReview, title: e.target.value })}
                 className="w-full px-3 py-2 border border-border rounded-md"
-                placeholder="Brief summary of your review"
+                placeholder={t('reviews.titlePlaceholder')}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium mb-2">Comment</label>
+              <label className="block text-sm font-medium mb-2">{t('reviews.comment')}</label>
               <textarea
                 value={newReview.comment}
                 onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
                 className="w-full px-3 py-2 border border-border rounded-md"
                 rows={4}
-                placeholder="Share your experience..."
+                placeholder={t('reviews.commentPlaceholder')}
                 required
               />
             </div>
@@ -934,7 +938,7 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
                     : 'bg-primary text-primary-foreground hover:bg-primary/90'
                 }`}
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Review'}
+                {isSubmitting ? t('reviews.submitting') : t('reviews.submit')}
               </button>
               <button
                 type="button"
@@ -942,7 +946,7 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
                 disabled={isSubmitting}
                 className="border border-border px-4 py-2 rounded-lg hover:bg-accent disabled:opacity-50"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </form>
@@ -977,7 +981,7 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
                         ))}
                       </div>
                       <span className="text-sm text-muted-foreground">
-                        {review.created_at ? new Date(review.created_at).toLocaleDateString() : 'Unknown date'}
+                        {review.created_at ? new Date(review.created_at).toLocaleDateString() : t('reviews.unknownDate')}
                       </span>
                     </div>
                   </div>

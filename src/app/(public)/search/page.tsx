@@ -33,27 +33,27 @@ function SearchFilters({
   onFiltersChange: (filters: ListingFilters) => void;
   categories: CategoryWithChildren[];
 }) {
-  const { } = useI18n();
+  const { t, locale } = useI18n();
   
   return (
     <div className="bg-card border border-border rounded-lg p-6 space-y-6">
       <h3 className="font-semibold flex items-center text-foreground">
         <Filter className="h-5 w-5 mr-2" />
-        Filters
+        {t('common.filter')}
       </h3>
       
       {/* Category Filter */}
       <div>
-        <label className="block text-sm font-medium mb-2 text-foreground">Category</label>
+        <label className="block text-sm font-medium mb-2 text-foreground">{t('listing.category')}</label>
         <select 
           value={filters.category_id || ''} 
           onChange={(e) => onFiltersChange({ ...filters, category_id: e.target.value ? Number(e.target.value) : undefined })}
           className="w-full p-2 border border-border rounded-md bg-background text-foreground"
         >
-          <option value="">All Categories</option>
+          <option value="">{t('search.allCategories')}</option>
           {categories.map((category) => (
             <option key={category.id} value={category.id} className="bg-background text-foreground">
-              {category.name_en}
+              {locale === 'fr' ? category.name_fr : category.name_en}
             </option>
           ))}
         </select>
@@ -61,33 +61,33 @@ function SearchFilters({
       
       {/* Type Filter */}
       <div>
-        <label className="block text-sm font-medium mb-2 text-foreground">Type</label>
+        <label className="block text-sm font-medium mb-2 text-foreground">{t('listing.type')}</label>
         <select 
           value={filters.type || ''} 
           onChange={(e) => onFiltersChange({ ...filters, type: e.target.value as 'good' | 'service' | 'job' | undefined })}
           className="w-full p-2 border border-border rounded-md bg-background text-foreground"
         >
-          <option value="">All Types</option>
-          <option value="good" className="bg-background text-foreground">Goods</option>
-          <option value="service" className="bg-background text-foreground">Services</option>
-          <option value="job" className="bg-background text-foreground">Jobs</option>
+          <option value="">{t('search.allTypes')}</option>
+          <option value="good" className="bg-background text-foreground">{t('search.goods')}</option>
+          <option value="service" className="bg-background text-foreground">{t('search.services')}</option>
+          <option value="job" className="bg-background text-foreground">{t('search.jobs')}</option>
         </select>
       </div>
       
       {/* Price Range */}
       <div>
-        <label className="block text-sm font-medium mb-2 text-foreground">Price Range (XAF)</label>
+        <label className="block text-sm font-medium mb-2 text-foreground">{t('search.priceRange')}</label>
         <div className="grid grid-cols-2 gap-2">
           <input 
             type="number" 
-            placeholder="Min"
+            placeholder={t('search.min')}
             value={filters.min_price || ''}
             onChange={(e) => onFiltersChange({ ...filters, min_price: e.target.value ? Number(e.target.value) : undefined })}
             className="p-2 border border-border rounded-md bg-background text-foreground placeholder-muted-foreground"
           />
           <input 
             type="number" 
-            placeholder="Max"
+            placeholder={t('search.max')}
             value={filters.max_price || ''}
             onChange={(e) => onFiltersChange({ ...filters, max_price: e.target.value ? Number(e.target.value) : undefined })}
             className="p-2 border border-border rounded-md bg-background text-foreground placeholder-muted-foreground"
@@ -97,13 +97,13 @@ function SearchFilters({
       
       {/* Location */}
       <div>
-        <label className="block text-sm font-medium mb-2 text-foreground">Region</label>
+        <label className="block text-sm font-medium mb-2 text-foreground">{t('search.region')}</label>
         <select 
           value={filters.region_id || ''} 
           onChange={(e) => onFiltersChange({ ...filters, region_id: e.target.value ? Number(e.target.value) : undefined })}
           className="w-full p-2 border border-border rounded-md bg-background text-foreground"
         >
-          <option value="">Any Region</option>
+          <option value="">{t('search.anyRegion')}</option>
           <option value="2" className="bg-background text-foreground">Centre</option>
           <option value="5" className="bg-background text-foreground">Littoral</option>
           <option value="7" className="bg-background text-foreground">Northwest</option>
@@ -119,16 +119,16 @@ function SearchFilters({
       
       {/* Condition */}
       <div>
-        <label className="block text-sm font-medium mb-2 text-foreground">Condition</label>
+        <label className="block text-sm font-medium mb-2 text-foreground">{t('listing.condition')}</label>
         <select 
           value={filters.condition || ''} 
           onChange={(e) => onFiltersChange({ ...filters, condition: e.target.value || undefined })}
           className="w-full p-2 border border-border rounded-md bg-background text-foreground"
         >
-          <option value="">Any Condition</option>
-          <option value="new" className="bg-background text-foreground">New</option>
-          <option value="used" className="bg-background text-foreground">Used</option>
-          <option value="refurbished" className="bg-background text-foreground">Refurbished</option>
+          <option value="">{t('search.anyCondition')}</option>
+          <option value="new" className="bg-background text-foreground">{t('conditions.new')}</option>
+          <option value="used" className="bg-background text-foreground">{t('conditions.used')}</option>
+          <option value="refurbished" className="bg-background text-foreground">{t('conditions.refurbished')}</option>
         </select>
       </div>
       
@@ -137,14 +137,14 @@ function SearchFilters({
         onClick={() => onFiltersChange({})}
         className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
-        Clear All Filters
+        {t('search.clearAllFilters')}
       </button>
     </div>
   );
 }
 
 function ListingCard({ listing, viewMode }: { listing: ListingWithDetails; viewMode: 'grid' | 'list' }) {
-  const { formatCurrency, formatRelativeTime } = useI18n();
+  const { formatCurrency, formatRelativeTime, t } = useI18n();
   
   // Get the first media image or use default
   const imageUrl = listing.media && listing.media.length > 0 
@@ -202,7 +202,7 @@ function ListingCard({ listing, viewMode }: { listing: ListingWithDetails; viewM
                 </div>
               ) : (
                 <div className="text-lg font-bold text-primary mb-2">
-                  Negotiable
+                  {t('listing.negotiable')}
                 </div>
               )}
 
@@ -268,7 +268,7 @@ function ListingCard({ listing, viewMode }: { listing: ListingWithDetails; viewM
             </div>
           ) : (
             <div className="text-lg font-bold text-primary mb-2">
-              Negotiable
+              {t('listing.negotiable')}
             </div>
           )}
           
@@ -310,7 +310,7 @@ export default function SearchPage() {
 
 function SearchPageContent() {
   const searchParams = useSearchParams();
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   
   const [listings, setListings] = useState<ListingWithDetails[]>([]);
   const [categories, setCategories] = useState<CategoryWithChildren[]>([]);
@@ -408,14 +408,14 @@ function SearchPageContent() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search for anything..."
+                placeholder={t('search.placeholder')}
                 className="w-full pl-12 pr-4 py-4 rounded-lg border border-border bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
               />
               <button 
                 type="submit"
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-primary text-primary-foreground px-6 py-2 rounded-md font-medium hover:bg-primary/90 transition-colors"
               >
-                Search
+                {t('common.search')}
               </button>
             </div>
           </form>
@@ -425,7 +425,7 @@ function SearchPageContent() {
             <div className="mb-4">
               <nav className="flex text-sm text-muted-foreground">
                 <Link href="/search" className="hover:text-foreground transition-colors">
-                  All Categories
+                  {t('search.allCategories')}
                 </Link>
                 {categoryBreadcrumb.map((category, index) => (
                   <span key={category.id} className="flex items-center">
@@ -450,7 +450,7 @@ function SearchPageContent() {
           
           <div className="flex items-center justify-between">
             <p className="text-muted-foreground">
-              {isLoading ? 'Loading...' : `${total} results found`}
+              {isLoading ? t('common.loading') : t('search.resultsFound').replace('{count}', total.toString())}
             </p>
             
             <div className="flex items-center space-x-2">
@@ -461,6 +461,7 @@ function SearchPageContent() {
                     ? 'bg-primary text-primary-foreground' 
                     : 'bg-muted text-muted-foreground hover:text-foreground'
                 }`}
+                title={t('search.gridView')}
               >
                 <Grid className="h-4 w-4" />
               </button>
@@ -471,6 +472,7 @@ function SearchPageContent() {
                     ? 'bg-primary text-primary-foreground' 
                     : 'bg-muted text-muted-foreground hover:text-foreground'
                 }`}
+                title={t('search.listView')}
               >
                 <List className="h-4 w-4" />
               </button>
@@ -486,12 +488,12 @@ function SearchPageContent() {
               {showFilters ? (
                 <>
                   <ChevronUp className="h-4 w-4 mr-1" />
-                  Hide Filters
+                  {t('search.hideFilters')}
                 </>
               ) : (
                 <>
                   <ChevronDown className="h-4 w-4 mr-1" />
-                  Show Filters
+                  {t('search.showFilters')}
                 </>
               )}
             </button>
@@ -548,8 +550,8 @@ function SearchPageContent() {
             ) : listings.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg mb-2">No listings found</p>
-                <p>Try adjusting your search criteria or filters</p>
+                <p className="text-lg mb-2">{t('search.noListingsFound')}</p>
+                <p>{t('search.tryAdjusting')}</p>
               </div>
             ) : (
               <>
@@ -575,7 +577,7 @@ function SearchPageContent() {
                             : 'bg-background text-foreground hover:bg-muted'
                         }`}
                       >
-                        Previous
+                        {t('search.previous')}
                       </button>
                       
                       {Array.from({ length: Math.min(5, Math.ceil(total / itemsPerPage)) }, (_, i) => {
@@ -604,7 +606,7 @@ function SearchPageContent() {
                             : 'bg-background text-foreground hover:bg-muted'
                         }`}
                       >
-                        Next
+                        {t('search.next')}
                       </button>
                     </nav>
                   </div>

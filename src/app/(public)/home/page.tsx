@@ -146,7 +146,7 @@ export default function HomePage() {
 }
 
 function HeroCarousel({ listings, isLoading }: { listings: any[]; isLoading: boolean }) {
-  const { formatCurrency, formatRelativeTime } = useI18n();
+  const { formatCurrency, formatRelativeTime, locale, t } = useI18n();
   const [currentIndex, setCurrentIndex] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -183,6 +183,16 @@ function HeroCarousel({ listings, isLoading }: { listings: any[]; isLoading: boo
     };
   }, [listings.length, currentIndex, goToSlide]);
 
+  // Get the location display based on the current locale
+  const getLocationDisplay = (listing: any) => {
+    if (!listing.location) return null;
+    
+    if (locale === 'fr' && listing.location.location_fr) {
+      return listing.location.location_fr;
+    }
+    return listing.location.location_en;
+  };
+
   if (isLoading) {
     return (
       <section className="py-8">
@@ -207,8 +217,8 @@ function HeroCarousel({ listings, isLoading }: { listings: any[]; isLoading: boo
           <div className="relative h-[400px] bg-gradient-to-r from-primary to-primary/80 rounded-2xl">
             <div className="h-full flex items-center justify-center">
               <div className="text-center text-primary-foreground">
-                <h1 className="text-4xl font-bold mb-4">Welcome to Obilli Marketplace</h1>
-                <p className="text-xl opacity-90">Discover amazing deals in Cameroon</p>
+                <h1 className="text-4xl font-bold mb-4">{t('home.welcomeTitle')}</h1>
+                <p className="text-xl opacity-90">{t('home.welcomeDescription')}</p>
               </div>
             </div>
           </div>
@@ -251,7 +261,7 @@ function HeroCarousel({ listings, isLoading }: { listings: any[]; isLoading: boo
               {/* Left: Listing Info */}
               <div className="md:col-span-2">
                 <span className="inline-block bg-primary px-3 py-1 rounded-full text-xs font-medium text-primary-foreground mb-3">
-                  Featured Listing
+                  {t('home.featuredListing')}
                 </span>
                 
                 <h2 className="text-2xl md:text-3xl font-bold mb-2 text-white">
@@ -265,10 +275,10 @@ function HeroCarousel({ listings, isLoading }: { listings: any[]; isLoading: boo
                 )}
                 
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-white/70">
-                  {currentListing.location && (
+                  {getLocationDisplay(currentListing) && (
                     <div className="flex items-center">
                       <MapPin className="h-4 w-4 mr-1 text-primary" />
-                      <span>{currentListing.location.location_en}</span>
+                      <span>{getLocationDisplay(currentListing)}</span>
                     </div>
                   )}
                   
@@ -285,14 +295,14 @@ function HeroCarousel({ listings, isLoading }: { listings: any[]; isLoading: boo
                 <div className="text-2xl md:text-3xl font-bold text-white">
                   {currentListing.price_xaf && currentListing.price_xaf > 0 
                     ? formatCurrency(currentListing.price_xaf) 
-                    : 'Negotiable'}
+                    : t('listing.negotiable')}
                 </div>
                 
                 <Link
                   href={`/listing/${currentListing.id}`}
                   className="inline-flex items-center bg-primary/90 text-primary-foreground px-4 py-2 text-sm rounded-md font-medium hover:bg-primary transition-colors"
                 >
-                  View Details
+                  {t('home.viewDetails')}
                   <ChevronRight className="ml-1 h-4 w-4" />
                 </Link>
               </div>
@@ -335,7 +345,7 @@ function HeroCarousel({ listings, isLoading }: { listings: any[]; isLoading: boo
 }
 
 function ListingCard({ listing }: { listing: any }) {
-  const { formatCurrency, formatRelativeTime } = useI18n();
+  const { formatCurrency, formatRelativeTime, locale, t } = useI18n();
   
   // Get the first media image or use default
   const imageUrl = listing.media && listing.media.length > 0 
@@ -350,6 +360,10 @@ function ListingCard({ listing }: { listing: any }) {
   const getLocationDisplay = () => {
     if (!listing.location) return null;
     
+    // Use the location name based on the current locale
+    if (locale === 'fr' && listing.location.location_fr) {
+      return listing.location.location_fr;
+    }
     return listing.location.location_en;
   };
   
@@ -387,7 +401,7 @@ function ListingCard({ listing }: { listing: any }) {
           <div className="text-lg font-bold text-primary mb-2">
             {listing.price_xaf && listing.price_xaf > 0 
               ? formatCurrency(listing.price_xaf) 
-              : 'Negotiable'}
+              : t('listing.negotiable')}
           </div>
           
           <div className="mt-auto space-y-1">
@@ -415,7 +429,7 @@ function HorizontalScrollSection({ title, icon: Icon, listings, isLoading }: {
   listings: any[];
   isLoading: boolean;
 }) {
-  const { } = useI18n();
+  const { t } = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scrollLeft = () => {
@@ -430,13 +444,33 @@ function HorizontalScrollSection({ title, icon: Icon, listings, isLoading }: {
     }
   };
 
+  // Map English titles to translation keys
+  const getTitleTranslationKey = (title: string) => {
+    switch (title) {
+      case 'Featured Listings':
+        return 'home.featuredListings';
+      case 'Trending Now':
+        return 'home.trendingNow';
+      case 'Recently Added':
+        return 'home.recentlyAdded';
+      default:
+        return title;
+    }
+  };
+
+  // Get translated title or fallback to original
+  const getTranslatedTitle = () => {
+    const key = getTitleTranslationKey(title);
+    return t(key);
+  };
+
   if (isLoading) {
     return (
       <section className="mb-16">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
             <Icon className="h-6 w-6 text-primary mr-3" />
-            <h2 className="text-2xl font-bold text-foreground">{title}</h2>
+            <h2 className="text-2xl font-bold text-foreground">{getTranslatedTitle()}</h2>
           </div>
         </div>
         
@@ -462,13 +496,13 @@ function HorizontalScrollSection({ title, icon: Icon, listings, isLoading }: {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
             <Icon className="h-6 w-6 text-primary mr-3" />
-            <h2 className="text-2xl font-bold text-foreground">{title}</h2>
+            <h2 className="text-2xl font-bold text-foreground">{getTranslatedTitle()}</h2>
           </div>
         </div>
         
         <div className="text-center py-12 text-muted-foreground">
           <Icon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>No listings found in this category yet.</p>
+          <p>{t('home.noListingsFound')}</p>
         </div>
       </section>
     );
@@ -479,7 +513,7 @@ function HorizontalScrollSection({ title, icon: Icon, listings, isLoading }: {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <Icon className="h-6 w-6 text-primary mr-3" />
-          <h2 className="text-2xl font-bold text-foreground">{title}</h2>
+          <h2 className="text-2xl font-bold text-foreground">{getTranslatedTitle()}</h2>
         </div>
         
         <div className="flex items-center space-x-2">
@@ -499,7 +533,7 @@ function HorizontalScrollSection({ title, icon: Icon, listings, isLoading }: {
             href="/search"
             className="ml-4 text-sm text-primary hover:text-primary/80 font-medium"
           >
-            View all
+            {t('common.viewAll')}
           </Link>
         </div>
       </div>
@@ -526,6 +560,7 @@ function CategorySection({ category, listings, isLoading }: {
   listings: any[];
   isLoading: boolean;
 }) {
+  const { locale, t } = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scrollLeft = () => {
@@ -540,11 +575,19 @@ function CategorySection({ category, listings, isLoading }: {
     }
   };
 
+  // Get the category name based on the current locale
+  const getCategoryName = () => {
+    if (locale === 'fr' && category.name_fr) {
+      return category.name_fr;
+    }
+    return category.name_en;
+  };
+
   if (isLoading) {
     return (
       <section className="mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-foreground">{category.name_en}</h2>
+          <h2 className="text-2xl font-bold text-foreground">{getCategoryName()}</h2>
         </div>
         
         <div className="flex space-x-4 overflow-hidden">
@@ -567,11 +610,11 @@ function CategorySection({ category, listings, isLoading }: {
     return (
       <section className="mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-foreground">{category.name_en}</h2>
+          <h2 className="text-2xl font-bold text-foreground">{getCategoryName()}</h2>
         </div>
         
         <div className="text-center py-8 text-muted-foreground">
-          <p className="text-sm">No listings in {category.name_en} yet.</p>
+          <p className="text-sm">{t('home.noListingsCategory').replace('{category}', getCategoryName())}</p>
         </div>
       </section>
     );
@@ -580,7 +623,7 @@ function CategorySection({ category, listings, isLoading }: {
   return (
     <section className="mb-16">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-foreground">{category.name_en}</h2>
+        <h2 className="text-2xl font-bold text-foreground">{getCategoryName()}</h2>
         
         <div className="flex items-center space-x-2">
           <button
@@ -599,7 +642,7 @@ function CategorySection({ category, listings, isLoading }: {
             href={`/search?category=${category.id}`}
             className="ml-4 text-sm text-primary hover:text-primary/80 font-medium"
           >
-            View all
+            {t('common.viewAll')}
           </Link>
         </div>
       </div>

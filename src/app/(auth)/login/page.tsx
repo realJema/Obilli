@@ -25,7 +25,7 @@ export default function AuthPage() {
   const supabase = useSupabaseClient();
   const user = useUser();
   const router = useRouter();
-  const { } = useI18n();
+  const { t } = useI18n();
 
   // Redirect if user is already authenticated and has a complete profile
   useEffect(() => {
@@ -115,17 +115,17 @@ export default function AuthPage() {
             if (!profileError) {
               router.push('/');
             } else {
-              setError('Profile setup incomplete. Please contact support.');
+              setError(t("auth.profileSetupError"));
               await supabase.auth.signOut();
             }
           } else {
-            setError('Profile not found. Please contact support.');
+            setError(t("auth.profileNotFoundError"));
             await supabase.auth.signOut();
           }
         }
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      const errorMessage = error instanceof Error ? error.message : t("auth.unknownError");
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -142,16 +142,16 @@ export default function AuthPage() {
     try {
       // Validate username first
       if (username.length < 3) {
-        throw new Error('Username must be at least 3 characters');
+        throw new Error(t("auth.usernameMinLength"));
       }
 
       if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-        throw new Error('Username can only contain letters, numbers, and underscores');
+        throw new Error(t("auth.usernameFormatError"));
       }
 
       const isAvailable = await checkUsernameAvailability(username);
       if (!isAvailable) {
-        throw new Error('Username is already taken');
+        throw new Error(t("auth.usernameTaken"));
       }
 
       // Create auth user
@@ -170,10 +170,10 @@ export default function AuthPage() {
       if (error) {
         // Handle specific error cases
         if (error.message.includes('already registered') || error.message.includes('already exists')) {
-          throw new Error('An account with this email already exists. Please sign in instead.');
+          throw new Error(t("auth.accountExists"));
         }
         if (error.message.includes('invalid') && error.message.includes('email')) {
-          throw new Error('Please enter a valid email address.');
+          throw new Error(t("auth.invalidEmail"));
         }
         throw error;
       }
@@ -195,7 +195,7 @@ export default function AuthPage() {
         if (profileError) {
           console.error('Profile creation error:', profileError);
           // Don't throw here - user is created, profile can be created later
-          console.log('User created but profile creation failed. Profile will be created on first login.');
+          console.log(t("auth.profileCreationWarning"));
         }
 
         // Check if user is immediately signed in (email confirmation disabled)
@@ -205,9 +205,7 @@ export default function AuthPage() {
           router.push('/');
         } else {
           // Email confirmation required
-          setMessage(
-            'Account created successfully! Please check your email to confirm your account, then sign in.'
-          );
+          setMessage(t("auth.accountCreatedMessage"));
           // Switch to sign in mode after successful signup
           setTimeout(() => {
             setMode('signin');
@@ -224,7 +222,7 @@ export default function AuthPage() {
       }
     } catch (error: unknown) {
       console.error('Signup error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred during signup';
+      const errorMessage = error instanceof Error ? error.message : t("auth.signupError");
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -237,12 +235,12 @@ export default function AuthPage() {
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
             <h2 className="text-3xl font-bold text-foreground">
-              {mode === 'signin' ? 'Sign in to Obilli' : 'Create your account'}
+              {mode === 'signin' ? t("auth.signInTitle") : t("auth.signUpTitle")}
             </h2>
             <p className="mt-2 text-muted-foreground">
               {mode === 'signin' 
-                ? 'Welcome back! Please sign in to continue.' 
-                : 'Join our marketplace community today.'
+                ? t("auth.signInSubtitle") 
+                : t("auth.signUpSubtitle")
               }
             </p>
           </div>
@@ -264,7 +262,7 @@ export default function AuthPage() {
               <>
                 <div>
                   <label htmlFor="fullName" className="block text-sm font-medium text-foreground mb-1">
-                    Full Name
+                    {t("auth.fullName")}
                   </label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -274,14 +272,14 @@ export default function AuthPage() {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                      placeholder="Your full name"
+                      placeholder={t("auth.fullNamePlaceholder")}
                     />
                   </div>
                 </div>
 
                 <div>
                   <label htmlFor="username" className="block text-sm font-medium text-foreground mb-1">
-                    Username *
+                    {t("auth.username")} *
                   </label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -292,11 +290,11 @@ export default function AuthPage() {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                      placeholder="Choose a username"
+                      placeholder={t("auth.usernamePlaceholder")}
                     />
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    3+ characters, letters, numbers, and underscores only
+                    {t("auth.usernameRequirements")}
                   </p>
                 </div>
               </>
@@ -304,7 +302,7 @@ export default function AuthPage() {
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1">
-                Email Address
+                {t("auth.email")}
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -315,14 +313,14 @@ export default function AuthPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                  placeholder="Enter your email"
+                  placeholder={t("auth.emailPlaceholder")}
                 />
               </div>
             </div>
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
-                Password
+                {t("auth.password")}
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -333,7 +331,7 @@ export default function AuthPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-12 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                  placeholder="Enter your password"
+                  placeholder={t("auth.passwordPlaceholder")}
                 />
                 <button
                   type="button"
@@ -348,7 +346,7 @@ export default function AuthPage() {
             {mode === 'signup' && (
               <div>
                 <label htmlFor="phone" className="block text-sm font-medium text-foreground mb-1">
-                  Phone Number (Optional)
+                  {t("auth.phone")} ({t("common.optional")})
                 </label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -358,7 +356,7 @@ export default function AuthPage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                    placeholder="+237 XXX XXX XXX"
+                    placeholder={t("auth.phonePlaceholder")}
                   />
                 </div>
               </div>
@@ -369,7 +367,7 @@ export default function AuthPage() {
               disabled={isLoading || (mode === 'signup' && !username)}
               className="w-full bg-primary text-primary-foreground py-3 px-4 rounded-md font-medium hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Please wait...' : mode === 'signin' ? 'Sign In' : 'Create Account'}
+              {isLoading ? t("auth.pleaseWait") : mode === 'signin' ? t("auth.signIn") : t("auth.createAccount")}
             </button>
           </form>
 
@@ -379,8 +377,8 @@ export default function AuthPage() {
               className="text-primary hover:text-primary/80 font-medium"
             >
               {mode === 'signin' 
-                ? "Don't have an account? Sign up" 
-                : "Already have an account? Sign in"
+                ? t("auth.noAccount") 
+                : t("auth.alreadyAccount")
               }
             </button>
           </div>
@@ -388,7 +386,7 @@ export default function AuthPage() {
           {mode === 'signin' && (
             <div className="text-center">
               <Link href="/auth/reset-password" className="text-sm text-muted-foreground hover:text-foreground">
-                Forgot your password?
+                {t("auth.forgotPassword")}
               </Link>
             </div>
           )}
