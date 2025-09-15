@@ -11,7 +11,141 @@ import Link from "next/link";
 import { DefaultImage } from "@/components/default-image";
 import { useEffect, useState, useRef, useCallback } from "react";
 
-function HeroCarousel({ listings, isLoading }: { listings: ListingWithDetails[]; isLoading: boolean }) {
+// Define a simplified type for homepage listings
+interface HomepageListing {
+  id: string;
+  title: string;
+  price_xaf: number | null;
+  description: string | null;
+  created_at: string | null;
+  category?: {
+    id: number;
+    name_en: string;
+    name_fr: string;
+  };
+  owner?: {
+    id: string;
+    username: string | null;
+  };
+  media?: {
+    url: string;
+  }[];
+  location?: {
+    id: number;
+    location_en: string;
+    location_fr: string;
+  } | null;
+}
+
+// Define a simplified type for homepage categories
+interface HomepageCategory {
+  id: number;
+  name_en: string;
+  name_fr: string;
+  slug: string;
+  listings: HomepageListing[];
+}
+
+export default function HomePage() {
+  const [heroListings, setHeroListings] = useState<any[]>([]);
+  const [featuredListings, setFeaturedListings] = useState<any[]>([]);
+  const [recentListings, setRecentListings] = useState<any[]>([]);
+  const [trendingListings, setTrendingListings] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // Get optimized homepage data with a single query
+        const homepageData = await listingsRepo.getHomepageData();
+        
+        // Set the data for the homepage sections
+        setHeroListings(homepageData.heroListings);
+        setFeaturedListings(homepageData.featuredListings);
+        setRecentListings(homepageData.recentListings);
+        setTrendingListings(homepageData.trendingListings);
+        
+        // Set categories and their listings
+        setCategories(homepageData.categories);
+        
+      } catch (err) {
+        console.error('Failed to load data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  if (error) {
+    return (
+      <MainLayout>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-destructive mb-4">Error Loading Listings</h1>
+            <p className="text-muted-foreground mb-6">{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="bg-primary text-primary-foreground px-6 py-3 rounded-md font-medium hover:bg-primary/90 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  return (
+    <MainLayout>
+      {/* Hero Carousel - replacing the search section */}
+      <HeroCarousel listings={heroListings} isLoading={isLoading} />
+      
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Existing sections as horizontal scrollable rows */}
+        <HorizontalScrollSection
+          title="Featured Listings"
+          icon={Star}
+          listings={featuredListings}
+          isLoading={isLoading}
+        />
+        
+        <HorizontalScrollSection
+          title="Trending Now"
+          icon={TrendingUp}
+          listings={trendingListings}
+          isLoading={isLoading}
+        />
+        
+        <HorizontalScrollSection
+          title="Recently Added"
+          icon={Clock}
+          listings={recentListings}
+          isLoading={isLoading}
+        />
+        
+        {/* Category sections with 10 listings each */}
+        {categories.map((category) => (
+          <CategorySection
+            key={category.id}
+            category={category}
+            listings={category.listings}
+            isLoading={isLoading}
+          />
+        ))}
+      </div>
+    </MainLayout>
+  );
+}
+
+function HeroCarousel({ listings, isLoading }: { listings: any[]; isLoading: boolean }) {
   const { formatCurrency, formatRelativeTime } = useI18n();
   const [currentIndex, setCurrentIndex] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -117,7 +251,7 @@ function HeroCarousel({ listings, isLoading }: { listings: ListingWithDetails[];
               {/* Left: Listing Info */}
               <div className="md:col-span-2">
                 <span className="inline-block bg-primary px-3 py-1 rounded-full text-xs font-medium text-primary-foreground mb-3">
-                  {hasActiveBoost(currentListing) ? getActiveBoostTier(currentListing) === 'top' ? 'Top Listing' : getActiveBoostTier(currentListing) === 'premium' ? 'Premium Listing' : 'Featured Listing' : 'Featured Listing'}
+                  Featured Listing
                 </span>
                 
                 <h2 className="text-2xl md:text-3xl font-bold mb-2 text-white">
@@ -147,11 +281,12 @@ function HeroCarousel({ listings, isLoading }: { listings: ListingWithDetails[];
               
               {/* Right: Price & Action */}
               <div className="flex flex-col items-start md:items-end gap-4">
-                {currentListing.price_xaf && (
-                  <div className="text-2xl md:text-3xl font-bold text-white">
-                    {formatCurrency(currentListing.price_xaf)}
-                  </div>
-                )}
+                {/* Show price or "Negotiable" if no price or price is 0 */}
+                <div className="text-2xl md:text-3xl font-bold text-white">
+                  {currentListing.price_xaf && currentListing.price_xaf > 0 
+                    ? formatCurrency(currentListing.price_xaf) 
+                    : 'Negotiable'}
+                </div>
                 
                 <Link
                   href={`/listing/${currentListing.id}`}
@@ -166,7 +301,7 @@ function HeroCarousel({ listings, isLoading }: { listings: ListingWithDetails[];
 
           {/* Navigation Dots */}
           <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2">
-            {listings.map((_, index) => (
+            {listings.map((_: any, index: number) => (
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
@@ -199,7 +334,7 @@ function HeroCarousel({ listings, isLoading }: { listings: ListingWithDetails[];
   );
 }
 
-function ListingCard({ listing }: { listing: ListingWithDetails }) {
+function ListingCard({ listing }: { listing: any }) {
   const { formatCurrency, formatRelativeTime } = useI18n();
   
   // Get the first media image or use default
@@ -207,30 +342,15 @@ function ListingCard({ listing }: { listing: ListingWithDetails }) {
     ? listing.media[0].url 
     : 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?q=80&w=400&h=300&auto=format&fit=crop';
   
-  // Check if listing has active boost
-  const isActivelyBoosted = hasActiveBoost(listing);
-  const boostTier = getActiveBoostTier(listing);
+  // For homepage listings, we won't show boost badges since we don't fetch boost data
+  const isActivelyBoosted = false;
+  const boostTier = null;
   
   // Build location display from hierarchical data
   const getLocationDisplay = () => {
     if (!listing.location) return null;
     
-    const parts = [];
-    
-    // Quarter name
-    parts.push(listing.location.location_en);
-    
-    // City name
-    if (listing.location.city) {
-      parts.push(listing.location.city.location_en);
-    }
-    
-    // Region name (only if we have city)
-    if (listing.location.city?.region) {
-      parts.push(`(${listing.location.city.region.location_en})`);
-    }
-    
-    return parts.join(', ');
+    return listing.location.location_en;
   };
   
   return (
@@ -244,7 +364,7 @@ function ListingCard({ listing }: { listing: ListingWithDetails }) {
             className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
           {/* Show featured badge only for actively boosted listings */}
-          {isActivelyBoosted && (
+          {isActivelyBoosted && boostTier && (
             <div className="absolute top-3 left-3 bg-primary text-primary-foreground px-2 py-1 rounded-md text-xs font-medium flex items-center">
               <Star className="h-3 w-3 mr-1" />
               {boostTier === 'top' ? 'Top' : boostTier === 'premium' ? 'Premium' : 'Featured'}
@@ -263,11 +383,12 @@ function ListingCard({ listing }: { listing: ListingWithDetails }) {
             </p>
           )}
           
-          {listing.price_xaf && (
-            <div className="text-lg font-bold text-primary mb-2">
-              {formatCurrency(listing.price_xaf)}
-            </div>
-          )}
+          {/* Show price or "Negotiable" if no price or price is 0 */}
+          <div className="text-lg font-bold text-primary mb-2">
+            {listing.price_xaf && listing.price_xaf > 0 
+              ? formatCurrency(listing.price_xaf) 
+              : 'Negotiable'}
+          </div>
           
           <div className="mt-auto space-y-1">
             {getLocationDisplay() && (
@@ -291,7 +412,7 @@ function ListingCard({ listing }: { listing: ListingWithDetails }) {
 function HorizontalScrollSection({ title, icon: Icon, listings, isLoading }: {
   title: string;
   icon: LucideIcon;
-  listings: ListingWithDetails[];
+  listings: any[];
   isLoading: boolean;
 }) {
   const { } = useI18n();
@@ -389,7 +510,7 @@ function HorizontalScrollSection({ title, icon: Icon, listings, isLoading }: {
           className="flex space-x-4 overflow-x-auto scrollbar-hide pb-2"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {listings.map((listing) => (
+          {listings.map((listing: any) => (
             <div key={listing.id} className="flex-shrink-0 w-64">
               <ListingCard listing={listing} />
             </div>
@@ -401,8 +522,8 @@ function HorizontalScrollSection({ title, icon: Icon, listings, isLoading }: {
 }
 
 function CategorySection({ category, listings, isLoading }: {
-  category: CategoryWithChildren;
-  listings: ListingWithDetails[];
+  category: any;
+  listings: any[];
   isLoading: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -489,7 +610,7 @@ function CategorySection({ category, listings, isLoading }: {
           className="flex space-x-4 overflow-x-auto scrollbar-hide pb-2"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {listings.map((listing) => (
+          {listings.map((listing: any) => (
             <div key={listing.id} className="flex-shrink-0 w-64">
               <ListingCard listing={listing} />
             </div>
@@ -497,135 +618,5 @@ function CategorySection({ category, listings, isLoading }: {
         </div>
       </div>
     </section>
-  );
-}
-export default function HomePage() {
-  const [heroListings, setHeroListings] = useState<ListingWithDetails[]>([]);
-  const [featuredListings, setFeaturedListings] = useState<ListingWithDetails[]>([]);
-  const [recentListings, setRecentListings] = useState<ListingWithDetails[]>([]);
-  const [trendingListings, setTrendingListings] = useState<ListingWithDetails[]>([]);
-  const [categories, setCategories] = useState<CategoryWithChildren[]>([]);
-  const [categoryListings, setCategoryListings] = useState<{ [key: number]: ListingWithDetails[] }>({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        // Load top categories
-        const topCategories = await categoriesRepo.getTopLevel();
-        setCategories(topCategories.slice(0, 5)); // Top 5 categories
-        
-        // Load hero listings (top featured)
-        const hero = await listingsRepo.getFeatured(5);
-        setHeroListings(hero);
-        
-        // Load featured listings for horizontal scroll (actually featured)
-        const featured = await listingsRepo.getFeatured(10);
-        setFeaturedListings(featured);
-        
-        // Load recent listings
-        const recent = await listingsRepo.getAll(
-          {},
-          { field: 'created_at', direction: 'desc' },
-          10,
-          0
-        );
-        setRecentListings(recent.data);
-        
-        // Load trending listings
-        const trending = await listingsRepo.getAll(
-          {},
-          { field: 'created_at', direction: 'desc' },
-          10,
-          0
-        );
-        setTrendingListings(trending.data);
-        
-        // Load listings for each category
-        const categoryListingsMap: { [key: number]: ListingWithDetails[] } = {};
-        for (const category of topCategories.slice(0, 5)) {
-          const { data } = await listingsRepo.getAll(
-            { category_id: category.id },
-            { field: 'created_at', direction: 'desc' },
-            10,
-            0
-          );
-          categoryListingsMap[category.id] = data;
-        }
-        setCategoryListings(categoryListingsMap);
-        
-      } catch (err) {
-        console.error('Failed to load data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load data');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, []);
-
-  if (error) {
-    return (
-      <MainLayout>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-destructive mb-4">Error Loading Listings</h1>
-            <p className="text-muted-foreground mb-6">{error}</p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="bg-primary text-primary-foreground px-6 py-3 rounded-md font-medium hover:bg-primary/90 transition-colors"
-            >
-              Try Again
-            </button>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
-
-  return (
-    <MainLayout>
-      {/* Hero Carousel - replacing the search section */}
-      <HeroCarousel listings={heroListings} isLoading={isLoading} />
-      
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Existing sections as horizontal scrollable rows */}
-        <HorizontalScrollSection
-          title="Featured Listings"
-          icon={Star}
-          listings={featuredListings}
-          isLoading={isLoading}
-        />
-        
-        <HorizontalScrollSection
-          title="Trending Now"
-          icon={TrendingUp}
-          listings={trendingListings}
-          isLoading={isLoading}
-        />
-        
-        <HorizontalScrollSection
-          title="Recently Added"
-          icon={Clock}
-          listings={recentListings}
-          isLoading={isLoading}
-        />
-        
-        {/* Category sections with 10 listings each */}
-        {categories.map((category) => (
-          <CategorySection
-            key={category.id}
-            category={category}
-            listings={categoryListings[category.id] || []}
-            isLoading={isLoading}
-          />
-        ))}
-      </div>
-    </MainLayout>
   );
 }

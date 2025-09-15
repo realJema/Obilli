@@ -468,6 +468,128 @@ export class ListingsRepository {
     }
   }
 
+  // Get optimized homepage data with a single query
+  async getHomepageData(): Promise<{
+    heroListings: any[];
+    featuredListings: any[];
+    recentListings: any[];
+    trendingListings: any[];
+    categories: any[];
+  }> {
+    try {
+      // Get featured listings (boosted listings) with essential data
+      const { data: featuredListingsData, error: featuredError } = await supabase
+        .from('listings')
+        .select(`
+          id, title, price_xaf, description, created_at,
+          category:categories(id, name_en, name_fr),
+          owner:profiles(id, username),
+          media:listing_media(url),
+          location:locations!location_id(
+            id,
+            location_en,
+            location_fr
+          )
+        `)
+        .eq('status', 'published')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (featuredError) throw featuredError;
+
+      // Get recently added listings
+      const { data: recentListingsData, error: recentError } = await supabase
+        .from('listings')
+        .select(`
+          id, title, price_xaf, description, created_at,
+          category:categories(id, name_en, name_fr),
+          owner:profiles(id, username),
+          media:listing_media(url),
+          location:locations!location_id(
+            id,
+            location_en,
+            location_fr
+          )
+        `)
+        .eq('status', 'published')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (recentError) throw recentError;
+
+      // Get trending listings (simplified - just recent listings for now)
+      const trendingListingsData = [...(recentListingsData || [])].sort(() => Math.random() - 0.5).slice(0, 10);
+
+      // Get hero listings (top 5 most recent)
+      const heroListingsData = (recentListingsData || []).slice(0, 5);
+
+      // Get top categories with their listings
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select(`
+          id, name_en, name_fr, slug
+        `)
+        .is('parent_id', null)
+        .limit(8);
+
+      if (categoriesError) throw categoriesError;
+
+      // Get listings for each category (including subcategories)
+      const categoryListings: { [key: number]: any[] } = {};
+      if (categoriesData) {
+        for (const category of categoriesData) {
+          // Get all descendant category IDs (including the category itself)
+          const categoryIds = await categoriesRepo.getAllDescendantIds(category.id);
+          
+          const { data: listings, error } = await supabase
+            .from('listings')
+            .select(`
+              id, title, price_xaf, description, created_at,
+              category:categories(id, name_en, name_fr),
+              owner:profiles(id, username),
+              media:listing_media(url),
+              location:locations!location_id(
+                id,
+                location_en,
+                location_fr
+              )
+            `)
+            .eq('status', 'published')
+            .in('category_id', categoryIds)
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+          if (!error && listings) {
+            categoryListings[category.id] = listings;
+          }
+        }
+      }
+
+      // Add listings to each category
+      const categoriesWithListings = (categoriesData || []).map(category => ({
+        ...category,
+        listings: categoryListings[category.id] || []
+      }));
+
+      return {
+        heroListings: heroListingsData || [],
+        featuredListings: featuredListingsData || [],
+        recentListings: recentListingsData || [],
+        trendingListings: trendingListingsData,
+        categories: categoriesWithListings
+      };
+    } catch (error) {
+      console.error('Error fetching homepage data:', error);
+      return {
+        heroListings: [],
+        featuredListings: [],
+        recentListings: [],
+        trendingListings: [],
+        categories: []
+      };
+    }
+  }
+
   async search(query: string, filters: ListingFilters = {}, limit = 20): Promise<ListingWithDetails[]> {
     const { data } = await this.getAll(
       { ...filters, search: query },

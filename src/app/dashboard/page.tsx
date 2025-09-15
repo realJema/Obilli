@@ -601,9 +601,13 @@ export default function DashboardPage() {
                             </h4>
                             
                             <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-                              {listing.price_xaf && (
+                              {listing.price_xaf && listing.price_xaf > 0 ? (
                                 <span className="font-semibold text-foreground text-base">
                                   {formatCurrency(listing.price_xaf)}
+                                </span>
+                              ) : (
+                                <span className="font-semibold text-foreground text-base">
+                                  Negotiable
                                 </span>
                               )}
                               <div className="flex items-center">
@@ -741,11 +745,18 @@ export default function DashboardPage() {
                                   <Calendar className="w-4 h-4 mr-1" />
                                   {new Date(listing.created_at!).toLocaleDateString()}
                                 </div>
-                                {listing.price_xaf && (
+                                {listing.price_xaf && listing.price_xaf > 0 ? (
                                   <div className="flex items-center">
                                     <DollarSign className="w-4 h-4 mr-1" />
                                     <span className="font-medium text-foreground">
                                       {formatCurrency(listing.price_xaf)}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center">
+                                    <DollarSign className="w-4 h-4 mr-1" />
+                                    <span className="font-medium text-foreground">
+                                      Negotiable
                                     </span>
                                   </div>
                                 )}

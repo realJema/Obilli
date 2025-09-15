@@ -121,6 +121,31 @@ export default function SellPage() {
     localStorage.removeItem(STORAGE_KEY);
   };
 
+  // Add useEffect to monitor step changes
+  useEffect(() => {
+    // Clean up debugging code
+  }, [currentStep]);
+
+  // Add useEffect to check for any automatic form submission
+  useEffect(() => {
+    // Clean up debugging code
+  });
+
+  // Add another useEffect to monitor form submission
+  useEffect(() => {
+    // Clean up debugging code
+  }, []);
+
+  // Add useEffect to monitor for any automatic form submission
+  useEffect(() => {
+    // Clean up debugging code
+  }, []);
+
+  // Add useEffect to check if there's any automatic submission
+  useEffect(() => {
+    // Clean up debugging code
+  }, [currentStep]);
+
   // Step validation
   const validateStep = (step: Step): boolean => {
     switch (step) {
@@ -290,11 +315,22 @@ export default function SellPage() {
     }
   }, [listingType, title, description, categoryId, price, negotiable, condition, locationId, servicePackages, hasProfile]);
 
-
   // Handle image upload
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
+    processImageFiles(files);
     
+    // Clear the input
+    e.target.value = '';
+  };
+
+  // Handle file drop
+  const handleFileDrop = (files: File[]) => {
+    processImageFiles(files);
+  };
+
+  // Process image files (shared logic for both upload and drop)
+  const processImageFiles = (files: File[]) => {
     // Filter for valid image files
     const validFiles = files.filter(file => {
       const isImage = file.type.startsWith('image/');
@@ -316,9 +352,6 @@ export default function SellPage() {
     // Create previews
     const newPreviews = validFiles.map(file => URL.createObjectURL(file));
     setImagePreviews([...imagePreviews, ...newPreviews]);
-    
-    // Clear the input
-    e.target.value = '';
   };
 
   // Remove image
@@ -467,6 +500,7 @@ export default function SellPage() {
 
       // Clear saved data and redirect to success page
       clearLocalStorage();
+      console.log('Redirecting to success page with listing ID:', listing.id);
       router.push(`/sell/success?id=${listing.id}&title=${encodeURIComponent(title)}`);
     } catch (error: unknown) {
       console.error('Failed to create listing:', error);
@@ -554,7 +588,10 @@ export default function SellPage() {
   return (
     <MainLayout>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
+        <form 
+          onSubmit={handleSubmit}
+          className="max-w-4xl mx-auto"
+        >
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">Create New Listing</h1>
             <p className="text-muted-foreground">
@@ -573,8 +610,10 @@ export default function SellPage() {
                 return (
                   <div key={step.number} className="flex items-center">
                     <button
+                      type="button"  // This fix prevents the buttons from submitting the form
                       onClick={() => {
-                        if (canAccess && (isCompleted || validateStep(currentStep))) {
+                        // Only allow navigation if the target step is accessible and the current step is valid
+                        if (canAccess && validateStep(currentStep)) {
                           setCurrentStep(step.number as Step);
                         }
                       }}
@@ -892,42 +931,97 @@ export default function SellPage() {
               <div className="bg-card border border-border rounded-lg p-6">
                 <h3 className="text-lg font-semibold mb-6">Add Photos</h3>
 
-                <div className="space-y-6">
-                  <div>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="hidden"
-                      id="image-upload"
-                    />
-                    <label
-                      htmlFor="image-upload"
-                      className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary transition-colors"
-                    >
-                      <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground text-center">
-                        Click to upload images<br />
-                        <span className="text-xs">(Maximum 10 images, at least 1 required)</span>
+                <div 
+                  className="space-y-6 border-2 border-dashed border-border rounded-lg p-6 transition-colors hover:border-primary"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.add('border-primary', 'bg-primary/5');
+                  }}
+                  onDragLeave={(e) => {
+                    e.currentTarget.classList.remove('border-primary', 'bg-primary/5');
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove('border-primary', 'bg-primary/5');
+                    
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                      // Handle file drop
+                      const files = Array.from(e.dataTransfer.files);
+                      handleFileDrop(files);
+                    } else if (e.dataTransfer.getData('text/plain')) {
+                      // Handle image reordering drop (this will be handled by individual image handlers)
+                    }
+                  }}
+                >
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                    id="image-upload"
+                  />
+                  
+                  {imagePreviews.length === 0 ? (
+                    <div className="text-center">
+                      <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h4 className="font-medium text-lg mb-2">Drag & Drop Images Here</h4>
+                      <p className="text-muted-foreground mb-4">
+                        Or click to browse your files
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Supported: JPG, PNG, GIF (max 10MB each)
+                      <label
+                        htmlFor="image-upload"
+                        className="inline-flex items-center bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium hover:bg-primary/90 cursor-pointer"
+                      >
+                        <Camera className="h-4 w-4 mr-2" />
+                        Select Images
+                      </label>
+                      <p className="text-xs text-muted-foreground mt-4">
+                        Supported: JPG, PNG, GIF (max 10MB each)<br />
+                        Maximum 10 images allowed
                       </p>
-                    </label>
-                  </div>
-
-                  {imagePreviews.length > 0 && (
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between">
                         <h4 className="font-medium">Uploaded Images ({imagePreviews.length}/10)</h4>
-                        <p className="text-xs text-muted-foreground">
-                          Drag to reorder • First image will be the main photo
-                        </p>
+                        <label
+                          htmlFor="image-upload"
+                          className="text-sm text-primary hover:text-primary/80 cursor-pointer"
+                        >
+                          + Add More
+                        </label>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-4">
                         {imagePreviews.map((preview, index) => (
-                          <div key={index} className="relative group">
+                          <div 
+                            key={index} 
+                            className="relative group"
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData('text/plain', index.toString());
+                              e.currentTarget.classList.add('opacity-50');
+                            }}
+                            onDragEnd={(e) => {
+                              e.currentTarget.classList.remove('opacity-50');
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.currentTarget.classList.add('ring-2', 'ring-primary');
+                            }}
+                            onDragLeave={(e) => {
+                              e.currentTarget.classList.remove('ring-2', 'ring-primary');
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              e.currentTarget.classList.remove('ring-2', 'ring-primary');
+                              const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                              if (fromIndex !== index) {
+                                moveImage(fromIndex, index);
+                              }
+                            }}
+                          >
                             <div className="relative aspect-square">
                               <Image
                                 src={preview}
@@ -954,66 +1048,37 @@ export default function SellPage() {
                               )}
                               
                               {/* Order indicators */}
-                              <div className="absolute top-1 left-1 bg-black/50 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center">
+                              <div className="absolute top-1 left-1 bg-black/50 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center cursor-grab">
                                 {index + 1}
                               </div>
-                              
-                              {/* Reorder buttons */}
-                              {index > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={() => moveImage(index, index - 1)}
-                                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  <ChevronLeft className="h-3 w-3" />
-                                </button>
-                              )}
-                              {index < imagePreviews.length - 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => moveImage(index, index + 1)}
-                                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  <ChevronRight className="h-3 w-3" />
-                                </button>
-                              )}
                             </div>
                           </div>
                         ))}
                       </div>
                       
-                      <div className="mt-4 space-y-2">
-                        <p className="text-sm text-muted-foreground">
-                          <strong>Tips for better photos:</strong>
-                        </p>
-                        <ul className="text-xs text-muted-foreground space-y-1 ml-4">
-                          <li>• Use good lighting and take clear, focused shots</li>
-                          <li>• Show the item from multiple angles</li>
-                          <li>• Include any important details or flaws</li>
-                          <li>• The first image will be shown as the main photo in listings</li>
-                        </ul>
+                      <div className="mt-4 text-center">
+                        <label
+                          htmlFor="image-upload"
+                          className="inline-flex items-center text-primary hover:text-primary/80 cursor-pointer text-sm"
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add more images
+                        </label>
                       </div>
-                    </div>
+                    </>
                   )}
-
-                  {imagePreviews.length === 0 && (
-                    <div className="text-center py-8 border-2 border-dashed border-border rounded-lg">
-                      <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground mb-4">
-                        Add at least one photo to showcase your listing
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Good photos help attract more buyers!
-                      </p>
-                      <label
-                        htmlFor="image-upload"
-                        className="inline-flex items-center bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium hover:bg-primary/90 cursor-pointer"
-                      >
-                        <Camera className="h-4 w-4 mr-2" />
-                        Upload Photos
-                      </label>
-                    </div>
-                  )}
+                  
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      <strong>Tips for better photos:</strong>
+                    </p>
+                    <ul className="text-xs text-muted-foreground space-y-1 ml-4">
+                      <li>• Use good lighting and take clear, focused shots</li>
+                      <li>• Show the item from multiple angles</li>
+                      <li>• Include any important details or flaws</li>
+                      <li>• Drag images to reorder them (first image is the main photo)</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             )}
@@ -1182,7 +1247,9 @@ export default function SellPage() {
             <div className="flex justify-between items-center pt-6 border-t border-border">
               <button
                 type="button"
-                onClick={prevStep}
+                onClick={() => {
+                  prevStep();
+                }}
                 disabled={currentStep === 1}
                 className="flex items-center px-6 py-3 border border-border rounded-md font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -1197,7 +1264,9 @@ export default function SellPage() {
               {currentStep < 5 ? (
                 <button
                   type="button"
-                  onClick={nextStep}
+                  onClick={() => {
+                    nextStep();
+                  }}
                   disabled={!canProceed(currentStep)}
                   className="flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-md font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >

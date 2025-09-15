@@ -196,12 +196,16 @@ function ListingCard({ listing, viewMode }: { listing: ListingWithDetails; viewM
                 {listing.title}
               </h3>
               
-              {listing.price_xaf && (
+              {listing.price_xaf && listing.price_xaf > 0 ? (
                 <div className="text-lg font-bold text-primary mb-2">
                   {formatCurrency(listing.price_xaf)}
                 </div>
+              ) : (
+                <div className="text-lg font-bold text-primary mb-2">
+                  Negotiable
+                </div>
               )}
-              
+
               {listing.description && (
                 <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
                   {listing.description}
@@ -258,9 +262,13 @@ function ListingCard({ listing, viewMode }: { listing: ListingWithDetails; viewM
             </p>
           )}
           
-          {listing.price_xaf && (
+          {listing.price_xaf && listing.price_xaf > 0 ? (
             <div className="text-lg font-bold text-primary mb-2">
               {formatCurrency(listing.price_xaf)}
+            </div>
+          ) : (
+            <div className="text-lg font-bold text-primary mb-2">
+              Negotiable
             </div>
           )}
           

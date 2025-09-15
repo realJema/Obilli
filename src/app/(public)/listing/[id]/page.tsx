@@ -511,9 +511,13 @@ function SimilarListings({ categoryId, currentListingId }: { categoryId: number;
                     {listing.title}
                   </h4>
                   
-                  {listing.price_xaf && (
+                  {listing.price_xaf && listing.price_xaf > 0 ? (
                     <div className="text-lg font-bold text-primary mb-1">
                       {formatCurrency(listing.price_xaf)}
+                    </div>
+                  ) : (
+                    <div className="text-lg font-bold text-primary mb-1">
+                      Negotiable
                     </div>
                   )}
                   
