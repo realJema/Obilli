@@ -67,11 +67,4 @@ Obilli is not just a marketplace—it’s part of Africa’s digital future. Our
 * Provide everyday users with an easier way to buy, sell, and find opportunities.
 * Support Africa’s transition into a fully digital economy.
 
----
-
-## License
-
-This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
-
-[Obilli](https://obilli.com) – Your trusted classifieds platform for Africa.
- 
+--- 
