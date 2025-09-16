@@ -42,7 +42,7 @@ export default function SellPage() {
   const user = useUser();
   const supabase = useSupabaseClient();
   const router = useRouter();
-  const { formatCurrency } = useI18n();
+  const { formatCurrency, t } = useI18n();
 
   // Auth state
   const [isLoading, setIsLoading] = useState(true);
@@ -71,11 +71,11 @@ export default function SellPage() {
   const [error, setError] = useState('');
 
   const steps = [
-    { number: 1, title: 'Type, Category & Location', icon: Package },
-    { number: 2, title: 'Basic Info', icon: FileText },
-    { number: 3, title: 'Pricing & Details', icon: DollarSign },
-    { number: 4, title: 'Photos', icon: Camera },
-    { number: 5, title: 'Preview & Publish', icon: Eye },
+    { number: 1, title: t('sell.typeCategoryLocation'), icon: Package },
+    { number: 2, title: t('sell.basicInfo'), icon: FileText },
+    { number: 3, title: t('sell.pricingDetails'), icon: DollarSign },
+    { number: 4, title: t('sell.photos'), icon: Camera },
+    { number: 5, title: t('sell.previewPublish'), icon: Eye },
   ];
 
   // Helper function to format number with thousand separators
@@ -569,15 +569,15 @@ export default function SellPage() {
       <MainLayout>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-foreground mb-4">Authentication Required</h1>
+            <h1 className="text-2xl font-bold text-foreground mb-4">{t('sell.authenticationRequired')}</h1>
             <p className="text-muted-foreground mb-6">
-              You need to be signed in to create a listing.
+              {t('sell.signInCreate')}
             </p>
             <Link
               href="/login"
               className="bg-primary text-primary-foreground px-6 py-3 rounded-md font-medium hover:bg-primary/90"
             >
-              Sign In
+{t('sell.signIn')}
             </Link>
           </div>
         </div>
@@ -593,9 +593,9 @@ export default function SellPage() {
           className="max-w-4xl mx-auto"
         >
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Create New Listing</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">{t('sell.createNewListing')}</h1>
             <p className="text-muted-foreground">
-              Share your items, services, or job opportunities with the community
+              {t('sell.shareItems')}
             </p>
           </div>
 
@@ -662,12 +662,12 @@ export default function SellPage() {
             {/* Step Content */}
             {currentStep === 1 && (
               <div className="bg-card border border-border rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-6">What are you listing?</h3>
+                <h3 className="text-lg font-semibold mb-6">{t('sell.whatListing')}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                   {[
-                    { value: 'good', label: 'Sell an Item', desc: 'Physical goods and products' },
-                    { value: 'service', label: 'Offer a Service', desc: 'Skills and professional services' },
-                    { value: 'job', label: 'Post a Job', desc: 'Employment opportunities' },
+                    { value: 'good', label: t('sell.sellItem'), desc: t('sell.physicalGoods') },
+                    { value: 'service', label: t('sell.offerService'), desc: t('sell.skillsServices') },
+                    { value: 'job', label: t('sell.postJob'), desc: t('sell.employmentOpportunities') },
                   ].map((type) => (
                     <button
                       key={type.value}
@@ -688,26 +688,26 @@ export default function SellPage() {
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
-                      Category *
+                      {t('sell.categoryRequired')}
                     </label>
                     <CategoryTree
                       categories={convertToTree(categories)}
                       selectedId={categoryId}
                       onSelect={setCategoryId}
-                      placeholder="Select a category"
+                      placeholder={t('sell.selectCategory')}
                       className="w-full"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
-                      Location (Optional)
+                      {t('sell.locationOptional')}
                     </label>
                     <LocationTree
                       locations={convertLocationsToTree(locations)}
                       selectedId={locationId}
                       onSelect={setLocationId}
-                      placeholder="Select a location"
+                      placeholder={t('sell.selectLocation')}
                       className="w-full"
                     />
                   </div>
@@ -717,12 +717,12 @@ export default function SellPage() {
 
             {currentStep === 2 && (
               <div className="bg-card border border-border rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-6">Basic Information</h3>
+                <h3 className="text-lg font-semibold mb-6">{t('sell.basicInformation')}</h3>
                 
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
-                      Title *
+                      {t('sell.titleRequired')}
                     </label>
                     <input
                       type="text"
@@ -730,7 +730,7 @@ export default function SellPage() {
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                      placeholder="What are you listing?"
+                      placeholder={t('sell.whatListingPlaceholder')}
                     />
                     <p className="text-sm text-muted-foreground mt-1">
                       {title.length}/100 characters
@@ -739,7 +739,7 @@ export default function SellPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
-                      Description *
+                      {t('sell.descriptionRequired')}
                     </label>
                     <textarea
                       required
@@ -747,7 +747,7 @@ export default function SellPage() {
                       onChange={(e) => setDescription(e.target.value)}
                       rows={6}
                       className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                      placeholder="Provide details about your listing..."
+                      placeholder={t('sell.provideDetails')}
                     />
                     <p className="text-sm text-muted-foreground mt-1">
                       {description.length}/1000 characters
@@ -760,13 +760,13 @@ export default function SellPage() {
             {currentStep === 3 && (
               <div className="bg-card border border-border rounded-lg p-6">
                 <h3 className="text-lg font-semibold mb-6">
-                  {listingType === 'job' ? 'Job Details' : listingType === 'service' ? 'Service Packages' : 'Pricing & Details'}
+                  {listingType === 'job' ? t('sell.jobDetails') : listingType === 'service' ? t('sell.servicePackages') : t('sell.pricingDetails')}
                 </h3>
                 
                 {listingType === 'service' ? (
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
-                      <p className="text-muted-foreground">Create packages for your service</p>
+                      <p className="text-muted-foreground">{t('sell.createPackages')}</p>
                       <button
                         type="button"
                         onClick={addServicePackage}
@@ -774,7 +774,7 @@ export default function SellPage() {
                         className="flex items-center text-primary hover:text-primary/80 text-sm font-medium disabled:opacity-50"
                       >
                         <Plus className="h-4 w-4 mr-1" />
-                        Add Package
+                        {t('sell.addPackage')}
                       </button>
                     </div>
 
@@ -794,20 +794,20 @@ export default function SellPage() {
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-medium mb-1">Package Name *</label>
+                              <label className="block text-sm font-medium mb-1">{t('sell.packageNameRequired')}</label>
                               <input
                                 type="text"
                                 required
                                 value={pkg.name}
                                 onChange={(e) => updateServicePackage(index, 'name', e.target.value)}
                                 className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
-                                placeholder="e.g., Logo Design"
+                                placeholder={t('sell.logoDesign')}
                               />
                             </div>
 
                             <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <label className="block text-sm font-medium mb-1">Price (XAF) *</label>
+                                <label className="block text-sm font-medium mb-1">{t('sell.priceXafRequired')}</label>
                                 <input
                                   type="text"
                                   required
@@ -818,7 +818,7 @@ export default function SellPage() {
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium mb-1">Delivery (days) *</label>
+                                <label className="block text-sm font-medium mb-1">{t('sell.deliveryDaysRequired')}</label>
                                 <input
                                   type="number"
                                   required
@@ -831,14 +831,14 @@ export default function SellPage() {
                             </div>
 
                             <div className="md:col-span-2">
-                              <label className="block text-sm font-medium mb-1">Description *</label>
+                              <label className="block text-sm font-medium mb-1">{t('sell.descriptionRequired')}</label>
                               <textarea
                                 required
                                 value={pkg.description}
                                 onChange={(e) => updateServicePackage(index, 'description', e.target.value)}
                                 rows={2}
                                 className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
-                                placeholder="What's included in this package?"
+                                placeholder={t('sell.includedPackage')}
                               />
                             </div>
                           </div>
@@ -849,14 +849,14 @@ export default function SellPage() {
                         <div className="text-center py-8 border-2 border-dashed border-border rounded-lg">
                           <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                           <p className="text-muted-foreground mb-4">
-                            Add service packages to offer different options
+                            {t('sell.addServicePackages')}
                           </p>
                           <button
                             type="button"
                             onClick={addServicePackage}
                             className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium hover:bg-primary/90"
                           >
-                            Create First Package
+                            {t('sell.createFirstPackage')}
                           </button>
                         </div>
                       )}
@@ -867,13 +867,13 @@ export default function SellPage() {
                     {listingType === 'good' && (
                       <div>
                         <label className="block text-sm font-medium text-foreground mb-2">
-                          Condition
+                          {t('sell.condition')}
                         </label>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           {[
-                            { value: 'new', label: 'New', desc: 'Never used, in original packaging' },
-                            { value: 'used', label: 'Used', desc: 'Previously owned, good condition' },
-                            { value: 'refurbished', label: 'Refurbished', desc: 'Restored to working condition' },
+                            { value: 'new', label: t('sell.new'), desc: t('sell.neverUsed') },
+                            { value: 'used', label: t('sell.used'), desc: t('sell.previouslyOwned') },
+                            { value: 'refurbished', label: t('sell.refurbished'), desc: t('sell.restoredWorking') },
                           ].map((cond) => (
                             <button
                               key={cond.value}
@@ -897,14 +897,14 @@ export default function SellPage() {
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-foreground mb-2">
-                            Price (XAF)
+                            {t('sell.priceXaf')}
                           </label>
                           <input
                             type="text"
                             value={formatNumberWithSeparators(price)}
                             onChange={(e) => setPrice(parseFormattedNumber(e.target.value))}
                             className="w-full px-4 py-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                            placeholder="Enter price in XAF"
+                            placeholder={t('sell.enterPriceXaf')}
                           />
                         </div>
 
@@ -917,7 +917,7 @@ export default function SellPage() {
                             className="rounded"
                           />
                           <label htmlFor="negotiable" className="text-sm text-foreground">
-                            Price is negotiable
+                            {t('sell.priceNegotiable')}
                           </label>
                         </div>
                       </div>
@@ -929,7 +929,7 @@ export default function SellPage() {
 
             {currentStep === 4 && (
               <div className="bg-card border border-border rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-6">Add Photos</h3>
+                <h3 className="text-lg font-semibold mb-6">{t('sell.addPhotos')}</h3>
 
                 <div 
                   className="space-y-6 border-2 border-dashed border-border rounded-lg p-6 transition-colors hover:border-primary"
@@ -965,20 +965,20 @@ export default function SellPage() {
                   {imagePreviews.length === 0 ? (
                     <div className="text-center">
                       <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h4 className="font-medium text-lg mb-2">Drag & Drop Images Here</h4>
+                      <h4 className="font-medium text-lg mb-2">{t('sell.dragDropImages')}</h4>
                       <p className="text-muted-foreground mb-4">
-                        Or click to browse your files
+                        {t('sell.clickBrowseFiles')}
                       </p>
                       <label
                         htmlFor="image-upload"
                         className="inline-flex items-center bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium hover:bg-primary/90 cursor-pointer"
                       >
                         <Camera className="h-4 w-4 mr-2" />
-                        Select Images
+                        {t('sell.selectImages')}
                       </label>
                       <p className="text-xs text-muted-foreground mt-4">
-                        Supported: JPG, PNG, GIF (max 10MB each)<br />
-                        Maximum 10 images allowed
+                        {t('sell.supportedFormats')}<br />
+                        {t('sell.maxImages')}
                       </p>
                     </div>
                   ) : (
@@ -989,7 +989,7 @@ export default function SellPage() {
                           htmlFor="image-upload"
                           className="text-sm text-primary hover:text-primary/80 cursor-pointer"
                         >
-                          + Add More
+{t('sell.addMore')}
                         </label>
                       </div>
                       
@@ -1062,7 +1062,7 @@ export default function SellPage() {
                           className="inline-flex items-center text-primary hover:text-primary/80 cursor-pointer text-sm"
                         >
                           <Plus className="h-4 w-4 mr-1" />
-                          Add more images
+                          {t('sell.addMoreImages')}
                         </label>
                       </div>
                     </>
@@ -1070,13 +1070,13 @@ export default function SellPage() {
                   
                   <div className="mt-4 space-y-2">
                     <p className="text-sm text-muted-foreground">
-                      <strong>Tips for better photos:</strong>
+                      <strong>{t('sell.tipsBetterPhotos')}</strong>
                     </p>
                     <ul className="text-xs text-muted-foreground space-y-1 ml-4">
-                      <li>• Use good lighting and take clear, focused shots</li>
-                      <li>• Show the item from multiple angles</li>
-                      <li>• Include any important details or flaws</li>
-                      <li>• Drag images to reorder them (first image is the main photo)</li>
+                      <li>• {t('sell.useGoodLighting')}</li>
+                      <li>• {t('sell.showMultipleAngles')}</li>
+                      <li>• {t('sell.includeDetails')}</li>
+                      <li>• {t('sell.dragReorder')}</li>
                     </ul>
                   </div>
                 </div>
@@ -1086,10 +1086,10 @@ export default function SellPage() {
             {currentStep === 5 && (
               <div className="bg-card border border-border rounded-lg p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold">Preview Your Listing</h3>
+                  <h3 className="text-lg font-semibold">{t('sell.previewListing')}</h3>
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Eye className="h-4 w-4 mr-1" />
-                    How buyers will see your listing
+{t('sell.howBuyersSee')}
                   </div>
                 </div>
 
@@ -1120,7 +1120,7 @@ export default function SellPage() {
                     
                     <div className="p-4">
                       <h4 className="font-semibold text-lg mb-2 line-clamp-2">
-                        {title || 'Your listing title will appear here'}
+                        {title || t('sell.listingTitleAppear')}
                       </h4>
                       
                       {(price && listingType !== 'job') && (
@@ -1128,7 +1128,7 @@ export default function SellPage() {
                           {formatCurrency(parseInt(price))}
                           {negotiable && (
                             <span className="text-sm font-normal text-muted-foreground ml-2">
-                              (Negotiable)
+                              ({t('sell.negotiable')})
                             </span>
                           )}
                         </div>
@@ -1158,20 +1158,20 @@ export default function SellPage() {
                   {/* Summary Details */}
                   <div className="space-y-6">
                     <div>
-                      <h4 className="font-semibold mb-3">Listing Summary</h4>
+                      <h4 className="font-semibold mb-3">{t('sell.listingSummary')}</h4>
                       <div className="space-y-3 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Type:</span>
+                          <span className="text-muted-foreground">{t('sell.type')}</span>
                           <span className="capitalize font-medium">{listingType}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Category:</span>
+                          <span className="text-muted-foreground">{t('sell.category')}</span>
                           <span className="font-medium">
                             {categories.find(c => c.id === categoryId)?.name_en || 'Not selected'}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Location:</span>
+                          <span className="text-muted-foreground">{t('sell.location')}</span>
                           <span className="font-medium">
                             {locationId 
                               ? getLocationName(locationId) 
@@ -1180,12 +1180,12 @@ export default function SellPage() {
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Images:</span>
+                          <span className="text-muted-foreground">{t('sell.images')}</span>
                           <span className="font-medium">{imagePreviews.length} uploaded</span>
                         </div>
                         {listingType !== 'job' && price && (
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Price:</span>
+                            <span className="text-muted-foreground">{t('sell.price')}</span>
                             <span className="font-medium">
                               {formatCurrency(parseInt(price))} 
                               {negotiable && <span className="text-xs text-muted-foreground ml-1">(Negotiable)</span>}
@@ -1194,13 +1194,13 @@ export default function SellPage() {
                         )}
                         {listingType === 'good' && condition && (
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Condition:</span>
+                            <span className="text-muted-foreground">{t('sell.conditionLabel')}</span>
                             <span className="font-medium capitalize">{condition}</span>
                           </div>
                         )}
                         {listingType === 'service' && (
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Service Packages:</span>
+                            <span className="text-muted-foreground">{t('sell.servicePackagesLabel')}</span>
                             <span className="font-medium">{servicePackages.length} configured</span>
                           </div>
                         )}
@@ -1209,7 +1209,7 @@ export default function SellPage() {
                     
                     {description && (
                       <div>
-                        <h4 className="font-semibold mb-3">Description</h4>
+                        <h4 className="font-semibold mb-3">{t('sell.description')}</h4>
                         <div className="text-sm bg-muted/50 p-3 rounded border max-h-32 overflow-y-auto">
                           {description}
                         </div>
@@ -1218,7 +1218,7 @@ export default function SellPage() {
 
                     {listingType === 'service' && servicePackages.length > 0 && (
                       <div>
-                        <h4 className="font-semibold mb-3">Service Packages</h4>
+                        <h4 className="font-semibold mb-3">{t('sell.servicePackages')}</h4>
                         <div className="space-y-2">
                           {servicePackages.map((pkg, index) => (
                             <div key={index} className="text-sm border rounded p-2">
@@ -1236,8 +1236,7 @@ export default function SellPage() {
                 
                 <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    <strong>Ready to publish?</strong> Once published, your listing will be visible to all users. 
-                    You can edit or remove it later from your seller dashboard.
+                    <strong>{t('sell.readyPublish')}</strong> {t('sell.oncePublished')}
                   </p>
                 </div>
               </div>
@@ -1254,7 +1253,7 @@ export default function SellPage() {
                 className="flex items-center px-6 py-3 border border-border rounded-md font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="h-4 w-4 mr-2" />
-                Previous
+{t('sell.previous')}
               </button>
               
               <div className="text-sm text-muted-foreground">
@@ -1270,7 +1269,7 @@ export default function SellPage() {
                   disabled={!canProceed(currentStep)}
                   className="flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-md font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Next
+  {t('sell.next')}
                   <ChevronRight className="h-4 w-4 ml-2" />
                 </button>
               ) : (
@@ -1282,12 +1281,12 @@ export default function SellPage() {
                   {isSubmitting ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Publishing...
+{t('sell.publishing')}
                     </>
                   ) : (
                     <>
                       <Check className="h-4 w-4 mr-2" />
-                      Publish Listing
+{t('sell.publishListing')}
                     </>
                   )}
                 </button>
