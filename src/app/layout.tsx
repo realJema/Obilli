@@ -16,6 +16,9 @@ export const metadata: Metadata = {
   title: "Obilli - Classified Marketplace",
   description: "Buy and sell goods, services, and find jobs in Cameroon",
   keywords: ["marketplace", "classified", "cameroon", "buy", "sell", "services", "jobs"],
+  icons: {
+    icon: "/logo.ico",
+  },
 };
 
 export const viewport: Viewport = {

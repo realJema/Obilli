@@ -470,11 +470,11 @@ export class ListingsRepository {
 
   // Get optimized homepage data with a single query
   async getHomepageData(): Promise<{
-    heroListings: any[];
-    featuredListings: any[];
-    recentListings: any[];
-    trendingListings: any[];
-    categories: any[];
+    heroListings: HomepageListing[];
+    featuredListings: HomepageListing[];
+    recentListings: HomepageListing[];
+    trendingListings: HomepageListing[];
+    categories: HomepageCategory[];
   }> {
     try {
       // Get featured listings (boosted listings) with essential data
@@ -535,7 +535,7 @@ export class ListingsRepository {
       if (categoriesError) throw categoriesError;
 
       // Get listings for each category (including subcategories)
-      const categoryListings: { [key: number]: any[] } = {};
+      const categoryListings: { [key: number]: HomepageListing[] } = {};
       if (categoriesData) {
         for (const category of categoriesData) {
           // Get all descendant category IDs (including the category itself)
@@ -576,7 +576,7 @@ export class ListingsRepository {
         featuredListings: featuredListingsData || [],
         recentListings: recentListingsData || [],
         trendingListings: trendingListingsData,
-        categories: categoriesWithListings
+        categories: categoriesWithListings as HomepageCategory[]
       };
     } catch (error) {
       console.error('Error fetching homepage data:', error);
@@ -600,4 +600,37 @@ export class ListingsRepository {
 
     return data;
   }
+}
+
+interface HomepageListing {
+  id: string;
+  title: string;
+  price_xaf: number | null;
+  description: string | null;
+  created_at: string | null;
+  category?: {
+    id: number;
+    name_en: string;
+    name_fr: string;
+  };
+  owner?: {
+    id: string;
+    username: string | null;
+  };
+  media?: {
+    url: string;
+  }[];
+  location?: {
+    id: number;
+    location_en: string;
+    location_fr: string;
+  } | null;
+}
+
+interface HomepageCategory {
+  id: number;
+  name_en: string;
+  name_fr: string;
+  slug: string;
+  listings: HomepageListing[];
 }

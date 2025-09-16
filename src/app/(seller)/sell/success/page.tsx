@@ -128,6 +128,26 @@ function SellSuccessContent() {
               </div>
             </Link>
 
+            {/* Create Another Listing */}
+            <Link 
+              href="/sell/new"
+              className="group bg-card border border-border rounded-lg p-6 text-center hover:shadow-lg transition-all duration-200 hover:border-primary"
+            >
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-full mb-4 group-hover:bg-indigo-200 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-foreground mb-2">{t('sell.createNewListing')}</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                {t('sell.shareItems')}
+              </p>
+              <div className="flex items-center justify-center text-primary text-sm font-medium">
+{t('sell.getStarted')}
+                <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
             {/* Go Home */}
             <Link 
               href="/"
@@ -142,24 +162,6 @@ function SellSuccessContent() {
               </p>
               <div className="flex items-center justify-center text-primary text-sm font-medium">
 {t('sell.browseMarketplace')}
-                <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </Link>
-
-            {/* Boost Listing */}
-            <Link 
-              href={`/boost/${listingId}`}
-              className="group bg-gradient-to-br from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-6 text-center hover:shadow-lg transition-all duration-200 hover:border-yellow-300"
-            >
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-full mb-4 group-hover:bg-yellow-200 transition-colors">
-                <Zap className="h-6 w-6 text-yellow-600" />
-              </div>
-              <h3 className="font-semibold text-foreground mb-2">{t('sell.boostListing')}</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                {t('sell.getVisibility')}
-              </p>
-              <div className="flex items-center justify-center text-yellow-600 text-sm font-medium">
-{t('sell.exploreBoosts')}
                 <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>

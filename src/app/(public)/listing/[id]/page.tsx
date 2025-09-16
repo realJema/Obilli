@@ -813,7 +813,7 @@ function ReviewsSection({ listingId, sellerId }: { listingId: string; sellerId: 
         comment: newReview.comment
       };
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('reviews')
         .insert(reviewData)
         .select(`

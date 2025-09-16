@@ -3,10 +3,7 @@
 import { MainLayout } from "@/components/main-layout";
 import { useI18n } from "@/lib/providers";
 import { TrendingUp, Star, Clock, MapPin, ChevronLeft, ChevronRight, type LucideIcon } from "lucide-react";
-import { listingsRepo, categoriesRepo } from "@/lib/repositories";
-import type { ListingWithDetails } from "@/lib/repositories/listings";
-import { hasActiveBoost, getActiveBoostTier } from "@/lib/repositories/listings";
-import type { CategoryWithChildren } from "@/lib/repositories/categories";
+import { listingsRepo } from "@/lib/repositories";
 import Link from "next/link";
 import { DefaultImage } from "@/components/default-image";
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -47,11 +44,11 @@ interface HomepageCategory {
 }
 
 export default function HomePage() {
-  const [heroListings, setHeroListings] = useState<any[]>([]);
-  const [featuredListings, setFeaturedListings] = useState<any[]>([]);
-  const [recentListings, setRecentListings] = useState<any[]>([]);
-  const [trendingListings, setTrendingListings] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [heroListings, setHeroListings] = useState<HomepageListing[]>([]);
+  const [featuredListings, setFeaturedListings] = useState<HomepageListing[]>([]);
+  const [recentListings, setRecentListings] = useState<HomepageListing[]>([]);
+  const [trendingListings, setTrendingListings] = useState<HomepageListing[]>([]);
+  const [categories, setCategories] = useState<HomepageCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -145,7 +142,7 @@ export default function HomePage() {
   );
 }
 
-function HeroCarousel({ listings, isLoading }: { listings: any[]; isLoading: boolean }) {
+function HeroCarousel({ listings, isLoading }: { listings: HomepageListing[]; isLoading: boolean }) {
   const { formatCurrency, formatRelativeTime, locale, t } = useI18n();
   const [currentIndex, setCurrentIndex] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -184,7 +181,7 @@ function HeroCarousel({ listings, isLoading }: { listings: any[]; isLoading: boo
   }, [listings.length, currentIndex, goToSlide]);
 
   // Get the location display based on the current locale
-  const getLocationDisplay = (listing: any) => {
+  const getLocationDisplay = (listing: HomepageListing) => {
     if (!listing.location) return null;
     
     if (locale === 'fr' && listing.location.location_fr) {
@@ -311,7 +308,7 @@ function HeroCarousel({ listings, isLoading }: { listings: any[]; isLoading: boo
 
           {/* Navigation Dots */}
           <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2">
-            {listings.map((_: any, index: number) => (
+            {listings.map((_: HomepageListing, index: number) => (
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
@@ -344,7 +341,7 @@ function HeroCarousel({ listings, isLoading }: { listings: any[]; isLoading: boo
   );
 }
 
-function ListingCard({ listing }: { listing: any }) {
+function ListingCard({ listing }: { listing: HomepageListing }) {
   const { formatCurrency, formatRelativeTime, locale, t } = useI18n();
   
   // Get the first media image or use default
@@ -423,11 +420,16 @@ function ListingCard({ listing }: { listing: any }) {
   );
 }
 
-function HorizontalScrollSection({ title, icon: Icon, listings, isLoading }: {
-  title: string;
-  icon: LucideIcon;
-  listings: any[];
-  isLoading: boolean;
+function HorizontalScrollSection({ 
+  title, 
+  icon: Icon, 
+  listings, 
+  isLoading 
+}: { 
+  title: string; 
+  icon: LucideIcon; 
+  listings: HomepageListing[]; 
+  isLoading: boolean; 
 }) {
   const { t } = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -544,7 +546,7 @@ function HorizontalScrollSection({ title, icon: Icon, listings, isLoading }: {
           className="flex space-x-4 overflow-x-auto scrollbar-hide pb-2"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {listings.map((listing: any) => (
+          {listings.map((listing: HomepageListing) => (
             <div key={listing.id} className="flex-shrink-0 w-64">
               <ListingCard listing={listing} />
             </div>
@@ -555,10 +557,14 @@ function HorizontalScrollSection({ title, icon: Icon, listings, isLoading }: {
   );
 }
 
-function CategorySection({ category, listings, isLoading }: {
-  category: any;
-  listings: any[];
-  isLoading: boolean;
+function CategorySection({ 
+  category, 
+  listings, 
+  isLoading 
+}: { 
+  category: HomepageCategory; 
+  listings: HomepageListing[]; 
+  isLoading: boolean; 
 }) {
   const { locale, t } = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -653,7 +659,7 @@ function CategorySection({ category, listings, isLoading }: {
           className="flex space-x-4 overflow-x-auto scrollbar-hide pb-2"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {listings.map((listing: any) => (
+          {listings.map((listing: HomepageListing) => (
             <div key={listing.id} className="flex-shrink-0 w-64">
               <ListingCard listing={listing} />
             </div>

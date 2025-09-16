@@ -42,7 +42,7 @@ export default function SellPage() {
   const user = useUser();
   const supabase = useSupabaseClient();
   const router = useRouter();
-  const { formatCurrency, t } = useI18n();
+  const { formatCurrency, t, locale } = useI18n();
 
   // Auth state
   const [isLoading, setIsLoading] = useState(true);
@@ -268,7 +268,7 @@ export default function SellPage() {
   const convertToTree = (categories: CategoryWithChildren[]): CategoryNode[] => {
     return categories.map(category => ({
       id: category.id,
-      name: category.name_en,
+      name: locale === 'fr' ? category.name_fr : category.name_en,
       children: category.children ? convertToTree(category.children as CategoryWithChildren[]) : []
     }));
   };
@@ -277,7 +277,7 @@ export default function SellPage() {
   const convertLocationsToTree = (locations: LocationWithChildren[]): LocationNode[] => {
     return locations.map(location => ({
       id: location.id,
-      name: location.location_en,
+      name: locale === 'fr' ? location.location_fr : location.location_en,
       children: location.children ? convertLocationsToTree(location.children as LocationWithChildren[]) : []
     }));
   };
@@ -286,7 +286,7 @@ export default function SellPage() {
   const getLocationName = (locationId: number): string => {
     const findLocation = (nodes: LocationWithChildren[], id: number): string | null => {
       for (const node of nodes) {
-        if (node.id === id) return node.location_en;
+        if (node.id === id) return locale === 'fr' ? node.location_fr : node.location_en;
         if (node.children) {
           const found = findLocation(node.children, id);
           if (found) return found;
@@ -294,7 +294,7 @@ export default function SellPage() {
       }
       return null;
     };
-    return findLocation(locations, locationId) || 'Location';
+    return findLocation(locations, locationId) || (locale === 'fr' ? 'Localisation' : 'Location');
   };
 
   // Save form data whenever it changes
@@ -1143,7 +1143,7 @@ export default function SellPage() {
                           }
                         </div>
                         <div className="capitalize">
-                          {listingType} • {categories.find(c => c.id === categoryId)?.name_en || 'Category'}
+                          {listingType} • {categories.find(c => c.id === categoryId)?.[locale === 'fr' ? 'name_fr' : 'name_en'] || (locale === 'fr' ? 'Catégorie' : 'Category')}
                         </div>
                       </div>
                       
@@ -1167,7 +1167,7 @@ export default function SellPage() {
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">{t('sell.category')}</span>
                           <span className="font-medium">
-                            {categories.find(c => c.id === categoryId)?.name_en || 'Not selected'}
+                            {categories.find(c => c.id === categoryId)?.[locale === 'fr' ? 'name_fr' : 'name_en'] || (locale === 'fr' ? 'Non sélectionné' : 'Not selected')}
                           </span>
                         </div>
                         <div className="flex justify-between">
