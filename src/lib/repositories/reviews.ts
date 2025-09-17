@@ -1,4 +1,4 @@
-import { supabase, getAuthClient } from '@/lib/db/client';
+import { supabase } from '@/lib/db/client';
 import type { Database } from '@/lib/types/database';
 import { cache } from 'react'; // Next.js cache function
 
@@ -181,10 +181,7 @@ export class ReviewsRepository {
 
   // Add a method to create a new review
   async create(newReview: NewReview): Promise<ReviewWithProfiles> {
-    // Use the auth-aware client for operations that require user context
-    const authClient = getAuthClient();
-    
-    const { data, error } = await authClient
+    const { data, error } = await supabase
       .from('reviews')
       .insert(newReview)
       .select(`
