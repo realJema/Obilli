@@ -28,8 +28,14 @@ export function DefaultImage({ src, alt, fill, width, height, className, priorit
     return (
       <div className={`bg-muted flex items-center justify-center ${className}`} role="img" aria-label={alt || "Default image placeholder"}>
         <div className="text-center">
-          <div className="h-12 w-12 mx-auto mb-2 rounded-md bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-xl">B</span>
+          <div className="h-12 w-12 mx-auto mb-2 rounded-md flex items-center justify-center">
+            <Image 
+              src="/logo.png" 
+              alt="Obilli Logo" 
+              width={48} 
+              height={48} 
+              className="rounded-md"
+            />
           </div>
           <span className="text-xs text-muted-foreground font-medium">Obilli</span>
         </div>

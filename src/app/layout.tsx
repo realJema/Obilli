@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   description: "Buy and sell goods, services, and find jobs in Cameroon",
   keywords: ["marketplace", "classified", "cameroon", "buy", "sell", "services", "jobs"],
   icons: {
-    icon: "/logo.ico",
+    icon: "/logo.png",
   },
 };
 

@@ -1,14 +1,9 @@
 import { MainLayout } from "@/components/main-layout";
 import { 
-  Search, 
-  Filter, 
+  Search as SearchIcon, 
   MapPin, 
   Clock, 
-  Star, 
-  Grid, 
-  List,
-  ChevronUp,
-  ChevronDown,
+  Star
 } from "lucide-react";
 import { listingsRepo, categoriesRepo } from "@/lib/repositories";
 import type { ListingWithDetails, ListingFilters } from "@/lib/repositories/listings";
@@ -18,6 +13,7 @@ import Link from "next/link";
 import { DefaultImage } from "@/components/default-image";
 import { Suspense } from "react";
 import { cache } from 'react';
+import { SearchFilters } from "./search-filters";
 
 // More granular suspense boundaries for better loading experience
 function GranularSuspenseWrapper({ children, fallback }: { children: React.ReactNode; fallback: React.ReactNode }) {
@@ -30,19 +26,59 @@ function GranularSuspenseWrapper({ children, fallback }: { children: React.React
 
 // Server-side data fetching functions with background refresh
 interface SearchPageProps {
-  searchParams: {
+  searchParams: Promise<{
     q?: string;
     category?: string;
     page?: string;
-  };
+    minPrice?: string;
+    maxPrice?: string;
+    condition?: string;
+    location?: string;
+    sortBy?: string;
+  }>;
 }
 
 // Server component for the search page with background refresh
 export default async function SearchPage({ searchParams }: SearchPageProps) {
-  const searchQuery = searchParams.q || '';
-  const categoryId = searchParams.category ? Number(searchParams.category) : undefined;
-  const currentPage = searchParams.page ? Number(searchParams.page) : 1;
+  // Properly await searchParams
+  const params = await searchParams;
+  
+  const searchQuery = params.q || '';
+  const categoryId = params.category ? Number(params.category) : undefined;
+  const currentPage = params.page ? Number(params.page) : 1;
+  const minPrice = params.minPrice ? Number(params.minPrice) : undefined;
+  const maxPrice = params.maxPrice ? Number(params.maxPrice) : undefined;
+  const condition = params.condition || undefined;
+  const locationId = params.location ? Number(params.location) : undefined;
+  const sortBy = params.sortBy || 'created_at_desc';
   const itemsPerPage = 20;
+
+  // Prepare search filters
+  const searchFilters: ListingFilters = {
+    search: searchQuery || undefined,
+    category_id: categoryId,
+    min_price: minPrice,
+    max_price: maxPrice,
+    condition: condition,
+    location_id: locationId,
+  };
+
+  // Prepare sort options with proper typing
+  let sortOptions: { field: 'created_at' | 'price_xaf' | 'updated_at' | 'title'; direction: 'asc' | 'desc' } = { 
+    field: 'created_at', 
+    direction: 'desc' 
+  };
+  
+  if (sortBy === 'price_asc') {
+    sortOptions.field = 'price_xaf';
+    sortOptions.direction = 'asc';
+  } else if (sortBy === 'price_desc') {
+    sortOptions.field = 'price_xaf';
+    sortOptions.direction = 'desc';
+  } else if (sortBy === 'created_at_asc') {
+    sortOptions.field = 'created_at';
+    sortOptions.direction = 'asc';
+  }
 
   // Fetch categories server-side with background refresh
   const categories = await categoriesRepo.getTopLevel();
@@ -50,16 +86,10 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   // Fetch category breadcrumb if category is specified
   const categoryBreadcrumb = categoryId ? await categoriesRepo.getBreadcrumb(categoryId) : [];
   
-  // Prepare search filters
-  const searchFilters: ListingFilters = {
-    search: searchQuery || undefined,
-    category_id: categoryId,
-  };
-  
   // Fetch listings server-side with background refresh
   const { data: listings, count: total } = await listingsRepo.getAll(
     searchFilters,
-    { field: 'created_at', direction: 'desc' },
+    sortOptions,
     itemsPerPage,
     (currentPage - 1) * itemsPerPage
   );
@@ -76,27 +106,24 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           categoryBreadcrumb={categoryBreadcrumb}
           listings={listings}
           total={total}
+          minPrice={minPrice}
+          maxPrice={maxPrice}
+          condition={condition}
+          locationId={locationId}
+          sortBy={sortBy}
         />
       </GranularSuspenseWrapper>
     </MainLayout>
   );
 }
 
-// Skeleton loader for the entire search page
+// Skeleton loader for the entire search page with more spacing
 function SearchPageSkeleton() {
   return (
     <MainLayout>
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search Header Skeleton */}
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-screen">
+        {/* Search Header Skeleton - removed search bar */}
         <div className="mb-8">
-          <div className="max-w-2xl mx-auto mb-6">
-            <div className="relative">
-              <div className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 bg-muted rounded-full animate-pulse"></div>
-              <div className="w-full pl-12 pr-4 py-4 rounded-lg border border-border bg-muted animate-pulse"></div>
-              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-muted px-6 py-2 rounded-md font-medium animate-pulse h-10 w-24"></div>
-            </div>
-          </div>
-          
           {/* Breadcrumb Skeleton */}
           <div className="mb-4 h-4 bg-muted rounded animate-pulse w-1/3"></div>
           
@@ -148,6 +175,9 @@ function SearchPageSkeleton() {
             </div>
           </div>
         </div>
+        
+        {/* Additional spacing at the bottom */}
+        <div className="h-32"></div>
       </div>
     </MainLayout>
   );
@@ -162,7 +192,12 @@ function SearchPageContent({
   categories,
   categoryBreadcrumb,
   listings,
-  total
+  total,
+  minPrice,
+  maxPrice,
+  condition,
+  locationId,
+  sortBy
 }: {
   searchQuery: string;
   categoryId: number | undefined;
@@ -172,12 +207,14 @@ function SearchPageContent({
   categoryBreadcrumb: CategoryWithChildren[];
   listings: ListingWithDetails[];
   total: number;
+  minPrice: number | undefined;
+  maxPrice: number | undefined;
+  condition: string | undefined;
+  locationId: number | undefined;
+  sortBy: string;
 }) {
-  // Since this is now a client component, we'll keep the interactive elements here
-  // but the data is already fetched on the server
-  
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-screen">
       {/* Search Header - we'll make this client-side interactive */}
       <SearchHeader 
         searchQuery={searchQuery}
@@ -194,6 +231,11 @@ function SearchPageContent({
             <SearchFilters 
               categories={categories}
               categoryId={categoryId}
+              minPrice={minPrice}
+              maxPrice={maxPrice}
+              condition={condition}
+              locationId={locationId}
+              sortBy={sortBy}
             />
           </div>
         </div>
@@ -210,6 +252,9 @@ function SearchPageContent({
           />
         </div>
       </div>
+      
+      {/* Additional spacing at the bottom to prevent footer from being too close */}
+      <div className="h-32"></div>
     </div>
   );
 }
@@ -230,24 +275,7 @@ function SearchHeader({
 }) {
   return (
     <div className="mb-8">
-      <form className="max-w-2xl mx-auto mb-6">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-          <input
-            type="text"
-            value={searchQuery}
-            placeholder="Search listings..."
-            className="w-full pl-12 pr-4 py-4 rounded-lg border border-border bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
-            readOnly // Make it read-only since we're showing server-fetched data
-          />
-          <button 
-            type="submit"
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-primary text-primary-foreground px-6 py-2 rounded-md font-medium hover:bg-primary/90 transition-colors"
-          >
-            Search
-          </button>
-        </div>
-      </form>
+      {/* Removed the search bar as requested */}
       
       {/* Breadcrumbs */}
       {categoryBreadcrumb.length > 0 && (
@@ -283,43 +311,6 @@ function SearchHeader({
           {total} results found
         </p>
       </div>
-    </div>
-  );
-}
-
-// Server-side search filters component
-function SearchFilters({ 
-  categories,
-  categoryId
-}: {
-  categories: CategoryWithChildren[];
-  categoryId: number | undefined;
-}) {
-  return (
-    <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-      <h3 className="font-semibold flex items-center text-foreground">
-        <Filter className="h-5 w-5 mr-2" />
-        Filters
-      </h3>
-      
-      {/* Category Filter */}
-      <div>
-        <label className="block text-sm font-medium mb-2 text-foreground">Category</label>
-        <select 
-          value={categoryId || ''} 
-          className="w-full p-2 border border-border rounded-md bg-background text-foreground"
-          disabled // Make it read-only since we're showing server-fetched data
-        >
-          <option value="">All Categories</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id} className="bg-background text-foreground">
-              {category.name_en}
-            </option>
-          ))}
-        </select>
-      </div>
-      
-      {/* Other filters would go here */}
     </div>
   );
 }
@@ -435,7 +426,7 @@ function SearchResults({
   if (listings.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
+        <SearchIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
         <p className="text-lg mb-2">No listings found</p>
         <p>Try adjusting your search criteria</p>
       </div>

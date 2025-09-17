@@ -71,8 +71,14 @@ export function Header() {
           {/* Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2" prefetch={true}>
-              <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-lg">B</span>
+              <div className="h-8 w-8 rounded-md flex items-center justify-center">
+                <Image 
+                  src="/logo.png" 
+                  alt="Obilli Logo" 
+                  width={32} 
+                  height={32} 
+                  className="rounded-md"
+                />
               </div>
               <span className="hidden sm:inline-block font-bold text-xl">
                 {t("app.title")}
