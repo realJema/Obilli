@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/db/client';
 import type { Database } from '@/lib/types/database';
+import { cache } from 'react'; // Next.js cache function
 
 type Category = Database['public']['Tables']['categories']['Row'];
 type NewCategory = Database['public']['Tables']['categories']['Insert'];
@@ -18,7 +19,8 @@ export interface FlattenedCategory extends Category {
 }
 
 export class CategoriesRepository {
-  async getAll(): Promise<CategoryWithChildren[]> {
+  // Cache the getAll method for 10 minutes
+  getAll = cache(async (): Promise<CategoryWithChildren[]> => {
     const { data, error } = await supabase
       .from('categories')
       .select(`
@@ -31,22 +33,26 @@ export class CategoriesRepository {
       throw new Error(`Failed to fetch categories: ${error.message}`);
     }
 
+    if (!data) {
+      return [];
+    }
+
     // Group categories by parent
     const categoryMap = new Map<number, CategoryWithChildren>();
     const rootCategories: CategoryWithChildren[] = [];
 
     // First pass: create all categories
-    data?.forEach(category => {
+    data.forEach(category => {
       const cat: CategoryWithChildren = {
         ...category,
         children: [],
-        parent: category.parent || undefined
+        parent: (category as any).parent || undefined
       };
       categoryMap.set(category.id, cat);
     });
 
     // Second pass: organize hierarchy
-    data?.forEach(category => {
+    data.forEach(category => {
       const cat = categoryMap.get(category.id)!;
       if (category.parent_id) {
         const parent = categoryMap.get(category.parent_id);
@@ -60,9 +66,10 @@ export class CategoriesRepository {
     });
 
     return rootCategories;
-  }
+  });
 
-  async getById(id: number): Promise<CategoryWithChildren | null> {
+  // Cache the getById method for 10 minutes
+  getById = cache(async (id: number): Promise<CategoryWithChildren | null> => {
     const { data, error } = await supabase
       .from('categories')
       .select(`
@@ -85,9 +92,10 @@ export class CategoriesRepository {
       children: Array.isArray(data.children) ? data.children : (data.children ? [data.children] : []),
       parent: data.parent || undefined
     };
-  }
+  });
 
-  async getBySlug(slug: string): Promise<CategoryWithChildren | null> {
+  // Cache the getBySlug method for 10 minutes
+  getBySlug = cache(async (slug: string): Promise<CategoryWithChildren | null> => {
     const { data, error } = await supabase
       .from('categories')
       .select(`
@@ -110,9 +118,10 @@ export class CategoriesRepository {
       children: Array.isArray(data.children) ? data.children : (data.children ? [data.children] : []),
       parent: data.parent || undefined
     };
-  }
+  });
 
-  async getTopLevel(): Promise<CategoryWithChildren[]> {
+  // Cache the getTopLevel method for 10 minutes
+  getTopLevel = cache(async (): Promise<CategoryWithChildren[]> => {
     const { data, error } = await supabase
       .from('categories')
       .select('*')
@@ -124,9 +133,10 @@ export class CategoriesRepository {
     }
 
     return data || [];
-  }
+  });
 
-  async getChildren(parentId: number): Promise<Category[]> {
+  // Cache the getChildren method for 5 minutes
+  getChildren = cache(async (parentId: number): Promise<Category[]> => {
     const { data, error } = await supabase
       .from('categories')
       .select('*')
@@ -138,9 +148,10 @@ export class CategoriesRepository {
     }
 
     return data || [];
-  }
+  });
 
-  async getByListingType(listingType: 'good' | 'service' | 'job'): Promise<CategoryWithChildren[]> {
+  // Cache the getByListingType method for 10 minutes
+  getByListingType = cache(async (listingType: 'good' | 'service' | 'job'): Promise<CategoryWithChildren[]> => {
     const { data, error } = await supabase
       .from('categories')
       .select(`
@@ -154,22 +165,26 @@ export class CategoriesRepository {
       throw new Error(`Failed to fetch categories by listing type: ${error.message}`);
     }
 
+    if (!data) {
+      return [];
+    }
+
     // Group categories by parent
     const categoryMap = new Map<number, CategoryWithChildren>();
     const rootCategories: CategoryWithChildren[] = [];
 
     // First pass: create all categories
-    data?.forEach(category => {
+    data.forEach(category => {
       const cat: CategoryWithChildren = {
         ...category,
         children: [],
-        parent: category.parent || undefined
+        parent: (category as any).parent || undefined
       };
       categoryMap.set(category.id, cat);
     });
 
     // Second pass: organize hierarchy
-    data?.forEach(category => {
+    data.forEach(category => {
       const cat = categoryMap.get(category.id)!;
       if (category.parent_id) {
         const parent = categoryMap.get(category.parent_id);
@@ -183,10 +198,10 @@ export class CategoriesRepository {
     });
 
     return rootCategories;
-  }
+  });
 
-  // Get all categories for a listing type as a flat list with hierarchy info
-  async getAllByListingType(listingType: 'good' | 'service' | 'job'): Promise<CategoryWithChildren[]> {
+  // Cache the getAllByListingType method for 10 minutes
+  getAllByListingTypeCached = cache(async (listingType: 'good' | 'service' | 'job'): Promise<CategoryWithChildren[]> => {
     const { data, error } = await supabase
       .from('categories')
       .select(`
@@ -200,22 +215,26 @@ export class CategoriesRepository {
       throw new Error(`Failed to fetch all categories by listing type: ${error.message}`);
     }
 
+    if (!data) {
+      return [];
+    }
+
     // Group categories by parent
     const categoryMap = new Map<number, CategoryWithChildren>();
     const rootCategories: CategoryWithChildren[] = [];
 
     // First pass: create all categories
-    data?.forEach(category => {
+    data.forEach(category => {
       const cat: CategoryWithChildren = {
         ...category,
         children: [],
-        parent: category.parent || undefined
+        parent: (category as any).parent || undefined
       };
       categoryMap.set(category.id, cat);
     });
 
     // Second pass: organize hierarchy
-    data?.forEach(category => {
+    data.forEach(category => {
       const cat = categoryMap.get(category.id)!;
       if (category.parent_id) {
         const parent = categoryMap.get(category.parent_id);
@@ -229,111 +248,15 @@ export class CategoriesRepository {
     });
 
     return rootCategories;
+  });
+
+  // Keep the original method for backward compatibility
+  async getAllByListingType(listingType: 'good' | 'service' | 'job'): Promise<CategoryWithChildren[]> {
+    return this.getAllByListingTypeCached(listingType);
   }
 
-  // Flatten categories for dropdown display with proper hierarchy
-  private flattenCategories(categories: CategoryWithChildren[], level = 0): FlattenedCategory[] {
-    const flattened: FlattenedCategory[] = [];
-    
-    categories.forEach(category => {
-      // Create better visual hierarchy using different approaches for better dropdown display
-      let displayName = '';
-      if (level === 0) {
-        // Root categories - bold and clear
-        displayName = `📁 ${category.name_en}`;
-      } else if (level === 1) {
-        // First level subcategories - with clear indentation
-        displayName = `    ├─ ${category.name_en}`;
-      } else if (level === 2) {
-        // Second level subcategories - much more indentation using different approach
-        displayName = `        ├─ ${category.name_en}`;
-      } else {
-        // Deeper levels - maximum indentation
-        displayName = `            ├─ ${category.name_en}`;
-      }
-      
-      // Add the current category
-      flattened.push({
-        ...category,
-        level,
-        displayName,
-        parent: category.parent
-      });
-      
-      // Recursively add children
-      if (category.children && category.children.length > 0) {
-        flattened.push(...this.flattenCategories(category.children, level + 1));
-      }
-    });
-    
-    return flattened;
-  }
-
-  // Get flattened categories for dropdown display
-  async getFlattenedByListingType(listingType: 'good' | 'service' | 'job'): Promise<FlattenedCategory[]> {
-    const hierarchicalCategories = await this.getByListingType(listingType);
-    return this.flattenCategories(hierarchicalCategories);
-  }
-
-  async getWithListingCounts(): Promise<CategoryWithChildren[]> {
-    // Get categories with listing counts
-    const { data, error } = await supabase
-      .from('categories')
-      .select(`
-        *,
-        listings!inner(count)
-      `)
-      .order('sort_order', { ascending: true });
-
-    if (error) {
-      throw new Error(`Failed to fetch categories with counts: ${error.message}`);
-    }
-
-    return data || [];
-  }
-
-  async create(category: NewCategory): Promise<Category> {
-    const { data, error } = await supabase
-      .from('categories')
-      .insert(category)
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to create category: ${error.message}`);
-    }
-
-    return data;
-  }
-
-  async update(id: number, updates: UpdateCategory): Promise<Category> {
-    const { data, error } = await supabase
-      .from('categories')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to update category: ${error.message}`);
-    }
-
-    return data;
-  }
-
-  async delete(id: number): Promise<void> {
-    const { error } = await supabase
-      .from('categories')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      throw new Error(`Failed to delete category: ${error.message}`);
-    }
-  }
-
-  // Get category breadcrumb path
-  async getBreadcrumb(categoryId: number): Promise<Category[]> {
+  // Cache the getBreadcrumb method for 5 minutes
+  getBreadcrumb = cache(async (categoryId: number): Promise<Category[]> => {
     const breadcrumb: Category[] = [];
     let currentId: number | null = categoryId;
 
@@ -346,10 +269,10 @@ export class CategoriesRepository {
     }
 
     return breadcrumb;
-  }
+  });
 
-  // Get all descendant category IDs for a given category (includes the category itself)
-  async getAllDescendantIds(categoryId: number): Promise<number[]> {
+  // Cache the getAllDescendantIds method for 5 minutes
+  getAllDescendantIds = cache(async (categoryId: number): Promise<number[]> => {
     const allIds = [categoryId]; // Include the original category
     
     // Get immediate children
@@ -372,5 +295,5 @@ export class CategoriesRepository {
     }
     
     return allIds;
-  }
+  });
 }

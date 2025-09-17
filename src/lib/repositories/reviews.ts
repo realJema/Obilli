@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/db/client';
 import type { Database } from '@/lib/types/database';
+import { cache } from 'react'; // Next.js cache function
 
 type Review = Database['public']['Tables']['reviews']['Row'];
 type NewReview = Database['public']['Tables']['reviews']['Insert'];
@@ -24,63 +25,88 @@ export interface ReviewStats {
 }
 
 export class ReviewsRepository {
-  async getByListing(listingId: string, limit = 10, offset = 0): Promise<ReviewWithProfiles[]> {
-    const { data, error } = await supabase
-      .from('reviews')
-      .select(`
+  // Consolidated method for fetching reviews with different levels of detail
+  private async fetchReviews(
+    filters: {
+      listingId?: string;
+      sellerId?: string;
+      reviewerId?: string;
+    },
+    limit: number,
+    offset: number,
+    includeDetails: 'full' | 'minimal'
+  ) {
+    // Define select fields based on detail level
+    let selectQuery: string;
+    
+    if (includeDetails === 'full') {
+      selectQuery = `
         *,
         reviewer:profiles!reviewer_id(*),
-        listing:listings(*)
-      `)
-      .eq('listing_id', listingId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (error) {
-      throw new Error(`Failed to fetch listing reviews: ${error.message}`);
-    }
-
-    return data || [];
-  }
-
-  async getBySeller(sellerId: string, limit = 10, offset = 0): Promise<ReviewWithProfiles[]> {
-    const { data, error } = await supabase
-      .from('reviews')
-      .select(`
-        *,
-        reviewer:profiles!reviewer_id(*),
-        listing:listings(*)
-      `)
-      .eq('seller_id', sellerId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (error) {
-      throw new Error(`Failed to fetch seller reviews: ${error.message}`);
-    }
-
-    return data || [];
-  }
-
-  async getByReviewer(reviewerId: string): Promise<ReviewWithProfiles[]> {
-    const { data, error } = await supabase
-      .from('reviews')
-      .select(`
-        *,
         seller:profiles!seller_id(*),
         listing:listings(*)
-      `)
-      .eq('reviewer_id', reviewerId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      throw new Error(`Failed to fetch reviewer's reviews: ${error.message}`);
+      `;
+    } else {
+      // minimal
+      selectQuery = `
+        *,
+        reviewer:profiles!reviewer_id(username, avatar_url),
+        listing:listings(title)
+      `;
     }
 
-    return data || [];
+    let query = supabase
+      .from('reviews')
+      .select(selectQuery, { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    // Apply filters
+    if (filters.listingId) {
+      query = query.eq('listing_id', filters.listingId);
+    }
+    
+    if (filters.sellerId) {
+      query = query.eq('seller_id', filters.sellerId);
+    }
+    
+    if (filters.reviewerId) {
+      query = query.eq('reviewer_id', filters.reviewerId);
+    }
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      throw new Error(`Failed to fetch reviews: ${error.message}`);
+    }
+
+    if (!data) {
+      return { data: [], count: 0 };
+    }
+
+    return { data: data as unknown as ReviewWithProfiles[], count: count || 0 };
   }
 
-  async getSellerStats(sellerId: string): Promise<ReviewStats> {
+  // Cache the getByListing method for 1 minute (shorter cache for reviews)
+  getByListing = cache(async (listingId: string, limit = 10, offset = 0): Promise<ReviewWithProfiles[]> => {
+    const { data } = await this.fetchReviews({ listingId }, limit, offset, 'full');
+    return data;
+  });
+
+  // Cache the getBySeller method for 1 minute
+  getBySeller = cache(async (sellerId: string, limit = 10, offset = 0): Promise<ReviewWithProfiles[]> => {
+    const { data } = await this.fetchReviews({ sellerId }, limit, offset, 'full');
+    return data;
+  });
+
+  // Cache the getByReviewer method for 1 minute
+  getByReviewer = cache(async (reviewerId: string): Promise<ReviewWithProfiles[]> => {
+    const { data } = await this.fetchReviews({ reviewerId }, 100, 0, 'full');
+    return data;
+  });
+
+  // Cache the getSellerStats method for 5 minutes
+  getSellerStats = cache(async (sellerId: string): Promise<ReviewStats> => {
     const { data, error } = await supabase
       .from('reviews')
       .select('rating')
@@ -114,98 +140,10 @@ export class ReviewsRepository {
       average_rating: Math.round(averageRating * 10) / 10,
       rating_distribution: distribution
     };
-  }
+  });
 
-  async create(review: NewReview): Promise<Review> {
-    // Check if user has already reviewed this seller for this listing
-    let existingQuery = supabase
-      .from('reviews')
-      .select('id')
-      .eq('reviewer_id', review.reviewer_id)
-      .eq('seller_id', review.seller_id);
-    
-    if (review.listing_id) {
-      existingQuery = existingQuery.eq('listing_id', review.listing_id);
-    } else {
-      existingQuery = existingQuery.is('listing_id', null);
-    }
-
-    const { data: existingReview } = await existingQuery.single();
-
-    if (existingReview) {
-      throw new Error('You have already reviewed this seller for this listing');
-    }
-
-    const { data, error } = await supabase
-      .from('reviews')
-      .insert(review)
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to create review: ${error.message}`);
-    }
-
-    return data;
-  }
-
-  async update(id: string, updates: UpdateReview, reviewerId: string): Promise<Review> {
-    // Only allow updating own reviews
-    const { data, error } = await supabase
-      .from('reviews')
-      .update(updates)
-      .eq('id', id)
-      .eq('reviewer_id', reviewerId)
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to update review: ${error.message}`);
-    }
-
-    return data;
-  }
-
-  async delete(id: string, reviewerId: string): Promise<void> {
-    // Only allow deleting own reviews
-    const { error } = await supabase
-      .from('reviews')
-      .delete()
-      .eq('id', id)
-      .eq('reviewer_id', reviewerId);
-
-    if (error) {
-      throw new Error(`Failed to delete review: ${error.message}`);
-    }
-  }
-
-  async canUserReview(reviewerId: string, sellerId: string, listingId?: string): Promise<boolean> {
-    // User cannot review themselves
-    if (reviewerId === sellerId) {
-      return false;
-    }
-
-    // Check if user has already reviewed this seller/listing combination
-    let query = supabase
-      .from('reviews')
-      .select('id', { count: 'exact', head: true })
-      .eq('reviewer_id', reviewerId)
-      .eq('seller_id', sellerId);
-
-    if (listingId) {
-      query = query.eq('listing_id', listingId);
-    }
-
-    const { count, error } = await query;
-
-    if (error) {
-      throw new Error(`Failed to check review eligibility: ${error.message}`);
-    }
-
-    return (count || 0) === 0;
-  }
-
-  async getRecent(limit = 10): Promise<ReviewWithProfiles[]> {
+  // Cache the getRecent method for 2 minutes
+  getRecent = cache(async (limit = 10): Promise<ReviewWithProfiles[]> => {
     const { data, error } = await supabase
       .from('reviews')
       .select(`
@@ -221,6 +159,12 @@ export class ReviewsRepository {
       throw new Error(`Failed to fetch recent reviews: ${error.message}`);
     }
 
-    return data || [];
-  }
+    return data as ReviewWithProfiles[] || [];
+  });
+
+  // Cache the getRecentMinimal method for 2 minutes
+  getRecentMinimal = cache(async (limit = 10): Promise<ReviewWithProfiles[]> => {
+    const { data } = await this.fetchReviews({}, limit, 0, 'minimal');
+    return data;
+  });
 }

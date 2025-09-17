@@ -2,10 +2,10 @@
 
 import { useEffect, useState, useRef } from "react";
 import { listingsRepo } from "@/lib/repositories";
-import { TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { TrendingUp, ChevronLeft, ChevronRight, MapPin, Clock } from "lucide-react";
 import Link from "next/link";
 import { useI18n } from "@/lib/providers";
-import { ListingCard } from "./listing-card";
+import { useQuery } from '@tanstack/react-query';
 
 interface HomepageListing {
   id: string;
@@ -32,32 +32,92 @@ interface HomepageListing {
   } | null;
 }
 
+// Simplified listing card component for trending section
+function ListingCard({ listing }: { listing: HomepageListing }) {
+  const { formatCurrency, formatRelativeTime, locale, t } = useI18n();
+  
+  // Get the first media image or use default
+  const imageUrl = listing.media && listing.media.length > 0 
+    ? listing.media[0].url 
+    : 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?q=80&w=400&h=300&auto=format&fit=crop';
+  
+  // For homepage listings, we won't show boost badges since we don't fetch boost data
+  const isActivelyBoosted = false;
+  const boostTier = null;
+  
+  // Build location display from hierarchical data
+  const getLocationDisplay = () => {
+    if (!listing.location) return null;
+    
+    // Use the location name based on the current locale
+    if (locale === 'fr' && listing.location.location_fr) {
+      return listing.location.location_fr;
+    }
+    return listing.location.location_en;
+  };
+  
+  return (
+    <Link href={`/listing/${listing.id}`} className="block group">
+      <div className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
+        <div className="relative aspect-[3/2]">
+          <div className="absolute inset-0">
+            {/* Using a simple img tag instead of DefaultImage for simplicity */}
+            <img
+              src={imageUrl}
+              alt={listing.title}
+              className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+            />
+          </div>
+        </div>
+        
+        <div className="p-3 flex-1 flex flex-col">
+          <h3 className="font-medium text-foreground mb-1 line-clamp-2 group-hover:text-primary transition-colors min-h-[2rem] text-sm">
+            {listing.title}
+          </h3>
+          
+          {listing.description && (
+            <p className="text-xs text-muted-foreground mb-2 line-clamp-1">
+              {listing.description}
+            </p>
+          )}
+          
+          {/* Show price or "Negotiable" if no price or price is 0 */}
+          <div className="text-lg font-bold text-primary mb-2">
+            {listing.price_xaf && listing.price_xaf > 0 
+              ? formatCurrency(listing.price_xaf) 
+              : t('listing.negotiable')}
+          </div>
+          
+          <div className="mt-auto space-y-1">
+            {getLocationDisplay() && (
+              <div className="flex items-center text-xs text-muted-foreground">
+                <MapPin className="h-3 w-3 mr-1" />
+                {getLocationDisplay()}
+              </div>
+            )}
+            
+            <div className="flex items-center text-xs text-muted-foreground">
+              <Clock className="h-3 w-3 mr-1" />
+              {formatRelativeTime(listing.created_at || new Date().toISOString())}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export function TrendingListingsClient() {
-  const [trendingListings, setTrendingListings] = useState<HomepageListing[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { t } = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const loadTrendingData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        // Fetch trending listings
-        const data = await listingsRepo.getTrendingListings(10);
-        setTrendingListings(data);
-      } catch (err) {
-        console.error('Failed to load trending data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load trending listings');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadTrendingData();
-  }, []);
+  
+  // Use React Query for caching
+  const { data: trendingListings, isLoading, error } = useQuery({
+    queryKey: ['trendingListings'],
+    queryFn: () => listingsRepo.getTrendingListings(10),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
 
   const scrollLeft = () => {
     if (scrollRef.current) {
@@ -109,13 +169,13 @@ export function TrendingListingsClient() {
         
         <div className="text-center py-12 text-muted-foreground">
           <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>{error}</p>
+          <p>{error instanceof Error ? error.message : 'Failed to load trending listings'}</p>
         </div>
       </section>
     );
   }
 
-  if (trendingListings.length === 0) {
+  if (!trendingListings || trendingListings.length === 0) {
     return (
       <section className="mb-8">
         <div className="flex items-center justify-between mb-4">
@@ -157,6 +217,7 @@ export function TrendingListingsClient() {
           <Link
             href="/search"
             className="ml-4 text-sm text-primary hover:text-primary/80 font-medium"
+            prefetch={true}
           >
             {t('common.viewAll')}
           </Link>

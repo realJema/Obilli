@@ -173,6 +173,7 @@ export function CategoryNav({ className = "" }: CategoryNavProps) {
                 <Link
                   href={`/search?category=${category.id}`}
                   className="flex items-center space-x-2 text-sm md:text-base font-normal text-foreground hover:text-primary transition-all duration-300 whitespace-nowrap cursor-pointer"
+                  prefetch={true}
                 >
                   <span>{locale === 'fr' ? category.name_fr : category.name_en}</span>
                   {category.children && category.children.length > 0 && (
@@ -219,6 +220,7 @@ export function CategoryNav({ className = "" }: CategoryNavProps) {
                       <Link
                         href={`/search?category=${subcategory.id}`}
                         className="block py-1 text-base md:text-lg font-normal text-foreground hover:text-primary transition-colors duration-300"
+                        prefetch={true}
                       >
                         {locale === 'fr' ? subcategory.name_fr : subcategory.name_en}
                       </Link>
@@ -231,6 +233,7 @@ export function CategoryNav({ className = "" }: CategoryNavProps) {
                               key={subsubcategory.id}
                               href={`/search?category=${subsubcategory.id}`}
                               className="block py-0.5 text-base text-muted-foreground hover:text-foreground transition-colors duration-300 pl-2"
+                              prefetch={true}
                             >
                               {locale === 'fr' ? subsubcategory.name_fr : subsubcategory.name_en}
                             </Link>

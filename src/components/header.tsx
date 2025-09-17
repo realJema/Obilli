@@ -70,7 +70,7 @@ export function Header() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2" prefetch={true}>
               <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center">
                 <span className="text-primary-foreground font-bold text-lg">B</span>
               </div>
@@ -109,6 +109,7 @@ export function Header() {
               <Link
                 href="/sell/new"
                 className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium hover:bg-primary/90 transition-colors"
+                prefetch={true}
               >
                 {t("nav.sell")}
               </Link>
@@ -155,6 +156,7 @@ export function Header() {
                             href="/dashboard"
                             className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
                             onClick={() => setShowUserMenu(false)}
+                            prefetch={true}
                           >
                             <User className="h-4 w-4 mr-3" />
                             {t("nav.dashboard")}
@@ -164,6 +166,7 @@ export function Header() {
                             href="/profile/settings"
                             className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
                             onClick={() => setShowUserMenu(false)}
+                            prefetch={true}
                           >
                             <Settings className="h-4 w-4 mr-3" />
                             {t("nav.settings")}
@@ -205,6 +208,7 @@ export function Header() {
                 <Link
                   href="/login"
                   className="text-foreground hover:text-primary transition-colors font-medium"
+                  prefetch={true}
                 >
                   {t("nav.login")}
                 </Link>

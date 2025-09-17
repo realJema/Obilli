@@ -33,9 +33,11 @@ interface HomepageListing {
   } | null;
 }
 
-// Server-side data fetching for critical content
+// Server-side data fetching for critical content with background refresh
 async function getServerSideData() {
   try {
+    // Fetch initial data - this will return cached data immediately if available
+    // and refresh in background if stale
     const [heroListings, featuredListings, categoryData] = await Promise.all([
       listingsRepo.getHeroListings(5),
       listingsRepo.getFeaturedListings(10),
@@ -50,6 +52,15 @@ async function getServerSideData() {
     console.error('Failed to fetch server-side data:', error);
     return { heroListings: [], featuredListings: [], categoryIds: [], categoryData: [] };
   }
+}
+
+// More granular suspense boundaries for better loading experience
+function GranularSuspenseWrapper({ children, fallback }: { children: React.ReactNode; fallback: React.ReactNode }) {
+  return (
+    <Suspense fallback={fallback}>
+      {children}
+    </Suspense>
+  );
 }
 
 // Loading skeleton for the hero carousel
@@ -123,24 +134,24 @@ export default async function HomePage() {
   return (
     <MainLayout>
       {/* Hero Carousel - server-side data */}
-      <Suspense fallback={<HeroCarouselSkeleton />}>
+      <GranularSuspenseWrapper fallback={<HeroCarouselSkeleton />}>
         <HeroCarouselServer listings={heroListings} />
-      </Suspense>
+      </GranularSuspenseWrapper>
       
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Featured Listings - server-side data */}
-        <Suspense fallback={<HorizontalSectionSkeleton title="Featured Listings" />}>
+        <GranularSuspenseWrapper fallback={<HorizontalSectionSkeleton title="Featured Listings" />}>
           <FeaturedListingsServer listings={featuredListings} />
-        </Suspense>
+        </GranularSuspenseWrapper>
         
         {/* Client-side sections for non-critical data */}
-        <Suspense fallback={<HorizontalSectionSkeleton title="Trending Now" />}>
+        <GranularSuspenseWrapper fallback={<HorizontalSectionSkeleton title="Trending Now" />}>
           <TrendingListingsClient />
-        </Suspense>
+        </GranularSuspenseWrapper>
         
-        <Suspense fallback={<CategoriesSkeleton />}>
+        <GranularSuspenseWrapper fallback={<CategoriesSkeleton />}>
           <CategoriesClient categoryIds={categoryIds} categoryData={categoryData} />
-        </Suspense>
+        </GranularSuspenseWrapper>
       </div>
     </MainLayout>
   );
