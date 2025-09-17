@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/db/client';
+import { supabase, getAuthClient } from '@/lib/db/client';
 import type { Database } from '@/lib/types/database';
 import { cache } from 'react'; // Next.js cache function
 
@@ -124,8 +124,19 @@ export class ReviewsRepository {
       };
     }
 
-    const totalReviews = data.length;
-    const ratings = data.map(r => r.rating || 0);
+    // Filter out null ratings and only consider ratings >= 1
+    const validRatings = data.filter(r => r.rating !== null && r.rating >= 1);
+    
+    if (validRatings.length === 0) {
+      return {
+        total_reviews: 0,
+        average_rating: 0,
+        rating_distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+      };
+    }
+
+    const totalReviews = validRatings.length;
+    const ratings = validRatings.map(r => r.rating || 0);
     const averageRating = ratings.reduce((sum, rating) => sum + rating, 0) / totalReviews;
 
     const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
@@ -167,4 +178,27 @@ export class ReviewsRepository {
     const { data } = await this.fetchReviews({}, limit, 0, 'minimal');
     return data;
   });
+
+  // Add a method to create a new review
+  async create(newReview: NewReview): Promise<ReviewWithProfiles> {
+    // Use the auth-aware client for operations that require user context
+    const authClient = getAuthClient();
+    
+    const { data, error } = await authClient
+      .from('reviews')
+      .insert(newReview)
+      .select(`
+        *,
+        reviewer:profiles!reviewer_id(*),
+        seller:profiles!seller_id(*),
+        listing:listings(*)
+      `)
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to create review: ${error.message}`);
+    }
+
+    return data as ReviewWithProfiles;
+  }
 }

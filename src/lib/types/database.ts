@@ -495,7 +495,7 @@ export type Database = {
           reviewer_id: string
           seller_id: string
           listing_id: string | null
-          rating: number
+          rating: number | null
           comment: string | null
           created_at: string | null
           title: string | null
@@ -508,7 +508,7 @@ export type Database = {
           reviewer_id: string
           seller_id: string
           listing_id?: string | null
-          rating: number
+          rating?: number | null
           comment?: string | null
           created_at?: string | null
           title?: string | null
@@ -521,7 +521,7 @@ export type Database = {
           reviewer_id?: string
           seller_id?: string
           listing_id?: string | null
-          rating?: number
+          rating?: number | null
           comment?: string | null
           created_at?: string | null
           title?: string | null

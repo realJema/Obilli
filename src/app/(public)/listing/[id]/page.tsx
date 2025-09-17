@@ -24,6 +24,7 @@ import Link from "next/link";
 import { DefaultImage } from "@/components/default-image";
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
+import { ListingReviews } from "@/components/listing-reviews";
 
 // More granular suspense boundaries for better loading experience
 function GranularSuspenseWrapper({ children, fallback }: { children: React.ReactNode; fallback: React.ReactNode }) {
@@ -150,7 +151,7 @@ export default async function ListingDetailsPage({ params }: { params: Promise<{
               {/* Reviews Section - client component with pre-fetched data */}
               <div className="mt-12">
                 <GranularSuspenseWrapper fallback={<ReviewsSkeleton />}>
-                  <ClientReviewsSection 
+                  <ListingReviews 
                     listingId={listing.id} 
                     sellerId={listing.owner_id} 
                     initialReviews={reviews}
