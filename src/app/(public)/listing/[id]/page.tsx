@@ -308,24 +308,28 @@ function ShareButton({ listing }: { listing: ListingWithDetails }) {
 function ContactCard({ listing, seller }: { listing: ListingWithDetails; seller: SellerProfile | null }) {
   const { formatCurrency, formatRelativeTime, t } = useI18n();
 
-  // Helper function to format location hierarchy
+  // Build location display from hierarchical data
   const getLocationDisplay = () => {
     if (!listing.location) return t('listing.notSpecified');
     
     const parts = [];
-    parts.push(listing.location.location_en); // Quarter
     
+    // Add quarter (current location)
+    parts.push(listing.location.location_en);
+    
+    // Add city if exists
     if (listing.location.city) {
-      parts.push(listing.location.city.location_en); // City
+      parts.push(listing.location.city.location_en);
       
+      // Add region if exists
       if (listing.location.city.region) {
-        parts.push(listing.location.city.region.location_en); // Region
+        parts.push(listing.location.city.region.location_en);
       }
     }
     
     return parts.join(', ');
   };
-
+  
   const handleWhatsAppClick = () => {
     const message = `Hi! I'm interested in your listing: ${listing.title}`;
     const phone = seller?.whatsapp_number || seller?.phone;

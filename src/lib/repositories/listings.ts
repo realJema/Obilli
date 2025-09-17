@@ -110,19 +110,7 @@ export class ListingsRepository {
           id,
           location_en,
           location_fr,
-          parent_id,
-          city:parent_id(
-            id,
-            location_en,
-            location_fr,
-            parent_id,
-            region:parent_id(
-              id,
-              location_en,
-              location_fr,
-              parent_id
-            )
-          )
+          parent_id
         )
       `, { count: 'exact' })
       .eq('status', 'published');
@@ -217,19 +205,7 @@ export class ListingsRepository {
           id,
           location_en,
           location_fr,
-          parent_id,
-          city:parent_id(
-            id,
-            location_en,
-            location_fr,
-            parent_id,
-            region:parent_id(
-              id,
-              location_en,
-              location_fr,
-              parent_id
-            )
-          )
+          parent_id
         )
       `)
       .eq('id', id)
@@ -240,6 +216,18 @@ export class ListingsRepository {
         return null; // Not found
       }
       throw new Error(`Failed to fetch listing: ${error.message}`);
+    }
+
+    // If we have a location, fetch the full hierarchy
+    if (data && data.location_id) {
+      try {
+        const locationHierarchy = await this.getLocationHierarchy(data.location_id);
+        if (locationHierarchy) {
+          (data as ListingWithDetails).location = locationHierarchy;
+        }
+      } catch (locationError) {
+        console.warn('Failed to fetch location hierarchy:', locationError);
+      }
     }
 
     return data as ListingWithDetails;
@@ -258,19 +246,7 @@ export class ListingsRepository {
           id,
           location_en,
           location_fr,
-          parent_id,
-          city:parent_id(
-            id,
-            location_en,
-            location_fr,
-            parent_id,
-            region:parent_id(
-              id,
-              location_en,
-              location_fr,
-              parent_id
-            )
-          )
+          parent_id
         ),
         boosts!inner(
           tier,
@@ -319,19 +295,7 @@ export class ListingsRepository {
           id,
           location_en,
           location_fr,
-          parent_id,
-          city:parent_id(
-            id,
-            location_en,
-            location_fr,
-            parent_id,
-            region:parent_id(
-              id,
-              location_en,
-              location_fr,
-              parent_id
-            )
-          )
+          parent_id
         )
       `)
       .eq('status', 'published')
@@ -477,7 +441,7 @@ export class ListingsRepository {
     categories: HomepageCategory[];
   }> {
     try {
-      // Get featured listings (boosted listings) with essential data
+      // Get featured listings (boosted listings) with essential data - limit to 10
       const { data: featuredListingsData, error: featuredError } = await supabase
         .from('listings')
         .select(`
@@ -488,7 +452,8 @@ export class ListingsRepository {
           location:locations!location_id(
             id,
             location_en,
-            location_fr
+            location_fr,
+            parent_id
           )
         `)
         .eq('status', 'published')
@@ -497,7 +462,7 @@ export class ListingsRepository {
 
       if (featuredError) throw featuredError;
 
-      // Get recently added listings
+      // Get recently added listings - limit to 10
       const { data: recentListingsData, error: recentError } = await supabase
         .from('listings')
         .select(`
@@ -508,7 +473,8 @@ export class ListingsRepository {
           location:locations!location_id(
             id,
             location_en,
-            location_fr
+            location_fr,
+            parent_id
           )
         `)
         .eq('status', 'published')
@@ -517,13 +483,13 @@ export class ListingsRepository {
 
       if (recentError) throw recentError;
 
-      // Get trending listings (simplified - just recent listings for now)
+      // Get trending listings (simplified - just recent listings for now) - limit to 10
       const trendingListingsData = [...(recentListingsData || [])].sort(() => Math.random() - 0.5).slice(0, 10);
 
-      // Get hero listings (top 5 most recent)
+      // Get hero listings (top 5 most recent) - limit to 5
       const heroListingsData = (recentListingsData || []).slice(0, 5);
 
-      // Get top categories with their listings
+      // Get top categories with their listings - limit to 8 categories
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
         .select(`
@@ -534,7 +500,7 @@ export class ListingsRepository {
 
       if (categoriesError) throw categoriesError;
 
-      // Get listings for each category (including subcategories)
+      // Get listings for each category (including subcategories) - limit to 10 per category
       const categoryListings: { [key: number]: HomepageListing[] } = {};
       if (categoriesData) {
         for (const category of categoriesData) {
@@ -551,13 +517,14 @@ export class ListingsRepository {
               location:locations!location_id(
                 id,
                 location_en,
-                location_fr
+                location_fr,
+                parent_id
               )
             `)
             .eq('status', 'published')
             .in('category_id', categoryIds)
             .order('created_at', { ascending: false })
-            .limit(10);
+            .limit(10); // Limit to 10 listings per category
 
           if (!error && listings) {
             categoryListings[category.id] = listings;
@@ -590,6 +557,183 @@ export class ListingsRepository {
     }
   }
 
+  // Get hero listings (top 5 most recent) - for server-side fetching
+  async getHeroListings(limit: number): Promise<HomepageListing[]> {
+    try {
+      const { data, error } = await supabase
+        .from('listings')
+        .select(`
+          id, title, price_xaf, description, created_at,
+          category:categories(id, name_en, name_fr),
+          owner:profiles(id, username),
+          media:listing_media(url),
+          location:locations!location_id(
+            id,
+            location_en,
+            location_fr,
+            parent_id
+          )
+        `)
+        .eq('status', 'published')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching hero listings:', error);
+      return [];
+    }
+  }
+
+  // Get featured listings (boosted listings) - for server-side fetching
+  async getFeaturedListings(limit: number): Promise<HomepageListing[]> {
+    try {
+      const { data, error } = await supabase
+        .from('listings')
+        .select(`
+          id, title, price_xaf, description, created_at,
+          category:categories(id, name_en, name_fr),
+          owner:profiles(id, username),
+          media:listing_media(url),
+          location:locations!location_id(
+            id,
+            location_en,
+            location_fr,
+            parent_id
+          )
+        `)
+        .eq('status', 'published')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching featured listings:', error);
+      return [];
+    }
+  }
+
+  // Get trending listings - for client-side fetching
+  async getTrendingListings(limit: number): Promise<HomepageListing[]> {
+    try {
+      // For database-level random ordering, we'll use a different approach
+      // First, get the total count of published listings
+      const { count, error: countError } = await supabase
+        .from('listings')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'published');
+
+      if (countError) throw countError;
+      
+      if (!count || count === 0) return [];
+      
+      // Generate random offsets to select random listings
+      const randomOffsets = Array.from({ length: Math.min(limit, count) }, () => 
+        Math.floor(Math.random() * count)
+      );
+      
+      // Remove duplicates
+      const uniqueOffsets = [...new Set(randomOffsets)];
+      
+      // Fetch listings at random offsets
+      const listingPromises = uniqueOffsets.map(async (offset) => {
+        const { data, error } = await supabase
+          .from('listings')
+          .select(`
+            id, title, price_xaf, description, created_at,
+            category:categories(id, name_en, name_fr),
+            owner:profiles(id, username),
+            media:listing_media(url),
+            location:locations!location_id(
+              id,
+              location_en,
+              location_fr,
+              parent_id
+            )
+          `)
+          .eq('status', 'published')
+          .range(offset, offset);
+          
+        if (error) throw error;
+        return data?.[0] || null;
+      });
+      
+      const results = await Promise.all(listingPromises);
+      
+      // Filter out null results and limit to requested count
+      const filteredResults = results.filter((listing) => listing !== null);
+      return filteredResults.slice(0, limit) as HomepageListing[];
+    } catch (error) {
+      console.error('Error fetching trending listings:', error);
+      return [];
+    }
+  }
+
+  // Get homepage categories with listings - for client-side fetching
+  async getHomepageCategories(limit: number): Promise<HomepageCategory[]> {
+    try {
+      // Get top categories
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select(`
+          id, name_en, name_fr, slug
+        `)
+        .is('parent_id', null)
+        .limit(limit);
+
+      if (categoriesError) throw categoriesError;
+
+      // Get listings for each category (including subcategories)
+      const categoryListings: { [key: number]: HomepageListing[] } = {};
+      if (categoriesData) {
+        // Process all categories in parallel for better performance
+        const categoryPromises = categoriesData.map(async (category) => {
+          // Get all descendant category IDs (including the category itself)
+          const categoryIds = await categoriesRepo.getAllDescendantIds(category.id);
+          
+          const { data: listings, error } = await supabase
+            .from('listings')
+            .select(`
+              id, title, price_xaf, description, created_at,
+              category:categories(id, name_en, name_fr),
+              owner:profiles(id, username),
+              media:listing_media(url),
+              location:locations!location_id(
+                id,
+                location_en,
+                location_fr,
+                parent_id
+              )
+            `)
+            .eq('status', 'published')
+            .in('category_id', categoryIds)
+            .order('created_at', { ascending: false })
+            .limit(10); // Limit to 10 listings per category
+
+          if (!error && listings) {
+            categoryListings[category.id] = listings;
+          }
+        });
+
+        // Wait for all category listing fetches to complete
+        await Promise.all(categoryPromises);
+      }
+
+      // Add listings to each category
+      const categoriesWithListings = (categoriesData || []).map(category => ({
+        ...category,
+        listings: categoryListings[category.id] || []
+      }));
+
+      return categoriesWithListings as HomepageCategory[];
+    } catch (error) {
+      console.error('Error fetching homepage categories:', error);
+      return [];
+    }
+  }
+
   async search(query: string, filters: ListingFilters = {}, limit = 20): Promise<ListingWithDetails[]> {
     const { data } = await this.getAll(
       { ...filters, search: query },
@@ -599,6 +743,117 @@ export class ListingsRepository {
     );
 
     return data;
+  }
+
+  // Helper function to build location hierarchy
+  private async getLocationHierarchy(locationId: number): Promise<{
+    id: number;
+    location_en: string;
+    location_fr: string;
+    parent_id: number | null;
+    city?: {
+      id: number;
+      location_en: string;
+      location_fr: string;
+      parent_id: number | null;
+      region?: {
+        id: number;
+        location_en: string;
+        location_fr: string;
+        parent_id: number | null;
+      };
+    };
+  } | null> {
+    const { data: location, error: locationError } = await supabase
+      .from('locations')
+      .select(`
+        id,
+        location_en,
+        location_fr,
+        parent_id
+      `)
+      .eq('id', locationId)
+      .single();
+
+    if (locationError) {
+      throw locationError;
+    }
+
+    if (!location) {
+      return null;
+    }
+
+    const hierarchy: {
+      id: number;
+      location_en: string;
+      location_fr: string;
+      parent_id: number | null;
+      city?: {
+        id: number;
+        location_en: string;
+        location_fr: string;
+        parent_id: number | null;
+        region?: {
+          id: number;
+          location_en: string;
+          location_fr: string;
+          parent_id: number | null;
+        };
+      };
+    } = {
+      id: location.id,
+      location_en: location.location_en,
+      location_fr: location.location_fr,
+      parent_id: location.parent_id
+    };
+
+    // If it has a parent, get the city
+    if (location.parent_id) {
+      const { data: city, error: cityError } = await supabase
+        .from('locations')
+        .select(`
+          id,
+          location_en,
+          location_fr,
+          parent_id
+        `)
+        .eq('id', location.parent_id)
+        .single();
+
+      if (!cityError && city) {
+        hierarchy.city = {
+          id: city.id,
+          location_en: city.location_en,
+          location_fr: city.location_fr,
+          parent_id: city.parent_id
+        };
+
+        // If city has a parent, get the region
+        if (city.parent_id) {
+          const { data: region, error: regionError } = await supabase
+            .from('locations')
+            .select(`
+              id,
+              location_en,
+              location_fr,
+              parent_id
+            `)
+            .eq('id', city.parent_id)
+            .single();
+
+          if (!regionError && region) {
+            hierarchy.city.region = {
+              id: region.id,
+              location_en: region.location_en,
+              location_fr: region.location_fr,
+              parent_id: region.parent_id
+            };
+          }
+        }
+      }
+    }
+
+    return hierarchy;
   }
 }
 
