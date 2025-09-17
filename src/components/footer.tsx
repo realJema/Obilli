@@ -33,7 +33,7 @@ export function Footer() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Categories Section */}
         <div className="mb-12">
-          <h3 className="text-xl font-semibold mb-6">{t("footer.browseCategories")}</h3>
+          <h3 className="text-xl sm:text-xl font-semibold mb-6">{t("footer.browseCategories")}</h3>
           
           {isLoading ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
@@ -96,7 +96,7 @@ export function Footer() {
         {/* Bottom Section */}
         <div className="border-t border-border pt-8">
           {/* Copyright */}
-          <div className="text-center text-base text-muted-foreground">
+          <div className="text-center text-base sm:text-lg text-muted-foreground">
             <p>&copy; {currentYear} {t("app.title")} {t("footer.copyright")}</p>
             <p className="mt-2">{t("footer.madeWithLove")}</p>
           </div>

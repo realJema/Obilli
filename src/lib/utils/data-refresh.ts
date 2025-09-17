@@ -8,10 +8,10 @@ interface CachedData<T> {
 }
 
 // Cache storage for background refresh
-const backgroundCache = new Map<string, CachedData<any>>();
+const backgroundCache = new Map<string, CachedData<unknown>>();
 
 // Function to create a background refresh wrapper for functions with parameters
-export function withBackgroundRefresh<T, P extends any[]>(
+export function withBackgroundRefresh<T, P extends unknown[]>(
   key: string,
   fetchFn: (...params: P) => Promise<T>,
   staleTime: number = 5 * 60 * 1000 // 5 minutes default
@@ -24,7 +24,7 @@ export function withBackgroundRefresh<T, P extends any[]>(
     
     // If we have cached data and it's not stale, return it immediately
     if (cached && (now - cached.timestamp) < staleTime) {
-      return cached.data;
+      return cached.data as T;
     }
     
     // If we have stale data, return it immediately and refresh in background
@@ -40,7 +40,7 @@ export function withBackgroundRefresh<T, P extends any[]>(
         console.warn(`Background refresh failed for ${cacheKey}:`, error);
       });
       
-      return cached.data;
+      return cached.data as T;
     }
     
     // If no cached data, fetch and return

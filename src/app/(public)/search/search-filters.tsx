@@ -6,7 +6,6 @@ import {
 } from "lucide-react";
 import type { CategoryWithChildren } from "@/lib/repositories/categories";
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
 
 export function SearchFilters({ 
   categories,

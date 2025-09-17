@@ -94,7 +94,8 @@
     "purchase": "Purchase Boost",
     "manage": "Manage boost",
     "active": "Boost Active",
-    "listing": "Boost Listing"
+    "listing": "Boost Listing",
+    "pausedListing": "Cannot boost paused listings. Please publish your listing first."
   },
   "messages": {
     "inbox": "Inbox",

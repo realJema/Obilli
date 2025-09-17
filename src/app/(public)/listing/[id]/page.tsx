@@ -2,6 +2,7 @@ import { MainLayout } from "@/components/main-layout";
 import { listingsRepo, categoriesRepo, reviewsRepo } from "@/lib/repositories";
 import type { ListingWithDetails } from "@/lib/repositories/listings";
 import type { ReviewWithProfiles } from "@/lib/repositories/reviews";
+import type { Database } from "@/lib/types/database";
 import { 
   MapPin, 
   Clock, 
@@ -12,21 +13,15 @@ import {
   Eye, 
   Package, 
   Shield, 
-  X, 
   MessageSquare, 
   ThumbsUp, 
   Calendar, 
   User, 
-  Tag, 
-  Facebook, 
-  Twitter, 
-  Copy,
-  ChevronLeft,
+  Tag,
   ChevronRight
 } from "lucide-react";
 import Link from "next/link";
 import { DefaultImage } from "@/components/default-image";
-import { cache } from 'react';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 
@@ -40,8 +35,8 @@ function GranularSuspenseWrapper({ children, fallback }: { children: React.React
 }
 
 // Server component for the listing detail page with background refresh
-export default async function ListingDetailsPage({ params }: { params: { id: string } }) {
-  const listingId = params.id;
+export default async function ListingDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: listingId } = await params;
   
   // Fetch listing details server-side with background refresh
   const listing = await listingsRepo.getById(listingId);
@@ -208,7 +203,7 @@ function ListingSkeleton() {
               </div>
               <div className="h-8 bg-muted rounded w-3/4 mb-6"></div>
               <div className="aspect-[4/3] bg-muted rounded-lg mb-6"></div>
-              <div className="space-y-3">
+              <div className="space-y-33">
                 <div className="h-6 bg-muted rounded w-1/4"></div>
                 <div className="h-4 bg-muted rounded w-1/2"></div>
                 <div className="h-20 bg-muted rounded"></div>
@@ -395,7 +390,7 @@ function ImageGallery({ images, title }: { images: string[]; title: string }) {
 }
 
 // Client components for interactive elements
-function ClientContactCard({ listing, seller }: { listing: ListingWithDetails; seller: any }) {
+function ClientContactCard({ listing, seller }: { listing: ListingWithDetails; seller: Database['public']['Tables']['profiles']['Row'] | null | undefined }) {
   // This will be a client component that handles the contact card interactions
   return (
     <div className="bg-card border border-border rounded-lg p-6 sticky top-6">

@@ -46,7 +46,7 @@ export class CategoriesRepository {
       const cat: CategoryWithChildren = {
         ...category,
         children: [],
-        parent: (category as any).parent || undefined
+        parent: category.parent || undefined
       };
       categoryMap.set(category.id, cat);
     });
@@ -178,7 +178,7 @@ export class CategoriesRepository {
       const cat: CategoryWithChildren = {
         ...category,
         children: [],
-        parent: (category as any).parent || undefined
+        parent: category.parent || undefined
       };
       categoryMap.set(category.id, cat);
     });
@@ -228,7 +228,7 @@ export class CategoriesRepository {
       const cat: CategoryWithChildren = {
         ...category,
         children: [],
-        parent: (category as any).parent || undefined
+        parent: category.parent || undefined
       };
       categoryMap.set(category.id, cat);
     });

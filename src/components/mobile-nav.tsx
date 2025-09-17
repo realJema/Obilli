@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Plus, MessageCircle, User } from "lucide-react";
+import { Home, Search, Plus, LayoutDashboard, Settings } from "lucide-react";
 import { useI18n } from "@/lib/providers";
 import { cn } from "@/lib/utils";
 
@@ -30,16 +30,16 @@ export function MobileNav({ className = "" }: { className?: string }) {
       isActive: pathname?.startsWith("/sell") || false,
     },
     {
-      href: "/inbox",
-      icon: MessageCircle,
-      label: t("nav.messages"),
-      isActive: pathname?.startsWith("/inbox") || false,
+      href: "/dashboard",
+      icon: LayoutDashboard,
+      label: t("nav.dashboard"),
+      isActive: pathname?.startsWith("/dashboard") || false,
     },
     {
-      href: "/profile",
-      icon: User,
-      label: t("nav.profile"),
-      isActive: pathname?.startsWith("/profile") || false,
+      href: "/profile/settings",
+      icon: Settings,
+      label: t("nav.settings"),
+      isActive: pathname?.startsWith("/profile/settings") || false,
     },
   ];
 
