@@ -8,8 +8,8 @@ import {
   Star,
   Filter
 } from "lucide-react";
-import type { ListingWithDetails, ListingFilters } from "@/lib/repositories/listings";
 import { hasActiveBoost, getActiveBoostTier } from "@/lib/repositories/listings";
+import type { ListingWithDetails } from "@/lib/repositories/listings";
 import type { CategoryWithChildren } from "@/lib/repositories/categories";
 import Link from "next/link";
 import { DefaultImage } from "@/components/default-image";
@@ -50,6 +50,7 @@ export function SearchPageContent({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showFilters, setShowFilters] = useState(true);
+  const [filtersLoading, setFiltersLoading] = useState(false);
 
   // Handle filter changes
   const handleFilterChange = (name: string, value: string) => {
@@ -64,8 +65,19 @@ export function SearchPageContent({
     // Reset to first page when filters change
     params.delete('page');
     
-    // Navigate with new query params
-    router.push(`/search?${params.toString()}`, { scroll: false });
+    // Set loading state
+    setFiltersLoading(true);
+    
+    // Simulate network delay for demonstration purposes
+    setTimeout(() => {
+      // Navigate with new query params
+      router.push(`/search?${params.toString()}`, { scroll: false });
+      
+      // Reset loading state after navigation
+      setTimeout(() => {
+        setFiltersLoading(false);
+      }, 300);
+    }, 500);
   };
 
   // Toggle filter visibility
@@ -142,13 +154,12 @@ export function SearchPageContent({
           {showFilters && (
             <div className="block w-full lg:w-80 flex-shrink-0">
               <SearchFilters 
-                categories={categories}
-                categoryId={categoryId}
                 minPrice={minPrice}
                 maxPrice={maxPrice}
                 condition={condition}
                 locationId={locationId}
                 sortBy={sortBy}
+                loading={filtersLoading}
               />
             </div>
           )}

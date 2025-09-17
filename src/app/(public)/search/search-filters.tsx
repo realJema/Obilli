@@ -4,25 +4,23 @@ import {
   Filter, 
   DollarSign
 } from "lucide-react";
-import type { CategoryWithChildren } from "@/lib/repositories/categories";
 import { useRouter, useSearchParams } from 'next/navigation';
+import { SkeletonLoader } from "@/components/skeleton-loader";
 
 export function SearchFilters({ 
-  categories,
-  categoryId,
   minPrice,
   maxPrice,
   condition,
   locationId,
-  sortBy
+  sortBy,
+  loading = false
 }: {
-  categories: CategoryWithChildren[];
-  categoryId: number | undefined;
   minPrice: number | undefined;
   maxPrice: number | undefined;
   condition: string | undefined;
   locationId: number | undefined;
   sortBy: string;
+  loading?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -43,6 +41,48 @@ export function SearchFilters({
     // Navigate with new query params
     router.push(`/search?${params.toString()}`, { scroll: false });
   };
+
+  if (loading) {
+    return (
+      <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+        <div className="flex items-center">
+          <SkeletonLoader className="h-5 w-5 mr-2" />
+          <SkeletonLoader className="h-5 w-20" />
+        </div>
+        
+        {/* Price Range Skeleton */}
+        <div>
+          <SkeletonLoader className="h-4 w-24 mb-2" />
+          <div className="grid grid-cols-2 gap-2">
+            <div className="relative">
+              <SkeletonLoader className="h-10 w-full" />
+            </div>
+            <div className="relative">
+              <SkeletonLoader className="h-10 w-full" />
+            </div>
+          </div>
+        </div>
+        
+        {/* Condition Skeleton */}
+        <div>
+          <SkeletonLoader className="h-4 w-20 mb-2" />
+          <SkeletonLoader className="h-10 w-full" />
+        </div>
+        
+        {/* Location Skeleton */}
+        <div>
+          <SkeletonLoader className="h-4 w-20 mb-2" />
+          <SkeletonLoader className="h-10 w-full" />
+        </div>
+        
+        {/* Sort By Skeleton */}
+        <div>
+          <SkeletonLoader className="h-4 w-16 mb-2" />
+          <SkeletonLoader className="h-10 w-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-card border border-border rounded-lg p-6 space-y-6">
