@@ -60,6 +60,8 @@
     "report": "Report Listing",
     "share": "Share",
     "save": "Save Listing",
+    "contactWhatsApp": "Contact on WhatsApp",
+    "callDirectly": "Call Directly",
     "negotiable": "Negotiable",
     "views": "views",
     "posted": "Posted",
@@ -201,7 +203,10 @@
     "alreadyReviewed": "You have already reviewed this seller for this listing.",
     "failedSubmit": "Failed to submit review",
     "unknownDate": "Unknown date",
-    "similarListings": "Similar Listings"
+    "similarListings": "Similar Listings",
+    "loginRequired": "You must be logged in to submit a review.",
+    "submitSuccess": "Review submitted successfully!",
+    "noReviewsYet": "No reviews yet. Be the first to review this listing!"
   },
   "sell": {
     "createNewListing": "Create New Listing",
@@ -328,6 +333,7 @@
     "authenticationRequired": "Authentication Required",
     "signInCreate": "You need to be signed in to create a listing.",
     "signIn": "Sign In",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "shareToWhatsApp": "Share to WhatsApp"
   }
 }

@@ -60,6 +60,8 @@
     "report": "Signaler l'Annonce",
     "share": "Partager",
     "save": "Sauvegarder l'Annonce",
+    "contactWhatsApp": "Contacter sur WhatsApp",
+    "callDirectly": "Appeler Directement",
     "negotiable": "Négociable",
     "views": "vues",
     "posted": "Publié",
@@ -200,7 +202,10 @@
     "alreadyReviewed": "Vous avez déjà évalué ce vendeur pour cette annonce.",
     "failedSubmit": "Échec de la soumission de l'avis",
     "unknownDate": "Date inconnue",
-    "similarListings": "Annonces similaires"
+    "similarListings": "Annonces similaires",
+    "loginRequired": "Vous devez être connecté pour soumettre un avis.",
+    "submitSuccess": "Avis soumis avec succès !",
+    "noReviewsYet": "Aucun avis pour le moment. Soyez le premier à évaluer cette annonce !"
   },
   "sell": {
     "createNewListing": "Créer une Nouvelle Annonce",
@@ -327,6 +332,7 @@
     "authenticationRequired": "Authentification Requise",
     "signInCreate": "Vous devez être connecté pour créer une annonce.",
     "signIn": "Se Connecter",
-    "loading": "Chargement..."
+    "loading": "Chargement...",
+    "shareToWhatsApp": "Partager sur WhatsApp"
   }
 }

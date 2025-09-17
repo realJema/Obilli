@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { TrendingListingsClient } from "./trending-section";
 import { CategoriesClient } from "./categories-section";
 import { listingsRepo } from "@/lib/repositories";
+import { HeroCarousel } from "@/components/hero-carousel";
 
 // Define a simplified type for homepage listings
 interface HomepageListing {
@@ -135,7 +136,7 @@ export default async function HomePage() {
     <MainLayout>
       {/* Hero Carousel - server-side data */}
       <GranularSuspenseWrapper fallback={<HeroCarouselSkeleton />}>
-        <HeroCarouselServer listings={heroListings} />
+        <HeroCarousel listings={heroListings} />
       </GranularSuspenseWrapper>
       
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -154,104 +155,6 @@ export default async function HomePage() {
         </GranularSuspenseWrapper>
       </div>
     </MainLayout>
-  );
-}
-
-// Server-side component for hero carousel
-function HeroCarouselServer({ listings }: { listings: HomepageListing[] }) {
-  // For server-side rendering, we'll show the first listing
-  if (listings.length > 0) {
-    const firstListing = listings[0];
-    const imageUrl = firstListing.media && firstListing.media.length > 0 
-      ? firstListing.media[0].url 
-      : 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?q=80&w=1200&h=400&auto=format&fit=crop';
-      
-    const locationDisplay = firstListing.location 
-      ? (firstListing.location.location_fr || firstListing.location.location_en)
-      : null;
-      
-    const priceDisplay = firstListing.price_xaf && firstListing.price_xaf > 0 
-      ? `FCFA ${firstListing.price_xaf.toLocaleString()}`
-      : "Negotiable";
-
-    return (
-      <section className="py-8">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative h-[400px] overflow-hidden rounded-2xl">
-            <div className="absolute inset-0">
-              <DefaultImage
-                src={imageUrl}
-                alt={firstListing.title}
-                fill
-                className="object-cover"
-                priority
-              />
-              {/* Gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
-            </div>
-
-            <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
-              <div className="grid md:grid-cols-3 gap-6 items-end">
-                <div className="md:col-span-2">
-                  <span className="inline-block bg-primary px-3 py-1 rounded-full text-xs font-medium text-primary-foreground mb-3">
-                    Featured Listing
-                  </span>
-                  
-                  <h2 className="text-2xl md:text-3xl font-bold mb-2 text-white">
-                    {firstListing.title}
-                  </h2>
-                  
-                  {firstListing.description && (
-                    <p className="text-white/80 mb-4 line-clamp-2 md:line-clamp-3">
-                      {firstListing.description}
-                    </p>
-                  )}
-                  
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-white/70">
-                    {locationDisplay && (
-                      <div className="flex items-center">
-                        <MapPin className="h-4 w-4 mr-1 text-primary" />
-                        <span>{locationDisplay}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex flex-col items-start md:items-end gap-4">
-                  <div className="text-2xl md:text-3xl font-bold text-white">
-                    {priceDisplay}
-                  </div>
-                  
-                  <Link
-                    href={`/listing/${firstListing.id}`}
-                    className="inline-flex items-center bg-primary/90 text-primary-foreground px-4 py-2 text-sm rounded-md font-medium hover:bg-primary transition-colors"
-                  >
-                    View Details
-                    <ChevronRight className="ml-1 h-4 w-4" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    );
-  }
-  
-  // Fallback when no listings
-  return (
-    <section className="py-8">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative h-[400px] bg-gradient-to-r from-primary to-primary/80 rounded-2xl">
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center text-primary-foreground">
-              <h1 className="text-4xl font-bold mb-4">Welcome to Bonas Marketplace</h1>
-              <p className="text-xl opacity-90">Find great deals on products and services</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
   );
 }
 

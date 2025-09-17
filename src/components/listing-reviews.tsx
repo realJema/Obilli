@@ -11,6 +11,8 @@ import {
 import type { ReviewWithProfiles } from "@/lib/repositories/reviews";
 import { AddReviewModal } from "@/components/add-review-modal";
 import { reviewsRepo } from '@/lib/repositories';
+import { useI18n } from "@/lib/providers";
+import { useUser } from '@supabase/auth-helpers-react';
 
 interface ListingReviewsProps {
   listingId: string;
@@ -25,6 +27,17 @@ export function ListingReviews({
 }: ListingReviewsProps) {
   const [reviews, setReviews] = useState<ReviewWithProfiles[]>(initialReviews);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const { t } = useI18n();
+  const user = useUser();
+  
+  // Check if the current user has already reviewed this listing
+  const userHasReviewed = user ? reviews.some(review => review.reviewer_id === user.id) : false;
+  
+  // Check if the current user is the seller of the listing
+  const isSeller = user ? user.id === sellerId : false;
+  
+  // Check if the user can review (authenticated, not the seller, and hasn't reviewed yet)
+  const canReview = user && !isSeller && !userHasReviewed;
   
   const averageRating = reviews.length > 0 
     ? reviews.reduce((sum, review) => sum + (review.rating || 0), 0) / reviews.length 
@@ -45,7 +58,7 @@ export function ListingReviews({
       <div className="bg-card border border-border rounded-lg p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-xl font-semibold mb-2">Reviews</h3>
+            <h3 className="text-xl font-semibold mb-2">{t("reviews.title")}</h3>
             <div className="flex items-center space-x-4">
               <div className="flex items-center">
                 <div className="flex items-center mr-2">
@@ -59,17 +72,33 @@ export function ListingReviews({
                   ))}
                 </div>
                 <span className="font-medium">{averageRating.toFixed(1)}</span>
-                <span className="text-muted-foreground ml-1">({reviews.length} reviews)</span>
+                <span className="text-muted-foreground ml-1">({reviews.length} {t("reviews.reviews")})</span>
               </div>
             </div>
           </div>
           
-          <button
-            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => setShowReviewModal(true)}
-          >
-            Write Review
-          </button>
+          {canReview ? (
+            <button
+              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => setShowReviewModal(true)}
+            >
+              {t("reviews.writeReview")}
+            </button>
+          ) : (
+            <button
+              className="px-4 py-2 rounded-lg bg-muted text-muted-foreground cursor-not-allowed"
+              disabled
+              title={
+                !user 
+                  ? t("reviews.loginRequired") 
+                  : isSeller 
+                    ? t("reviews.cannotReviewOwn") 
+                    : t("reviews.alreadyReviewed")
+              }
+            >
+              {t("reviews.writeReview")}
+            </button>
+          )}
         </div>
 
         <div className="space-y-6">
@@ -95,7 +124,7 @@ export function ListingReviews({
                           ))}
                         </div>
                         <span className="text-sm text-muted-foreground">
-                          {review.created_at ? new Date(review.created_at).toLocaleDateString() : 'Unknown date'}
+                          {review.created_at ? new Date(review.created_at).toLocaleDateString() : t("reviews.unknownDate")}
                         </span>
                       </div>
                     </div>
@@ -126,7 +155,7 @@ export function ListingReviews({
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No reviews yet. Be the first to review this listing!</p>
+              <p>{t("reviews.noReviewsYet")}</p>
             </div>
           )}
         </div>

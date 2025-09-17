@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Star, X } from 'lucide-react';
 import { useUser } from '@supabase/auth-helpers-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useI18n } from "@/lib/providers";
 
 interface AddReviewModalProps {
   listingId: string;
@@ -21,6 +22,7 @@ export function AddReviewModal({ listingId, sellerId, onClose, onReviewAdded }: 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const { t } = useI18n();
   
   // Create a Supabase client that's aware of the auth context
   const supabase = createClientComponentClient();
@@ -32,7 +34,14 @@ export function AddReviewModal({ listingId, sellerId, onClose, onReviewAdded }: 
 
     // Check if user is authenticated
     if (!user || !user.id) {
-      setError('You must be logged in to submit a review.');
+      setError(t("reviews.loginRequired"));
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Double-check that the user is not the seller
+    if (user.id === sellerId) {
+      setError(t("reviews.cannotReviewOwn"));
       setIsSubmitting(false);
       return;
     }
@@ -58,7 +67,15 @@ export function AddReviewModal({ listingId, sellerId, onClose, onReviewAdded }: 
         .single();
 
       if (error) {
-        throw new Error(error.message);
+        // Handle specific error cases
+        if (error.message.includes('duplicate key value violates unique constraint')) {
+          setError(t("reviews.alreadyReviewed"));
+        } else if (error.message.includes('new row violates row-level security policy')) {
+          setError(t("reviews.cannotReviewOwn"));
+        } else {
+          throw new Error(error.message);
+        }
+        return;
       }
 
       setSuccess(true);
@@ -70,7 +87,7 @@ export function AddReviewModal({ listingId, sellerId, onClose, onReviewAdded }: 
       }, 1500);
     } catch (err) {
       console.error('Error submitting review:', err);
-      setError(err instanceof Error ? err.message : 'Failed to submit review. Please try again.');
+      setError(err instanceof Error ? err.message : t("reviews.failedSubmit"));
     } finally {
       setIsSubmitting(false);
     }
@@ -80,7 +97,7 @@ export function AddReviewModal({ listingId, sellerId, onClose, onReviewAdded }: 
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-card border border-border rounded-lg w-full max-w-md">
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <h3 className="text-lg font-semibold">Write a Review</h3>
+          <h3 className="text-lg font-semibold">{t("reviews.writeReview")}</h3>
           <button 
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground"
@@ -99,12 +116,12 @@ export function AddReviewModal({ listingId, sellerId, onClose, onReviewAdded }: 
           
           {success && (
             <div className="text-green-500 text-sm p-2 bg-green-50 rounded">
-              Review submitted successfully!
+              {t("reviews.submitSuccess")}
             </div>
           )}
           
           <div>
-            <label className="block text-sm font-medium mb-2">Rating (Optional)</label>
+            <label className="block text-sm font-medium mb-2">{t("reviews.rating")} ({t("common.optional")})</label>
             <div className="flex space-x-1">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -130,7 +147,7 @@ export function AddReviewModal({ listingId, sellerId, onClose, onReviewAdded }: 
           
           <div>
             <label htmlFor="title" className="block text-sm font-medium mb-2">
-              Title
+              {t("reviews.title")}
             </label>
             <input
               id="title"
@@ -138,7 +155,7 @@ export function AddReviewModal({ listingId, sellerId, onClose, onReviewAdded }: 
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-              placeholder="Summarize your experience"
+              placeholder={t("reviews.titlePlaceholder")}
               required
               disabled={isSubmitting}
             />
@@ -146,7 +163,7 @@ export function AddReviewModal({ listingId, sellerId, onClose, onReviewAdded }: 
           
           <div>
             <label htmlFor="comment" className="block text-sm font-medium mb-2">
-              Comment
+              {t("reviews.comment")}
             </label>
             <textarea
               id="comment"
@@ -154,7 +171,7 @@ export function AddReviewModal({ listingId, sellerId, onClose, onReviewAdded }: 
               onChange={(e) => setComment(e.target.value)}
               rows={4}
               className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-              placeholder="Share details about your experience"
+              placeholder={t("reviews.commentPlaceholder")}
               required
               disabled={isSubmitting}
             />
@@ -167,14 +184,14 @@ export function AddReviewModal({ listingId, sellerId, onClose, onReviewAdded }: 
               className="px-4 py-2 border border-border rounded-md hover:bg-muted"
               disabled={isSubmitting}
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50"
               disabled={isSubmitting || !user || !user.id}
             >
-              {isSubmitting ? 'Submitting...' : 'Submit Review'}
+              {isSubmitting ? t("reviews.submitting") : t("reviews.submit")}
             </button>
           </div>
         </form>
