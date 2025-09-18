@@ -3,21 +3,25 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Search, Menu, User, LogOut, Settings } from "lucide-react";
+import { Search, Menu, User, LogOut, Settings, Shield } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useI18n } from "@/lib/providers";
 import { useUser, useSupabaseClient } from "@supabase/auth-helpers-react";
 import { useState, useEffect, useRef } from "react";
 
-export function Header() {
+interface HeaderProps {
+  logoUrl?: string;
+}
+
+export function Header({ logoUrl = "/logo.png" }: HeaderProps) {
   const router = useRouter();
   const { t } = useI18n();
   const user = useUser();
   const supabase = useSupabaseClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [userProfile, setUserProfile] = useState<{ username?: string; full_name?: string; avatar_url?: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ username?: string; full_name?: string; avatar_url?: string; role?: string } | null>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Load user profile when user changes
@@ -26,7 +30,7 @@ export function Header() {
       if (user) {
         const { data } = await supabase
           .from('profiles')
-          .select('username, full_name, avatar_url')
+          .select('username, full_name, avatar_url, role')
           .eq('id', user.id)
           .single();
         
@@ -73,7 +77,7 @@ export function Header() {
             <Link href="/" className="flex items-center space-x-2" prefetch={true}>
               <div className="h-8 w-8 rounded-md flex items-center justify-center">
                 <Image 
-                  src="/logo.png" 
+                  src={logoUrl} 
                   alt="Obilli Logo" 
                   width={32} 
                   height={32} 
@@ -167,6 +171,19 @@ export function Header() {
                             <User className="h-4 w-4 mr-3" />
                             {t("nav.dashboard")}
                           </Link>
+                          
+                          {/* Admin link - only show for admin users */}
+                          {userProfile.role === 'admin' && (
+                            <Link
+                              href="/admin"
+                              className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                              onClick={() => setShowUserMenu(false)}
+                              prefetch={true}
+                            >
+                              <Shield className="h-4 w-4 mr-3" />
+                              {t("nav.admin")}
+                            </Link>
+                          )}
                           
                           <Link
                             href="/profile/settings"
