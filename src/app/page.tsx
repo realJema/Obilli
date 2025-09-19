@@ -7,6 +7,7 @@ import { TrendingListingsClient } from "./trending-section";
 import { CategoriesClient } from "./categories-section";
 import { listingsRepo } from "@/lib/repositories";
 import { HeroCarousel } from "@/components/hero-carousel";
+import { AdBanner } from "@/components/ad-banner";
 
 // Define a simplified type for homepage listings
 interface HomepageListing {
@@ -145,14 +146,23 @@ export default async function HomePage() {
           <FeaturedListingsServer listings={featuredListings} />
         </GranularSuspenseWrapper>
         
+        {/* Ad Banner after featured listings - rectangular ads */}
+        <AdBanner placement="rectangular-top" />
+        
         {/* Client-side sections for non-critical data */}
         <GranularSuspenseWrapper fallback={<HorizontalSectionSkeleton title="Trending Now" />}>
           <TrendingListingsClient />
         </GranularSuspenseWrapper>
         
+        {/* Ad Banner between trending and categories - rectangular ads */}
+        <AdBanner placement="rectangular-middle" />
+        
         <GranularSuspenseWrapper fallback={<CategoriesSkeleton />}>
           <CategoriesClient categoryIds={categoryIds} categoryData={categoryData} />
         </GranularSuspenseWrapper>
+        
+        {/* Ad Banner above footer - rectangular ads */}
+        <AdBanner placement="rectangular-bottom" />
       </div>
     </MainLayout>
   );
@@ -176,7 +186,7 @@ function FeaturedListingsServer({ listings }: { listings: HomepageListing[] }) {
         </Link>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {listings.map((listing) => (
           <div key={listing.id} className="h-full">
             <ServerListingCard listing={listing} />
@@ -211,6 +221,64 @@ function ServerListingCard({ listing }: { listing: HomepageListing }) {
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
+        </div>
+        
+        <div className="p-3 flex-1 flex flex-col">
+          <h3 className="font-medium text-foreground mb-1 line-clamp-2 group-hover:text-primary transition-colors min-h-[2rem] text-sm">
+            {listing.title}
+          </h3>
+          
+          {listing.description && (
+            <p className="text-xs text-muted-foreground mb-2 line-clamp-1">
+              {listing.description}
+            </p>
+          )}
+          
+          <div className="text-lg font-bold text-primary mb-2">
+            {priceDisplay}
+          </div>
+          
+          <div className="mt-auto space-y-1">
+            {locationDisplay && (
+              <div className="flex items-center text-xs text-muted-foreground">
+                <MapPin className="h-3 w-3 mr-1" />
+                {locationDisplay}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// Boosted ad card component for rectangular ads
+function BoostedAdCard({ listing }: { listing: HomepageListing }) {
+  const imageUrl = listing.media && listing.media.length > 0 
+    ? listing.media[0].url 
+    : 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?q=80&w=400&h=300&auto=format&fit=crop';
+    
+  const locationDisplay = listing.location 
+    ? (listing.location.location_fr || listing.location.location_en)
+    : null;
+    
+  const priceDisplay = listing.price_xaf && listing.price_xaf > 0 
+    ? `FCFA ${listing.price_xaf.toLocaleString()}`
+    : "Negotiable";
+
+  return (
+    <Link href={`/listing/${listing.id}`} className="block group">
+      <div className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
+        <div className="relative aspect-[3/2]">
+          <DefaultImage
+            src={imageUrl}
+            alt={listing.title}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+          <div className="absolute top-2 right-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded">
+            AD
+          </div>
         </div>
         
         <div className="p-3 flex-1 flex flex-col">

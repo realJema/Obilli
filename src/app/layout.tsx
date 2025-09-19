@@ -70,7 +70,7 @@ export default async function RootLayout({
         <Providers>
           <div className="min-h-screen bg-background flex flex-col">
             <Header logoUrl={logoUrl} />
-            <CategoryNav />
+            <CategoryNav className="max-md:hidden" />
             <main className="flex-1 pb-16 md:pb-0 relative">
               {children}
             </main>

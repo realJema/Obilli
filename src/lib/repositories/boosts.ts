@@ -7,7 +7,7 @@ type UpdateBoost = Database['public']['Tables']['boosts']['Update'];
 // type BoostPricing = Database['public']['Tables']['boost_pricing']['Row'];
 
 export interface BoostTier {
-  tier: 'featured' | 'premium' | 'top';
+  tier: 'featured' | 'premium' | 'top' | 'ads';
   name: string;
   description: string;
   duration: number; // default duration for display
@@ -18,12 +18,12 @@ export interface BoostTier {
 // Default pricing structure (will be overridden by database values)
 export const DEFAULT_BOOST_TIERS: BoostTier[] = [
   {
-    tier: 'featured',
-    name: 'Featured',
-    description: 'Get your listing featured in the homepage',
-    duration: 7,
-    pricePerDay: 1000,
-    features: ['Homepage carousel display', 'Featured badge', 'Priority in search results', 'Enhanced visibility']
+    tier: 'top',
+    name: 'Top',
+    description: 'Maximum visibility across the platform',
+    duration: 30,
+    pricePerDay: 500,
+    features: ['First position in all sections', 'Top badge', 'Homepage priority', 'Featured in categories', 'Maximum search visibility', 'Trending section priority']
   },
   {
     tier: 'premium',
@@ -34,17 +34,25 @@ export const DEFAULT_BOOST_TIERS: BoostTier[] = [
     features: ['Featured listings section', 'Premium badge', 'Category top position', 'Priority search ranking', 'Enhanced visibility']
   },
   {
-    tier: 'top',
-    name: 'Top',
-    description: 'Maximum visibility across the platform',
-    duration: 30,
-    pricePerDay: 500,
-    features: ['First position in all sections', 'Top badge', 'Homepage priority', 'Featured in categories', 'Maximum search visibility', 'Trending section priority']
+    tier: 'featured',
+    name: 'Featured',
+    description: 'Get your listing featured in the homepage',
+    duration: 7,
+    pricePerDay: 1000,
+    features: ['Homepage carousel display', 'Featured badge', 'Priority in search results', 'Enhanced visibility']
+  },
+  {
+    tier: 'ads',
+    name: 'Advertisement',
+    description: 'Promote your listing as a paid advertisement',
+    duration: 7,
+    pricePerDay: 1500,
+    features: ['Advertisement placement in feed', 'Prominent positioning', 'High visibility', 'Targeted audience reach']
   }
 ];
 
 // Function to calculate price based on tier and days
-export const calculateBoostPrice = async (tier: 'featured' | 'premium' | 'top', days: number): Promise<number> => {
+export const calculateBoostPrice = async (tier: 'featured' | 'premium' | 'top' | 'ads', days: number): Promise<number> => {
   try {
     // Try to get pricing from database
     const { data, error } = await supabase
@@ -82,13 +90,15 @@ export const getBoostTiers = async (): Promise<BoostTier[]> => {
     }
     
     // Map database pricing to boost tiers
-    return DEFAULT_BOOST_TIERS.map(tier => {
+    const tiers = DEFAULT_BOOST_TIERS.map(tier => {
       const dbPricing = data.find(p => p.tier === tier.tier);
       return {
         ...tier,
         pricePerDay: dbPricing ? dbPricing.price_per_day : tier.pricePerDay
       };
     });
+    
+    return tiers;
   } catch (error) {
     console.error('Error fetching boost tiers:', error);
     // Fallback to default pricing
@@ -145,14 +155,18 @@ export class BoostsRepository {
       .select('*')
       .eq('is_active', true)
       .gte('expires_at', new Date().toISOString())
-      .order('tier', { ascending: false }) // top > premium > featured
       .order('created_at', { ascending: false });
 
     if (error) {
       throw new Error(`Failed to fetch active boosts: ${error.message}`);
     }
 
-    return data || [];
+    // Sort by tier priority (top > premium > featured > ads)
+    const sortedData = (data || []).sort((a, b) => {
+      return getTierPriority(b.tier) - getTierPriority(a.tier);
+    });
+
+    return sortedData;
   }
 
   async update(id: string, updates: UpdateBoost): Promise<Boost> {
@@ -197,27 +211,19 @@ export class BoostsRepository {
   }
 
   // Get boost tier information
-  async getBoostTier(tier: 'featured' | 'premium' | 'top'): Promise<BoostTier | undefined> {
+  async getBoostTier(tier: 'featured' | 'premium' | 'top' | 'ads'): Promise<BoostTier | undefined> {
     const tiers = await getBoostTiers();
     return tiers.find(t => t.tier === tier);
   }
-
-  // Check if listing has active boost
-  async hasActiveBoost(listingId: string): Promise<boolean> {
-    const { count, error } = await supabase
-      .from('boosts')
-      .select('*', { count: 'exact', head: true })
-      .eq('listing_id', listingId)
-      .eq('is_active', true)
-      .gte('expires_at', new Date().toISOString());
-
-    if (error) {
-      console.error('Error checking active boost:', error);
-      return false;
-    }
-
-    return (count || 0) > 0;
-  }
 }
 
-export const boostsRepo = new BoostsRepository();
+// Helper function to get tier priority (higher number = higher priority)
+export const getTierPriority = (tier: string): number => {
+  switch (tier) {
+    case 'top': return 4;
+    case 'premium': return 3;
+    case 'featured': return 2;
+    case 'ads': return 1;
+    default: return 0;
+  }
+};

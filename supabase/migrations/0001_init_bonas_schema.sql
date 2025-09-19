@@ -12,6 +12,7 @@ CREATE TYPE user_role AS ENUM ('user', 'moderator', 'admin');
 CREATE TYPE payment_status AS ENUM ('pending', 'completed', 'failed', 'refunded');
 CREATE TYPE boost_type AS ENUM ('featured', 'premium', 'highlighted');
 CREATE TYPE moderation_status AS ENUM ('pending', 'approved', 'rejected');
+CREATE TYPE ad_placement AS ENUM ('banner', 'sidebar', 'feed', 'footer', 'rectangular');
 
 -- Users table (extends Supabase auth.users)
 CREATE TABLE public.profiles (
@@ -150,7 +151,7 @@ CREATE TABLE public.ads (
     description TEXT,
     image_url TEXT,
     link_url TEXT,
-    placement TEXT NOT NULL, -- 'banner', 'sidebar', 'feed'
+    placement ad_placement NOT NULL, -- Updated to use the new enum type
     is_active BOOLEAN DEFAULT TRUE,
     starts_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     expires_at TIMESTAMP WITH TIME ZONE,

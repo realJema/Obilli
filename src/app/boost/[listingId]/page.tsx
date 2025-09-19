@@ -10,6 +10,7 @@ import { getBoostTiers, calculateBoostPrice, type BoostTier } from "@/lib/reposi
 import type { ListingWithDetails } from "@/lib/repositories/listings";
 import type { Database } from "@/lib/types/database";
 import { mesombService, type PaymentRequest } from "@/lib/services/mesomb";
+import { AdPlacementInfo } from "@/components/ad-placement-info";
 import {
   Star,
   Zap,
@@ -362,6 +363,12 @@ export default function BoostListingPage() {
         return <Zap className="w-6 h-6" />;
       case 'top':
         return <Crown className="w-6 h-6" />;
+      case 'ads':
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        );
       default:
         return <Star className="w-6 h-6" />;
     }
@@ -375,6 +382,8 @@ export default function BoostListingPage() {
         return 'from-purple-500 to-purple-600';
       case 'top':
         return 'from-yellow-500 to-orange-500';
+      case 'ads':
+        return 'from-green-500 to-green-600';
       default:
         return 'from-gray-500 to-gray-600';
     }
@@ -506,6 +515,9 @@ export default function BoostListingPage() {
                 </div>
               </div>
             </div>
+
+            {/* Ad Placement Info */}
+            <AdPlacementInfo tier={tier} />
           </div>
         )}
         
@@ -629,6 +641,9 @@ export default function BoostListingPage() {
                 </div>
               </div>
             </div>
+
+            {/* Ad Placement Info */}
+            <AdPlacementInfo tier={tier} />
           </div>
         )}
         
@@ -756,11 +771,59 @@ export default function BoostListingPage() {
               </div>
             </div>
 
+            {/* Ad Placement Info */}
+            <AdPlacementInfo tier={tier} />
+
             {/* All other benefits */}
             <div className="border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/50 rounded-md p-3">
               <div className="flex items-center space-x-2">
                 <Check className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
               <span className="text-sm text-yellow-800 dark:text-yellow-200">+ All Premium & Featured benefits</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tier === 'ads' && (
+          <div className="space-y-4">
+            {/* Ad Placement in Feed */}
+            <div className="border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/50 rounded-md p-3">
+              <div className="flex items-center space-x-2 mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                <span className="text-sm font-medium text-green-900 dark:text-green-100">Advertisement Placement</span>
+              </div>
+              <div className="bg-background border border-green-300 dark:border-green-700 rounded-lg p-2">
+                {/* Feed ad preview */}
+                <div className="space-y-3">
+                  <div className="h-4 bg-green-200 dark:bg-green-800 rounded w-1/3"></div>
+                  <div className="flex space-x-3">
+                    <div className="w-16 h-16 bg-green-200 dark:bg-green-800 rounded"></div>
+                    <div className="flex-1">
+                      <div className="h-3 bg-green-200 dark:bg-green-800 rounded w-3/4 mb-2"></div>
+                      <div className="h-2 bg-green-200/70 dark:bg-green-800/70 rounded w-1/2 mb-2"></div>
+                      <div className="h-2 bg-green-200/70 dark:bg-green-800/70 rounded w-2/3"></div>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div className="h-3 bg-green-200 dark:bg-green-800 rounded w-1/4"></div>
+                    <div className="bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 text-xs px-2 py-1 rounded font-medium">
+                      Advertisement
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Ad Placement Info */}
+            <AdPlacementInfo tier={tier} />
+
+            {/* All other benefits */}
+            <div className="border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/50 rounded-md p-3">
+              <div className="flex items-center space-x-2">
+                <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <span className="text-sm text-green-800 dark:text-green-200">High visibility advertisement placement</span>
               </div>
             </div>
           </div>
@@ -795,6 +858,7 @@ export default function BoostListingPage() {
             
             {/* Content Skeleton */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
               {/* Left Panel Skeleton */}
               <div className="lg:col-span-2">
                 <div className="bg-card border border-border rounded-lg p-6">
@@ -916,8 +980,7 @@ export default function BoostListingPage() {
                         key={tier.tier}
                         className={`relative bg-card border rounded-lg p-4 cursor-pointer transition-all duration-200 hover:shadow-lg ${
                           selectedTier?.tier === tier.tier
-                            ? 'border-primary ring-2 ring-primary ring-opacity-50'
-                            : 'border-border hover:border-primary/50'
+                            ? 'border-primary ring-2 ring-primary ring-opacity-50' : 'border-border hover:border-primary/50'
                         }`}
                         onClick={() => setSelectedTier(tier)}
                       >
@@ -926,6 +989,15 @@ export default function BoostListingPage() {
                           <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
                             <span className="bg-primary text-primary-foreground px-2 py-1 rounded-full text-xs font-medium">
                               Most Popular
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Best Value badge for ads */}
+                        {tier.tier === 'ads' && (
+                          <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
+                            <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                              Best Value
                             </span>
                           </div>
                         )}

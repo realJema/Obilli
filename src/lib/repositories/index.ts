@@ -5,6 +5,7 @@ export { ProfilesRepository } from './profiles';
 export { MessagesRepository } from './messages';
 export { ReviewsRepository } from './reviews';
 export { BoostsRepository } from './boosts';
+export { AdsRepository } from './ads';
 export { locationsRepo } from './locations';
 
 // Import classes for instances
@@ -14,6 +15,7 @@ import { ProfilesRepository } from './profiles';
 import { MessagesRepository } from './messages';
 import { ReviewsRepository } from './reviews';
 import { BoostsRepository } from './boosts';
+import { AdsRepository } from './ads';
 
 // Repository factory functions
 export const createListingsRepo = () => new ListingsRepository();
@@ -22,6 +24,7 @@ export const createProfilesRepo = () => new ProfilesRepository();
 export const createMessagesRepo = () => new MessagesRepository();
 export const createReviewsRepo = () => new ReviewsRepository();
 export const createBoostsRepo = () => new BoostsRepository();
+export const createAdsRepo = () => new AdsRepository();
 
 // Default instances for convenience
 export const listingsRepo = createListingsRepo();
@@ -30,6 +33,7 @@ export const profilesRepo = createProfilesRepo();
 export const messagesRepo = createMessagesRepo();
 export const reviewsRepo = createReviewsRepo();
 export const boostsRepo = createBoostsRepo();
+export const adsRepo = createAdsRepo();
 
 // Type exports
 export type { ListingFilters, ListingSort } from './listings';

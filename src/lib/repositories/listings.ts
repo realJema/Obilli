@@ -605,6 +605,37 @@ export class ListingsRepository {
     };
   }
 
+  async getBoostedForHomepage(limit = 5): Promise<HomepageListing[]> {
+    // Get listings that have active boosts, prioritizing by boost tier for homepage ads
+    const { data, error } = await supabase
+      .from('listings')
+      .select(`
+        id, title, price_xaf, description, created_at,
+        category:categories(id, name_en, name_fr),
+        owner:profiles(id, username),
+        media:listing_media(url),
+        location:locations!location_id(
+          id,
+          location_en,
+          location_fr,
+          parent_id
+        )
+      `)
+      .eq('status', 'published')
+      .eq('boosts.is_active', true)
+      .gte('boosts.expires_at', new Date().toISOString())
+      .order('boosts.tier', { ascending: false }) // top > premium > featured
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.warn('Failed to fetch boosted listings for homepage:', error.message);
+      return [];
+    }
+
+    return (data || []) as HomepageListing[];
+  }
+
   async getFeatured(limit = 6): Promise<ListingWithDetails[]> {
     // Get listings that have active boosts, prioritizing by boost tier
     const { data, error } = await supabase

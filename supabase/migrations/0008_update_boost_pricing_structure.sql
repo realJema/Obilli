@@ -2,7 +2,7 @@
 -- This allows easy updates to pricing without code changes
 CREATE TABLE IF NOT EXISTS public.boost_pricing (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  tier text NOT NULL UNIQUE CHECK (tier IN ('featured', 'premium', 'top')),
+  tier text NOT NULL UNIQUE CHECK (tier IN ('featured', 'premium', 'top', 'ads')),
   price_per_day integer NOT NULL,
   created_at timestamp with time zone DEFAULT NOW(),
   updated_at timestamp with time zone DEFAULT NOW()
@@ -12,11 +12,13 @@ CREATE TABLE IF NOT EXISTS public.boost_pricing (
 -- Featured: 1,000 XAF per day
 -- Premium: 2,000 XAF per day
 -- Top: 500 XAF per day
+-- Ads: 1,500 XAF per day
 INSERT INTO public.boost_pricing (tier, price_per_day) 
 VALUES 
   ('featured', 1000),
   ('premium', 2000),
-  ('top', 500)
+  ('top', 500),
+  ('ads', 1500)
 ON CONFLICT (tier) DO NOTHING;
 
 -- Create a function to get boost price

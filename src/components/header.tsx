@@ -3,12 +3,14 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Search, Menu, User, LogOut, Settings, Shield } from "lucide-react";
+import { Search, Menu, User, LogOut, Settings, Shield, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useI18n } from "@/lib/providers";
 import { useUser, useSupabaseClient } from "@supabase/auth-helpers-react";
 import { useState, useEffect, useRef } from "react";
+import { categoriesRepo } from "@/lib/repositories";
+import type { CategoryWithChildren } from "@/lib/repositories/categories";
 
 interface HeaderProps {
   logoUrl?: string;
@@ -16,13 +18,18 @@ interface HeaderProps {
 
 export function Header({ logoUrl = "/logo.png" }: HeaderProps) {
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const user = useUser();
   const supabase = useSupabaseClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [userProfile, setUserProfile] = useState<{ username?: string; full_name?: string; avatar_url?: string; role?: string } | null>(null);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [categories, setCategories] = useState<CategoryWithChildren[]>([]);
+  const [navigationStack, setNavigationStack] = useState<CategoryWithChildren[]>([]);
+  const [currentCategory, setCurrentCategory] = useState<CategoryWithChildren | null>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   // Load user profile when user changes
   useEffect(() => {
@@ -43,11 +50,31 @@ export function Header({ logoUrl = "/logo.png" }: HeaderProps) {
     loadUserProfile();
   }, [user, supabase]);
 
-  // Handle click outside to close user menu
+  // Load categories for mobile menu
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const categoriesData = await categoriesRepo.getAll();
+        setCategories(categoriesData);
+      } catch (error) {
+        console.error('Failed to load categories:', error);
+      }
+    };
+
+    loadCategories();
+  }, []);
+
+  // Handle click outside to close menus
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setShowUserMenu(false);
+      }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setShowMobileMenu(false);
+        // Reset navigation when closing menu
+        setNavigationStack([]);
+        setCurrentCategory(null);
       }
     };
 
@@ -59,13 +86,53 @@ export function Header({ logoUrl = "/logo.png" }: HeaderProps) {
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setShowMobileMenu(false);
+      // Reset navigation when closing menu
+      setNavigationStack([]);
+      setCurrentCategory(null);
     }
   };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setShowUserMenu(false);
+    setShowMobileMenu(false);
+    // Reset navigation when closing menu
+    setNavigationStack([]);
+    setCurrentCategory(null);
     router.push('/');
+  };
+
+  const navigateToCategory = (category: CategoryWithChildren) => {
+    if (currentCategory) {
+      setNavigationStack([...navigationStack, currentCategory]);
+    }
+    setCurrentCategory(category);
+  };
+
+  const navigateBack = () => {
+    if (navigationStack.length > 0) {
+      const previousCategory = navigationStack[navigationStack.length - 1];
+      setCurrentCategory(previousCategory);
+      setNavigationStack(navigationStack.slice(0, -1));
+    } else {
+      setCurrentCategory(null);
+    }
+  };
+
+  const closeMobileMenu = () => {
+    setShowMobileMenu(false);
+    // Reset navigation when closing menu
+    setNavigationStack([]);
+    setCurrentCategory(null);
+  };
+
+  // Get current level categories to display
+  const getCurrentLevelCategories = () => {
+    if (currentCategory) {
+      return currentCategory.children || [];
+    }
+    return categories;
   };
 
   return (
@@ -90,8 +157,8 @@ export function Header({ logoUrl = "/logo.png" }: HeaderProps) {
             </Link>
           </div>
 
-          {/* Search Bar - Hidden on mobile */}
-          <div className="hidden md:flex flex-1 max-w-xl mx-8">
+          {/* Search Bar - Visible on mobile and desktop */}
+          <div className="flex-1 max-w-xl mx-4 md:mx-8">
             <form onSubmit={handleSearch} className="w-full">
               <div className="relative flex">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -238,8 +305,6 @@ export function Header({ logoUrl = "/logo.png" }: HeaderProps) {
               )}
             </nav>
 
-            {/* Notifications and Messages removed */}
-
             {/* Theme Toggle and Language Switcher - only show if not logged in */}
             {!user && (
               <>
@@ -249,12 +314,169 @@ export function Header({ logoUrl = "/logo.png" }: HeaderProps) {
             )}
 
             {/* Mobile Menu */}
-            <button className="md:hidden p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
-              <Menu className="h-5 w-5" />
+            <button 
+              className="md:hidden p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+            >
+              {showMobileMenu ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
         </div>
       </div>
+
+      {/* Mobile Menu Sidebar */}
+      {showMobileMenu && (
+        <div className="md:hidden fixed inset-0 z-[100]">
+          {/* Overlay */}
+          <div 
+            className="fixed inset-0 bg-black/50"
+            onClick={closeMobileMenu}
+          ></div>
+          
+          {/* Sidebar */}
+          <div 
+            ref={mobileMenuRef}
+            className="fixed top-0 left-0 h-screen w-[90vw] max-w-[90vw] bg-background border-r border-border z-[101] flex flex-col"
+          >
+            {/* Sidebar Header */}
+            <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
+              <h2 className="text-lg font-semibold">
+                {currentCategory ? (
+                  locale === 'fr' ? currentCategory.name_fr : currentCategory.name_en
+                ) : t("nav.categories")}
+              </h2>
+              <button 
+                onClick={closeMobileMenu}
+                className="p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            {/* Sidebar Content */}
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <div className="p-4 flex-shrink-0">
+                {/* Sell Button */}
+                <Link
+                  href="/sell/new"
+                  className="block w-full bg-primary text-primary-foreground px-4 py-3 rounded-md font-medium hover:bg-primary/90 transition-colors text-center mb-4"
+                  prefetch={true}
+                  onClick={closeMobileMenu}
+                >
+                  {t("nav.sell")}
+                </Link>
+                
+                {/* Back Button - shown when in a subcategory */}
+                {navigationStack.length > 0 && (
+                  <button 
+                    onClick={navigateBack}
+                    className="flex items-center text-primary hover:text-primary/80 transition-colors w-full mb-4 py-2"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    {t("common.back")}
+                  </button>
+                )}
+              </div>
+              
+              {/* Scrollable Category Area */}
+              <div className="flex-1 overflow-y-auto px-4">
+                {/* Category Navigation */}
+                <div className="space-y-2">
+                  {getCurrentLevelCategories().map((category) => (
+                    <div key={category.id} className="border-b border-border pb-2">
+                      {(category as CategoryWithChildren).children && (category as CategoryWithChildren).children!.length > 0 ? (
+                        <button
+                          onClick={() => navigateToCategory(category as CategoryWithChildren)}
+                          className="flex items-center justify-between w-full py-3 text-foreground hover:text-primary transition-colors"
+                        >
+                          <span>{locale === 'fr' ? category.name_fr : category.name_en}</span>
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      ) : (
+                        <Link
+                          href={`/search?category=${category.id}`}
+                          className="block py-3 text-foreground hover:text-primary transition-colors"
+                          prefetch={true}
+                          onClick={closeMobileMenu}
+                        >
+                          {locale === 'fr' ? category.name_fr : category.name_en}
+                        </Link>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* User Actions - fixed at bottom */}
+              <div className="p-4 border-t border-border flex-shrink-0 mt-auto">
+                {user && userProfile ? (
+                  <div className="space-y-3">
+                    <Link
+                      href="/dashboard"
+                      className="block w-full text-center py-2 text-foreground hover:bg-accent rounded-md transition-colors"
+                      prefetch={true}
+                      onClick={closeMobileMenu}
+                    >
+                      {t("nav.dashboard")}
+                    </Link>
+                    
+                    {userProfile.role === 'admin' && (
+                      <Link
+                        href="/admin"
+                        className="block w-full text-center py-2 text-foreground hover:bg-accent rounded-md transition-colors"
+                        prefetch={true}
+                        onClick={closeMobileMenu}
+                      >
+                        {t("nav.admin")}
+                      </Link>
+                    )}
+                    
+                    <Link
+                      href="/profile/settings"
+                      className="block w-full text-center py-2 text-foreground hover:bg-accent rounded-md transition-colors"
+                      prefetch={true}
+                      onClick={closeMobileMenu}
+                    >
+                      {t("nav.settings")}
+                    </Link>
+                    
+                    <button
+                      onClick={() => {
+                        handleSignOut();
+                        closeMobileMenu();
+                      }}
+                      className="block w-full text-center py-2 text-foreground hover:bg-accent rounded-md transition-colors"
+                    >
+                      {t("nav.logout")}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <Link
+                      href="/login"
+                      className="block w-full text-center py-2 text-foreground hover:bg-accent rounded-md transition-colors"
+                      prefetch={true}
+                      onClick={closeMobileMenu}
+                    >
+                      {t("nav.login")}
+                    </Link>
+                  </div>
+                )}
+                
+                {/* Theme and Language */}
+                <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
+                  <span className="text-foreground">{t("common.theme")}</span>
+                  <ThemeToggle />
+                </div>
+                <div className="flex items-center justify-between pt-4">
+                  <span className="text-foreground">{t("common.language")}</span>
+                  <LanguageSwitcher />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

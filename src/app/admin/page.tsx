@@ -12,6 +12,7 @@ import { SettingsSection } from "@/app/admin/settings";
 import { BoostedListingsSection } from "@/app/admin/boosted-listings";
 import { LocationsSection } from "@/app/admin/locations";
 import { ReportsSection } from "@/app/admin/reports";
+// Removed AdsSection import
 
 export default function AdminPage() {
   const router = useRouter();
@@ -97,6 +98,7 @@ export default function AdminPage() {
         return <BoostedListingsSection />;
       case "locations":
         return <LocationsSection />;
+      // Removed ads case
       default:
         return <OverviewSection />;
     }
@@ -110,6 +112,7 @@ export default function AdminPage() {
     { id: "reports", label: t("admin.reports"), emoji: t("admin.reportsEmoji") },
     { id: "boosted", label: t("admin.boosted"), emoji: t("admin.boostedEmoji") },
     { id: "locations", label: t("admin.locations"), emoji: t("admin.locationsEmoji") },
+    // Removed ads navigation item
     { id: "settings", label: t("admin.settings"), emoji: t("admin.settingsEmoji") },
   ];
 
