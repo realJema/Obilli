@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSupabaseClient } from "@supabase/auth-helpers-react";
 import { useI18n } from "@/lib/providers";
 
@@ -28,11 +28,7 @@ export function SettingsSection() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: string; text: string } | null>(null);
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -62,7 +58,11 @@ export function SettingsSection() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase]);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   const saveSettings = async () => {
     try {
@@ -98,9 +98,10 @@ export function SettingsSection() {
       
       setMessage({ type: "success", text: "Settings saved successfully!" });
       setTimeout(() => setMessage(null), 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving settings:", error);
-      setMessage({ type: "error", text: `Failed to save settings: ${error.message || "Please try again."}` });
+      const errorMessage = error instanceof Error ? error.message : "Please try again.";
+      setMessage({ type: "error", text: `Failed to save settings: ${errorMessage}` });
     } finally {
       setSaving(false);
     }
@@ -154,9 +155,10 @@ export function SettingsSection() {
       
       setMessage({ type: "success", text: "Logo uploaded successfully!" });
       setTimeout(() => setMessage(null), 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error uploading logo:", error);
-      setMessage({ type: "error", text: `Failed to upload logo: ${error.message || "Please try again."}` });
+      const errorMessage = error instanceof Error ? error.message : "Please try again.";
+      setMessage({ type: "error", text: `Failed to upload logo: ${errorMessage}` });
       setTimeout(() => setMessage(null), 3000);
     }
   };
@@ -215,9 +217,10 @@ export function SettingsSection() {
       
       setMessage({ type: "success", text: "Favicon uploaded successfully!" });
       setTimeout(() => setMessage(null), 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error uploading favicon:", error);
-      setMessage({ type: "error", text: `Failed to upload favicon: ${error.message || "Please try again."}` });
+      const errorMessage = error instanceof Error ? error.message : "Please try again.";
+      setMessage({ type: "error", text: `Failed to upload favicon: ${errorMessage}` });
       setTimeout(() => setMessage(null), 3000);
     }
   };
@@ -289,6 +292,7 @@ export function SettingsSection() {
                 <div className="flex items-center space-x-4">
                   <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 flex items-center justify-center">
                     {settings.logo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={settings.logo_url} alt="Logo" className="w-full h-full object-contain" />
                     ) : (
                       <span className="text-gray-500 text-xs">{t("admin.logo")}</span>
@@ -314,6 +318,7 @@ export function SettingsSection() {
                 <div className="flex items-center space-x-4">
                   <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 flex items-center justify-center">
                     {settings.favicon_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={settings.favicon_url} alt="Favicon" className="w-full h-full object-contain" />
                     ) : (
                       <span className="text-gray-500 text-xs">{t("admin.favicon")}</span>

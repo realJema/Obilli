@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSupabaseClient } from "@supabase/auth-helpers-react";
 import { useI18n } from "@/lib/providers";
 import { ConfirmationModal } from "@/app/admin/confirmation-modal";
@@ -36,11 +36,7 @@ export function LocationsSection() {
   const [confirmTitle, setConfirmTitle] = useState("");
   const [confirmMessage, setConfirmMessage] = useState("");
 
-  useEffect(() => {
-    fetchLocations();
-  }, []);
-
-  const fetchLocations = async () => {
+  const fetchLocations = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -101,7 +97,11 @@ export function LocationsSection() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase]);
+
+  useEffect(() => {
+    fetchLocations();
+  }, [fetchLocations]);
 
   const toggleCollapse = (locationId: number) => {
     setCollapsedStates(prev => ({

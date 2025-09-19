@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSupabaseClient } from "@supabase/auth-helpers-react";
 import { ConfirmationModal } from "@/app/admin/confirmation-modal";
 import { useI18n } from "@/lib/providers";
@@ -13,6 +13,18 @@ interface Category {
   listing_type: string;
   listings_count: number;
   children?: Category[];
+}
+
+interface SupabaseCategory {
+  id: number;
+  name_en: string;
+  name_fr: string;
+  parent_id: number | null;
+  listing_type: string;
+}
+
+interface ProfileCount {
+  count: number | null;
 }
 
 // Extended interface for flattened categories with level information
@@ -44,11 +56,51 @@ export function CategoriesSection() {
   const [confirmTitle, setConfirmTitle] = useState("");
   const [confirmMessage, setConfirmMessage] = useState("");
 
-  useEffect(() => {
-    fetchCategories();
-  }, [currentPage]);
+  // Function to count listings in a category and all its descendants
+  const countListingsInCategory = async (categoryId: number): Promise<number> => {
+    // Get all descendant category IDs (including the category itself)
+    const getAllDescendantIds = async (catId: number): Promise<number[]> => {
+      const allIds = [catId]; // Include the original category
+      
+      // Get immediate children
+      const { data: children, error } = await supabase
+        .from("categories")
+        .select("id")
+        .eq("parent_id", catId);
+      
+      if (error) {
+        console.warn(`Failed to fetch subcategories for ${catId}:`, error.message);
+        return allIds;
+      }
+      
+      if (children && children.length > 0) {
+        // For each child, recursively get their descendants
+        for (const child of children) {
+          const descendantIds = await getAllDescendantIds(child.id);
+          allIds.push(...descendantIds);
+        }
+      }
+      
+      return allIds;
+    };
 
-  const fetchCategories = async () => {
+    const categoryIds = await getAllDescendantIds(categoryId);
+    
+    // Count listings in all these categories
+    const { count, error } = await supabase
+      .from("listings")
+      .select("*", { count: "exact", head: true })
+      .in("category_id", categoryIds);
+    
+    if (error) {
+      console.error("Error counting listings:", error);
+      return 0;
+    }
+    
+    return count || 0;
+  };
+
+  const fetchCategories = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -69,21 +121,18 @@ export function CategoriesSection() {
         return;
       }
       
-      // Build hierarchical structure
+      // Build hierarchical structure with listing counts
       const categoryMap = new Map<number, Category>();
       const rootCategories: Category[] = [];
       
-      // First pass: create all category objects
+      // First pass: create all category objects with listing counts
       const categoriesWithCounts = await Promise.all(
-        data.map(async (category: any) => {
-          const { count } = await supabase
-            .from("listings")
-            .select("*", { count: "exact", head: true })
-            .eq("category_id", category.id);
+        data.map(async (category: SupabaseCategory) => {
+          const listings_count = await countListingsInCategory(category.id);
           
           return {
             ...category,
-            listings_count: count || 0,
+            listings_count,
             children: []
           };
         })
@@ -129,7 +178,11 @@ export function CategoriesSection() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories, currentPage]);
 
   const toggleCollapse = (categoryId: number) => {
     setCollapsedStates(prev => ({
@@ -268,18 +321,28 @@ export function CategoriesSection() {
             </button>
             <span className="font-medium">{category.name_en}</span>
             <span className="text-muted-foreground ml-2">({category.name_fr || "-"})</span>
+            
+            {/* Display listing counts with enhanced visibility */}
+            <span className="ml-2 px-2 py-1 text-sm font-bold bg-blue-500 text-white rounded-full">
+              {category.listings_count}
+            </span>
+            
+            {/* Show category type for clarity */}
             {category.parent_id === null && (
-              <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">Category</span>
+              <span className="ml-2 px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded">
+                Category
+              </span>
             )}
             {category.parent_id !== null && category.children?.length && (
-              <span className="ml-2 px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">Subgroup</span>
+              <span className="ml-2 px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">
+                Subgroup
+              </span>
             )}
             {category.parent_id !== null && !category.children?.length && (
-              <span className="ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Subcategory</span>
+              <span className="ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded">
+                Subcategory
+              </span>
             )}
-            <span className="ml-2 px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded">
-              {category.listing_type}
-            </span>
           </div>
           <div className="flex space-x-2">
             <button

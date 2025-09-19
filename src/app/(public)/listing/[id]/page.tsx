@@ -1,8 +1,5 @@
 import { MainLayout } from "@/components/main-layout";
 import { listingsRepo, categoriesRepo, reviewsRepo } from "@/lib/repositories";
-import type { ListingWithDetails } from "@/lib/repositories/listings";
-import type { ReviewWithProfiles } from "@/lib/repositories/reviews";
-import type { Database } from "@/lib/types/database";
 import { 
   MapPin, 
   Clock, 

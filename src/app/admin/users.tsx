@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSupabaseClient } from "@supabase/auth-helpers-react";
 import { useI18n } from "@/lib/providers";
 import { ConfirmationModal } from "@/app/admin/confirmation-modal";
@@ -23,6 +23,27 @@ interface UserListing {
   status: string;
 }
 
+interface Profile {
+  id: string;
+  username: string | null;
+  full_name: string | null;
+  email: string | null;
+  role: string | null;
+  created_at: string;
+}
+
+interface Listing {
+  id: string;
+  title: string;
+  category_id: number;
+  status: string;
+}
+
+interface Category {
+  id: number;
+  name_en: string;
+}
+
 export function UsersSection() {
   const supabase = useSupabaseClient();
   const { t } = useI18n();
@@ -40,11 +61,7 @@ export function UsersSection() {
   const [confirmTitle, setConfirmTitle] = useState("");
   const [confirmMessage, setConfirmMessage] = useState("");
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       let query = supabase.from("profiles").select("*");
@@ -66,7 +83,7 @@ export function UsersSection() {
       
       // Get listing counts for each user
       const usersWithCounts = await Promise.all(
-        data.map(async (user: any) => {
+        data.map(async (user: Profile) => {
           const { count } = await supabase
             .from("listings")
             .select("*", { count: "exact", head: true })
@@ -91,7 +108,11 @@ export function UsersSection() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase, searchTerm, filterRole]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleUserSelect = async (user: User) => {
     setSelectedUser(user);
@@ -115,7 +136,7 @@ export function UsersSection() {
         return acc;
       }, {} as Record<number, string>) || {};
       
-      const mappedListings: UserListing[] = listings.map(listing => ({
+      const mappedListings: UserListing[] = listings.map((listing: Listing) => ({
         id: listing.id,
         title: listing.title,
         category: categoryMap[listing.category_id] || "Unknown",

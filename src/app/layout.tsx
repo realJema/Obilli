@@ -16,7 +16,7 @@ const inter = Inter({
 
 // Function to fetch site settings
 async function getSiteSettings() {
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = createServerComponentClient({ cookies: () => cookies() });
   
   try {
     const { data, error } = await supabase

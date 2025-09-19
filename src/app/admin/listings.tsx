@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSupabaseClient } from "@supabase/auth-helpers-react";
 import Link from "next/link";
 import { ConfirmationModal } from "@/app/admin/confirmation-modal";
@@ -14,6 +14,26 @@ interface Listing {
   category: string;
   status: string;
   created_at: string;
+}
+
+interface Profile {
+  username?: string | null;
+  full_name?: string | null;
+}
+
+interface Category {
+  name_en?: string | null;
+}
+
+interface SupabaseListing {
+  id: string;
+  title: string;
+  owner_id: string;
+  category_id: number;
+  status: string;
+  created_at: string;
+  profiles?: Profile | null;
+  categories?: Category | null;
 }
 
 export function ListingsSection() {
@@ -37,13 +57,7 @@ export function ListingsSection() {
   const [confirmTitle, setConfirmTitle] = useState("");
   const [confirmMessage, setConfirmMessage] = useState("");
 
-  useEffect(() => {
-    fetchCategories();
-    fetchUsers();
-    fetchListings();
-  }, [currentPage]);
-
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     const { data, error } = await supabase
       .from("categories")
       .select("id, name_en");
@@ -51,9 +65,9 @@ export function ListingsSection() {
     if (!error && data) {
       setCategories(data.map(cat => ({ id: cat.id, name: cat.name_en })));
     }
-  };
+  }, [supabase]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     const { data, error } = await supabase
       .from("profiles")
       .select("id, username, full_name");
@@ -64,9 +78,9 @@ export function ListingsSection() {
         name: user.full_name || user.username || "Unknown User"
       })));
     }
-  };
+  }, [supabase]);
 
-  const fetchListings = async () => {
+  const fetchListings = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -113,12 +127,16 @@ export function ListingsSection() {
       }
       
       // Map the data to our Listing interface
-      const mappedListings: Listing[] = data.map((listing: any) => ({
+      const mappedListings: Listing[] = data.map((listing) => ({
         id: listing.id,
         title: listing.title,
-        owner: listing.profiles?.full_name || listing.profiles?.username || "Unknown User",
+        owner: (listing.profiles && listing.profiles.length > 0) 
+          ? (listing.profiles[0].full_name || listing.profiles[0].username || "Unknown User")
+          : "Unknown User",
         owner_id: listing.owner_id,
-        category: listing.categories?.name_en || "Unknown Category",
+        category: (listing.categories && listing.categories.length > 0)
+          ? (listing.categories[0].name_en || "Unknown Category")
+          : "Unknown Category",
         status: listing.status,
         created_at: listing.created_at,
       }));
@@ -130,7 +148,13 @@ export function ListingsSection() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase, searchTerm, filterStatus, filterCategory, filterUser, currentPage]);
+
+  useEffect(() => {
+    fetchCategories();
+    fetchUsers();
+    fetchListings();
+  }, [fetchCategories, fetchUsers, fetchListings]);
 
   const updateListingStatus = async (listingId: string, newStatus: string) => {
     // Set up confirmation modal
@@ -170,12 +194,6 @@ export function ListingsSection() {
       }
     });
     setShowConfirmModal(true);
-  };
-
-  const handleUserSearch = (searchValue: string) => {
-    setFilterUser(searchValue);
-    // In a real implementation, you might want to filter the users list in real-time
-    // For now, we'll just update the filter value
   };
 
   const totalPages = Math.ceil(totalListings / listingsPerPage);

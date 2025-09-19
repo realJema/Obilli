@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSupabaseClient } from "@supabase/auth-helpers-react";
 import { useI18n } from "@/lib/providers";
 
@@ -13,17 +13,34 @@ interface Report {
   created_at: string;
 }
 
+// Add interfaces for the Supabase data structure
+interface SupabaseProfile {
+  username?: string | null;
+  full_name?: string | null;
+}
+
+interface SupabaseListing {
+  title?: string | null;
+}
+
+interface SupabaseReport {
+  id: number;
+  reporter_id: string;
+  listing_id: string;
+  reason: string;
+  status: string;
+  created_at: string;
+  profiles?: SupabaseProfile[] | null;
+  listings?: SupabaseListing[] | null;
+}
+
 export function ReportsSection() {
   const { t } = useI18n();
   const supabase = useSupabaseClient();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchReports();
-  }, []);
-
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -48,10 +65,14 @@ export function ReportsSection() {
       }
       
       // Map the data to our Report interface
-      const mappedReports: Report[] = data.map((report: any) => ({
+      const mappedReports: Report[] = data.map((report) => ({
         id: report.id,
-        reporter: report.profiles?.full_name || report.profiles?.username || "Unknown User",
-        listing_title: report.listings?.title || "Unknown Listing",
+        reporter: (report.profiles && report.profiles.length > 0)
+          ? (report.profiles[0].full_name || report.profiles[0].username || "Unknown User")
+          : "Unknown User",
+        listing_title: (report.listings && report.listings.length > 0)
+          ? (report.listings[0].title || "Unknown Listing")
+          : "Unknown Listing",
         reason: report.reason,
         status: report.status,
         created_at: report.created_at,
@@ -63,7 +84,11 @@ export function ReportsSection() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase]);
+
+  useEffect(() => {
+    fetchReports();
+  }, [fetchReports]);
 
   const updateReportStatus = async (reportId: number, newStatus: string) => {
     const { error } = await supabase

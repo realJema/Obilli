@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSupabaseClient } from "@supabase/auth-helpers-react";
 import { useI18n } from "@/lib/providers";
 
@@ -23,6 +23,27 @@ interface BoostedListing {
   created_at: string;
 }
 
+interface SupabaseBoost {
+  id: string;
+  tier: string;
+  price_xaf: number;
+  payment_status: string;
+  is_active: boolean;
+  starts_at: string;
+  expires_at: string;
+  created_at: string;
+  listing?: {
+    title?: string;
+    owner?: {
+      username?: string | null;
+      full_name?: string | null;
+    }[];
+    category?: {
+      name_en?: string;
+    }[];
+  };
+}
+
 export function BoostedListingsSection() {
   const { t } = useI18n();
   const supabase = useSupabaseClient();
@@ -31,11 +52,7 @@ export function BoostedListingsSection() {
   const [filterTier, setFilterTier] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
 
-  useEffect(() => {
-    fetchBoosted();
-  }, [filterTier, filterStatus]);
-
-  const fetchBoosted = async () => {
+  const fetchBoosted = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -80,11 +97,16 @@ export function BoostedListingsSection() {
       }
       
       // Transform the data to flatten the nested structure
-      const transformedData = data.map((item: any) => ({
+      const transformedData = (data as SupabaseBoost[]).map((item) => ({
         id: item.id,
         title: item.listing?.title || "Unknown Listing",
-        owner: item.listing?.owner || { username: null, full_name: null },
-        category: item.listing?.category || { name_en: "Unknown" },
+        owner: {
+          username: item.listing?.owner?.[0]?.username || null,
+          full_name: item.listing?.owner?.[0]?.full_name || null
+        },
+        category: {
+          name_en: item.listing?.category?.[0]?.name_en || "Unknown"
+        },
         tier: item.tier,
         price_xaf: item.price_xaf,
         payment_status: item.payment_status,
@@ -100,7 +122,11 @@ export function BoostedListingsSection() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase, filterTier, filterStatus]);
+
+  useEffect(() => {
+    fetchBoosted();
+  }, [fetchBoosted]);
 
   const getTierBadge = (tier: string) => {
     switch (tier) {
