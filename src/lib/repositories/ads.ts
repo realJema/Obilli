@@ -12,9 +12,7 @@ export class AdsRepository {
     let query = supabase
       .from('ads')
       .select('*')
-      .eq('is_active', true)
-      .lte('starts_at', new Date().toISOString())
-      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
+      .eq('active', true);
       
     if (placement) {
       query = query.eq('placement', placement);
@@ -32,7 +30,7 @@ export class AdsRepository {
   });
 
   // Cache the getById method for 5 minutes
-  getById = cache(async (id: string): Promise<Ad | null> => {
+  getById = cache(async (id: number): Promise<Ad | null> => {
     const { data, error } = await supabase
       .from('ads')
       .select('*')
@@ -63,7 +61,7 @@ export class AdsRepository {
     return data;
   }
 
-  async update(id: string, updates: UpdateAd): Promise<Ad> {
+  async update(id: number, updates: UpdateAd): Promise<Ad> {
     const { data, error } = await supabase
       .from('ads')
       .update(updates)
@@ -78,7 +76,7 @@ export class AdsRepository {
     return data;
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: number): Promise<void> {
     const { error } = await supabase
       .from('ads')
       .delete()
@@ -86,38 +84,6 @@ export class AdsRepository {
 
     if (error) {
       throw new Error(`Failed to delete ad: ${error.message}`);
-    }
-  }
-
-  async incrementClickCount(id: string): Promise<void> {
-    const { data: ad } = await supabase
-      .from('ads')
-      .select('click_count')
-      .eq('id', id)
-      .single();
-      
-    if (ad) {
-      const newCount = (ad.click_count || 0) + 1;
-      await supabase
-        .from('ads')
-        .update({ click_count: newCount })
-        .eq('id', id);
-    }
-  }
-
-  async incrementImpressionCount(id: string): Promise<void> {
-    const { data: ad } = await supabase
-      .from('ads')
-      .select('impression_count')
-      .eq('id', id)
-      .single();
-      
-    if (ad) {
-      const newCount = (ad.impression_count || 0) + 1;
-      await supabase
-        .from('ads')
-        .update({ impression_count: newCount })
-        .eq('id', id);
     }
   }
 }

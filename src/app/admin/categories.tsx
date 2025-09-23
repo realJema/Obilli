@@ -6,25 +6,27 @@ import { ConfirmationModal } from "@/app/admin/confirmation-modal";
 import { useI18n } from "@/lib/providers";
 
 interface Category {
-  id: number;
+  id: string;
   name_en: string;
   name_fr: string;
-  parent_id: number | null;
+  parent_id: string | null;
   listing_type: string;
   listings_count: number;
   children?: Category[];
 }
 
 interface SupabaseCategory {
-  id: number;
+  id: string;
   name_en: string;
   name_fr: string;
-  parent_id: number | null;
+  parent_id: string | null;
   listing_type: string;
 }
 
-interface ProfileCount {
-  count: number | null;
+// Add interface for listing count data
+interface CategoryListingCount {
+  category_id: string;
+  listing_count: number;
 }
 
 // Extended interface for flattened categories with level information
@@ -43,12 +45,12 @@ export function CategoriesSection() {
     name_en: "",
     name_fr: "",
     listing_type: "good",
-    parent_id: null as number | null,
+    parent_id: null as string | null,
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCategories, setTotalCategories] = useState(0);
   const categoriesPerPage = 10;
-  const [collapsedStates, setCollapsedStates] = useState<Record<number, boolean>>({});
+  const [collapsedStates, setCollapsedStates] = useState<Record<string, boolean>>({});
   
   // Confirmation modal states
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -56,55 +58,97 @@ export function CategoriesSection() {
   const [confirmTitle, setConfirmTitle] = useState("");
   const [confirmMessage, setConfirmMessage] = useState("");
 
-  // Function to count listings in a category and all its descendants
-  const countListingsInCategory = async (categoryId: number): Promise<number> => {
-    // Get all descendant category IDs (including the category itself)
-    const getAllDescendantIds = async (catId: number): Promise<number[]> => {
-      const allIds = [catId]; // Include the original category
-      
-      // Get immediate children
-      const { data: children, error } = await supabase
+  // Function to fetch all listing counts in a single query
+  const fetchAllListingCounts = async (): Promise<Record<string, number>> => {
+    try {
+      // Get all categories first
+      const { data: categoriesData, error: categoriesError } = await supabase
         .from("categories")
-        .select("id")
-        .eq("parent_id", catId);
+        .select("id, parent_id");
       
-      if (error) {
-        console.warn(`Failed to fetch subcategories for ${catId}:`, error.message);
-        return allIds;
+      if (categoriesError) {
+        console.error("Error fetching categories for counts:", categoriesError);
+        return {};
       }
       
-      if (children && children.length > 0) {
-        // For each child, recursively get their descendants
-        for (const child of children) {
-          const descendantIds = await getAllDescendantIds(child.id);
-          allIds.push(...descendantIds);
+      // Create a map of category to all its descendant IDs
+      const categoryDescendantsMap = new Map<string, string[]>();
+      
+      // Build the hierarchy map
+      const categoryMap = new Map<string, { id: string; parent_id: string | null }>();
+      categoriesData?.forEach(cat => categoryMap.set(cat.id, cat));
+      
+      // For each category, get all its descendants
+      const buildDescendants = (categoryId: string): string[] => {
+        if (categoryDescendantsMap.has(categoryId)) {
+          return categoryDescendantsMap.get(categoryId)!;
         }
+        
+        const descendants = [categoryId]; // Include the category itself
+        const category = categoryMap.get(categoryId);
+        
+        if (category) {
+          // Find all children recursively
+          categoryMap.forEach(cat => {
+            if (cat.parent_id === categoryId) {
+              descendants.push(...buildDescendants(cat.id));
+            }
+          });
+        }
+        
+        categoryDescendantsMap.set(categoryId, descendants);
+        return descendants;
+      };
+      
+      // Build all descendant lists
+      categoriesData?.forEach(cat => buildDescendants(cat.id));
+      
+      // Get all listings grouped by category
+      const { data: listingsData, error: listingsError } = await supabase
+        .from("listings")
+        .select("category_id");
+      
+      if (listingsError) {
+        console.error("Error fetching listings for counts:", listingsError);
+        return {};
       }
       
-      return allIds;
-    };
-
-    const categoryIds = await getAllDescendantIds(categoryId);
-    
-    // Count listings in all these categories
-    const { count, error } = await supabase
-      .from("listings")
-      .select("*", { count: "exact", head: true })
-      .in("category_id", categoryIds);
-    
-    if (error) {
-      console.error("Error counting listings:", error);
-      return 0;
+      // Count listings per category
+      const listingCounts = new Map<string, number>();
+      listingsData?.forEach(listing => {
+        const currentCount = listingCounts.get(listing.category_id) || 0;
+        listingCounts.set(listing.category_id, currentCount + 1);
+      });
+      
+      // Calculate total counts for each category (including descendants)
+      const totalCounts: Record<string, number> = {};
+      
+      categoriesData?.forEach(category => {
+        const descendants = categoryDescendantsMap.get(category.id) || [];
+        let totalCount = 0;
+        
+        descendants.forEach(descId => {
+          totalCount += listingCounts.get(descId) || 0;
+        });
+        
+        totalCounts[category.id] = totalCount;
+      });
+      
+      return totalCounts;
+    } catch (error) {
+      console.error("Error calculating listing counts:", error);
+      return {};
     }
-    
-    return count || 0;
   };
 
   const fetchCategories = useCallback(async () => {
     try {
       setLoading(true);
       
-      // Fetch all categories (we'll handle pagination in the UI)
+      // Fetch all listing counts in a single query
+      const listingCounts = await fetchAllListingCounts();
+      
+      // Fetch all categories
       const { data, error } = await supabase
         .from("categories")
         .select(`
@@ -122,21 +166,19 @@ export function CategoriesSection() {
       }
       
       // Build hierarchical structure with listing counts
-      const categoryMap = new Map<number, Category>();
+      const categoryMap = new Map<string, Category>();
       const rootCategories: Category[] = [];
       
       // First pass: create all category objects with listing counts
-      const categoriesWithCounts = await Promise.all(
-        data.map(async (category: SupabaseCategory) => {
-          const listings_count = await countListingsInCategory(category.id);
-          
-          return {
-            ...category,
-            listings_count,
-            children: []
-          };
-        })
-      );
+      const categoriesWithCounts = data.map((category: SupabaseCategory) => {
+        const listings_count = listingCounts[category.id] || 0;
+        
+        return {
+          ...category,
+          listings_count,
+          children: []
+        };
+      });
       
       // Populate the map
       categoriesWithCounts.forEach(category => {
@@ -162,7 +204,7 @@ export function CategoriesSection() {
       setTotalCategories(rootCategories.length);
       
       // Initialize all categories as collapsed by default
-      const initialCollapsedStates: Record<number, boolean> = {};
+      const initialCollapsedStates: Record<string, boolean> = {};
       const initializeCollapsedStates = (categories: Category[]) => {
         categories.forEach(category => {
           initialCollapsedStates[category.id] = true; // Collapsed by default
@@ -184,7 +226,7 @@ export function CategoriesSection() {
     fetchCategories();
   }, [fetchCategories, currentPage]);
 
-  const toggleCollapse = (categoryId: number) => {
+  const toggleCollapse = (categoryId: string) => {
     setCollapsedStates(prev => ({
       ...prev,
       [categoryId]: !prev[categoryId]
@@ -257,7 +299,7 @@ export function CategoriesSection() {
     }
   };
 
-  const deleteCategory = async (categoryId: number) => {
+  const deleteCategory = async (categoryId: string) => {
     // Set up confirmation modal
     setConfirmTitle("Delete Category");
     setConfirmMessage("Are you sure you want to delete this category? All listings in this category will be affected.");
@@ -384,6 +426,25 @@ export function CategoriesSection() {
 
   const totalPages = Math.ceil(categories.length / categoriesPerPage);
 
+  // Skeleton loader component
+  const SkeletonLoader = () => (
+    <div className="space-y-3">
+      {[...Array(5)].map((_, index) => (
+        <div key={index} className="flex items-center justify-between p-3 bg-card border border-border rounded-lg animate-pulse">
+          <div className="flex items-center space-x-3">
+            <div className="h-4 w-4 bg-gray-200 rounded"></div>
+            <div className="h-4 w-32 bg-gray-200 rounded"></div>
+            <div className="h-5 w-8 bg-gray-200 rounded-full"></div>
+          </div>
+          <div className="flex space-x-2">
+            <div className="h-6 w-16 bg-gray-200 rounded"></div>
+            <div className="h-6 w-16 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-6">{t("admin.categoriesManagement")}</h2>
@@ -435,7 +496,7 @@ export function CategoriesSection() {
                 <select
                   className="w-full px-3 py-2 border border-input rounded-md bg-background"
                   value={formData.parent_id || ""}
-                  onChange={(e) => setFormData({...formData, parent_id: e.target.value ? parseInt(e.target.value) : null})}
+                  onChange={(e) => setFormData({...formData, parent_id: e.target.value || null})}
                 >
                   <option value="">{t("admin.noneTopLevelCategory")}</option>
                   {flattenCategories(categories)
@@ -489,9 +550,7 @@ export function CategoriesSection() {
       <div className="bg-card border border-border rounded-lg p-4">
         <h3 className="text-lg font-semibold mb-4">{t("admin.categoriesHierarchy")}</h3>
         {loading ? (
-          <div className="flex justify-center items-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
+          <SkeletonLoader />
         ) : categories.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             {t("admin.noCategoriesFound")}
