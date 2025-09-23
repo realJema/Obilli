@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "next-sitemap",
     "start": "next start",
+    "sitemap": "next-sitemap",
     "lint": "eslint"
   },
   "dependencies": {
@@ -39,6 +41,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.2",
+    "next-sitemap": "^4.3.7",
     "sharp": "^0.34.3",
     "tailwindcss": "^4",
     "typescript": "^5"

@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://obilli.com
+
+# Sitemaps
+Sitemap: https://obilli.com/sitemap.xml
