@@ -8,6 +8,7 @@ import { MobileNav } from "@/components/mobile-nav";
 import { Footer } from "@/components/footer";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
+import Script from "next/script";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -67,6 +68,13 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
+        <Script src={`https://www.googletagmanager.com/gtag/js?id=G-DRG272KTPH`} strategy="afterInteractive" />
+        <Script id="ga-init" strategy="afterInteractive">{`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-DRG272KTPH');
+        `}</Script>
         <Providers>
           <div className="min-h-screen bg-background flex flex-col">
             <Header logoUrl={logoUrl} />
