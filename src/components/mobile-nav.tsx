@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Home, Search, Plus, LayoutDashboard, Settings, LogIn, UserPlus } from "lucide-react";
 import { useI18n } from "@/lib/providers";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,7 @@ import { useUser } from "@supabase/auth-helpers-react";
 
 export function MobileNav({ className = "" }: { className?: string }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { t } = useI18n();
   const user = useUser();
 
@@ -73,13 +74,13 @@ export function MobileNav({ className = "" }: { className?: string }) {
           href: "/login",
           icon: LogIn,
           label: t("nav.login"),
-          isActive: pathname?.startsWith("/login") || false,
+          isActive: (pathname?.startsWith("/login") && searchParams?.get('mode') !== 'signup') || false,
         },
         {
-          href: "/signup",
+          href: "/login?mode=signup",
           icon: UserPlus,
           label: t("nav.signup"),
-          isActive: pathname?.startsWith("/signup") || false,
+          isActive: (pathname?.startsWith("/login") && searchParams?.get('mode') === 'signup') || false,
         },
       ];
     }

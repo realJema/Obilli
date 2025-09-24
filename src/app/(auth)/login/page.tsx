@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react";
 import { MainLayout } from "@/components/main-layout";
 import { useI18n } from "@/lib/providers";
@@ -25,6 +25,7 @@ export default function AuthPage() {
   const supabase = useSupabaseClient();
   const user = useUser();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t } = useI18n();
 
   // Redirect if user is already authenticated and has a complete profile
@@ -48,6 +49,12 @@ export default function AuthPage() {
     
     checkAuthState();
   }, [user, router, supabase]);
+
+  // Initialize mode from query string (?mode=signup)
+  useEffect(() => {
+    const qpMode = searchParams?.get('mode');
+    setMode(qpMode === 'signup' ? 'signup' as const : 'signin');
+  }, [searchParams]);
 
   // Check if username is available
   const checkUsernameAvailability = async (username: string): Promise<boolean> => {
