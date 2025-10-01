@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    // Disable Next.js image optimization in production to avoid 402 from Vercel limits
+    // These images will be served directly from Supabase storage/CDN
+    unoptimized: true,
     // Use single format to reduce transformations by ~50%
     formats: ['image/webp'],
     
@@ -14,11 +17,19 @@ const nextConfig: NextConfig = {
     
     // Restrict remote patterns to only necessary domains
     remotePatterns: [
+      // Supabase storage (primary)
       {
         protocol: 'https',
         hostname: 'pnngjdupnffohifftsqb.supabase.co',
         port: '',
         pathname: '/storage/v1/object/public/**',
+      },
+      // Unsplash fallback images used in SSR cards
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        port: '',
+        pathname: '/**',
       },
     ],
   },
