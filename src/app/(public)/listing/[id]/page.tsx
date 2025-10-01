@@ -43,7 +43,8 @@ export async function generateMetadata(
     const description = listing?.description
       ? String(listing.description).slice(0, 200)
       : "Buy and sell goods, services, and find jobs in Cameroon";
-    const imageUrl = listing?.media?.[0]?.url || `${baseUrl}/logo.png`;
+    const rawImage = listing?.media?.[0]?.url || `${baseUrl}/logo.png`;
+    const imageUrl = rawImage.startsWith('http') ? rawImage : `${baseUrl}${rawImage}`;
     const url = `${baseUrl}/listing/${id}`;
 
     return {
@@ -59,6 +60,10 @@ export async function generateMetadata(
         images: [
           {
             url: imageUrl,
+            secureUrl: imageUrl,
+            width: 1200,
+            height: 630,
+            type: 'image/jpeg',
             alt: listing?.title || siteName,
           },
         ],
