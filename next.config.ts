@@ -2,13 +2,18 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    // Use single format to reduce transformations by ~50%
+    formats: ['image/webp'],
+    
+    // Set cache TTL to 31 days to reduce repeated transformations
+    minimumCacheTTL: 2678400, // 31 days in seconds
+    
+    // Optimize image sizes to reduce transformations (fewer sizes = fewer transformations)
+    imageSizes: [32, 64, 128, 256],
+    deviceSizes: [640, 1080, 1920],
+    
+    // Restrict remote patterns to only necessary domains
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-        port: '',
-        pathname: '/**',
-      },
       {
         protocol: 'https',
         hostname: 'pnngjdupnffohifftsqb.supabase.co',

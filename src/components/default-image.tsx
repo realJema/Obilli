@@ -23,8 +23,25 @@ export function DefaultImage({ src, alt, fill, width, height, className, priorit
     onError?.(e);
   };
 
+  // Determine if image should be unoptimized to reduce transformations
+  const shouldUnoptimize = () => {
+    // Unoptimize SVGs
+    if (src?.endsWith('.svg')) return true;
+    
+    // Unoptimize GIFs (animated images)
+    if (src?.endsWith('.gif')) return true;
+    
+    // Unoptimize small images (under 50KB equivalent - roughly 224x224 pixels)
+    if (width && height && width * height < 50000) return true;
+    
+    // Unoptimize thumbnail-sized images
+    if (width && height && (width < 200 || height < 200)) return true;
+    
+    return false;
+  };
+
   if (hasError) {
-    // Default fallback with logo
+    // Default fallback with logo - unoptimized since it's small
     return (
       <div className={`bg-muted flex items-center justify-center ${className}`} role="img" aria-label={alt || "Default image placeholder"}>
         <div className="text-center">
@@ -35,6 +52,7 @@ export function DefaultImage({ src, alt, fill, width, height, className, priorit
               width={48} 
               height={48} 
               className="rounded-md"
+              unoptimized
             />
           </div>
           <span className="text-xs text-muted-foreground font-medium">Obilli</span>
@@ -51,6 +69,7 @@ export function DefaultImage({ src, alt, fill, width, height, className, priorit
       onError={handleError}
       {...(fill ? { fill: true } : { width, height })}
       {...(priority ? { priority: true } : {})}
+      {...(shouldUnoptimize() ? { unoptimized: true } : {})}
     />
   );
 }
