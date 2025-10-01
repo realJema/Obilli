@@ -27,6 +27,56 @@ import { SimilarListings } from "@/components/similar-listings";
 import { ListingImageGallery } from "@/components/listing-image-gallery";
 import { ListingBreadcrumbs } from "@/components/listing-breadcrumbs";
 import { ListingDescription } from "@/components/listing-description";
+import type { Metadata } from "next";
+
+// Dynamic metadata for social sharing (OG/Twitter)
+export async function generateMetadata(
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Metadata> {
+  try {
+    const { id } = await params;
+    const listing = await listingsRepo.getById(id);
+
+    const siteName = "Obilli";
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.obilli.com";
+    const title = listing?.title ? `${listing.title} | ${siteName}` : siteName;
+    const description = listing?.description
+      ? String(listing.description).slice(0, 200)
+      : "Buy and sell goods, services, and find jobs in Cameroon";
+    const imageUrl = listing?.media?.[0]?.url || `${baseUrl}/logo.png`;
+    const url = `${baseUrl}/listing/${id}`;
+
+    return {
+      title,
+      description,
+      alternates: { canonical: url },
+      openGraph: {
+        title,
+        description,
+        url,
+        siteName,
+        type: "article",
+        images: [
+          {
+            url: imageUrl,
+            alt: listing?.title || siteName,
+          },
+        ],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+        images: [imageUrl],
+      },
+    };
+  } catch {
+    return {
+      title: "Obilli",
+      description: "Buy and sell goods, services, and find jobs in Cameroon",
+    };
+  }
+}
 
 // More granular suspense boundaries for better loading experience
 function GranularSuspenseWrapper({ children, fallback }: { children: React.ReactNode; fallback: React.ReactNode }) {

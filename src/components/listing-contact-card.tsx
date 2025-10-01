@@ -25,7 +25,7 @@ export function ListingContactCard({
   listing: ListingWithDetails; 
   seller: Database['public']['Tables']['profiles']['Row'] | null | undefined 
 }) {
-  const { t } = useI18n();
+  const { t, formatRelativeTime } = useI18n();
   const [showShareModal, setShowShareModal] = useState(false);
   const [showPhoneNotification, setShowPhoneNotification] = useState(false);
   
@@ -86,7 +86,7 @@ export function ListingContactCard({
             <Calendar className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
             <div>
               <div className="font-medium text-foreground">
-                {listing.created_at ? new Date(listing.created_at).toLocaleDateString() : t('listing.notSpecified')}
+                {listing.created_at ? formatRelativeTime(listing.created_at) : t('listing.notSpecified')}
               </div>
               <div className="text-sm text-muted-foreground">{t('listing.posted')}</div>
             </div>

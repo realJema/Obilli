@@ -42,7 +42,7 @@ export default function DashboardPage() {
   const user = useUser();
   const supabase = useSupabaseClient();
   const router = useRouter();
-  const { t, formatCurrency } = useI18n();
+  const { t, formatCurrency, formatRelativeTime } = useI18n();
 
   // Add state for image management in the edit modal
   const [newImages, setNewImages] = useState<File[]>([]);
@@ -1100,7 +1100,7 @@ export default function DashboardPage() {
                                     <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                                       <div className="flex items-center">
                                         <Calendar className="w-4 h-4 mr-1" />
-                                        {new Date(listing.created_at!).toLocaleDateString()}
+                                        {formatRelativeTime(listing.created_at!)}
                                       </div>
                                       {listing.price_xaf && listing.price_xaf > 0 ? (
                                         <div className="flex items-center">

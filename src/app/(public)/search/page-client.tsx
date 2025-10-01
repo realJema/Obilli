@@ -13,6 +13,7 @@ import type { ListingWithDetails } from "@/lib/repositories/listings";
 import type { CategoryWithChildren } from "@/lib/repositories/categories";
 import Link from "next/link";
 import { DefaultImage } from "@/components/default-image";
+import { useI18n } from "@/lib/providers";
 import { SearchFilters } from "./search-filters";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
@@ -202,6 +203,7 @@ function SearchResults({
 }) {
   // Simplified listing card for server-side rendering
   function ServerListingCard({ listing }: { listing: ListingWithDetails }) {
+    const { formatRelativeTime } = useI18n();
     // Get the first media image or use default
     const imageUrl = listing.media && listing.media.length > 0 
       ? listing.media[0].url 
@@ -283,7 +285,7 @@ function SearchResults({
               
               <div className="flex items-center text-xs text-muted-foreground">
                 <Clock className="h-3 w-3 mr-1" />
-                {listing.created_at ? new Date(listing.created_at).toLocaleDateString() : 'Unknown'}
+                {listing.created_at ? formatRelativeTime(listing.created_at) : 'Unknown'}
               </div>
             </div>
           </div>

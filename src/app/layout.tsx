@@ -40,8 +40,10 @@ async function getSiteSettings() {
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.obilli.com";
   
   return {
+    metadataBase: new URL(baseUrl),
     title: settings?.site_name || "Obilli - Classified Marketplace",
     description: settings?.site_description || "Buy and sell goods, services, and find jobs in Cameroon",
     keywords: ["marketplace", "classified", "cameroon", "buy", "sell", "services", "jobs", "obilli"],

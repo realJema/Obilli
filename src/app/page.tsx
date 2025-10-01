@@ -1,5 +1,5 @@
 import { MainLayout } from "@/components/main-layout";
-import { Star, MapPin, ChevronRight } from "lucide-react";
+import { Star, MapPin, ChevronRight, Clock } from "lucide-react";
 import Link from "next/link";
 import { DefaultImage } from "@/components/default-image";
 import { Suspense } from "react";
@@ -199,6 +199,8 @@ function FeaturedListingsServer({ listings }: { listings: HomepageListing[] }) {
 
 // Simplified listing card for server-side rendering
 function ServerListingCard({ listing }: { listing: HomepageListing }) {
+  // Relative time requires client i18n, so we only show it in client sections.
+  // For SSR cards, omit the date to avoid hydration of relative timers.
   const imageUrl = listing.media && listing.media.length > 0 
     ? listing.media[0].url 
     : 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?q=80&w=400&h=300&auto=format&fit=crop';
@@ -245,6 +247,7 @@ function ServerListingCard({ listing }: { listing: HomepageListing }) {
                 {locationDisplay}
               </div>
             )}
+            {/* Relative time is shown in client sections (Trending/Categories). */}
           </div>
         </div>
       </div>
