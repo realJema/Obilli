@@ -77,6 +77,15 @@ export default async function RootLayout({
           gtag('js', new Date());
           gtag('config', 'G-DRG272KTPH');
         `}</Script>
+
+        {/* Google AdSense */}
+<Script
+  async
+  src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3823611799863527"
+  crossOrigin="anonymous"
+  strategy="afterInteractive"
+/>
+
         <Providers>
           <div className="min-h-screen bg-background flex flex-col">
             <Header logoUrl={logoUrl} />
